@@ -2,8 +2,6 @@ export interface Point {
   id: string;
   x: number;
   y: number;
-  fixedX: boolean;
-  fixedY: boolean;
 }
 
 export interface Line {
@@ -28,7 +26,9 @@ export type ConstraintType =
   | 'tangent'
   | 'angle'
   | 'horizontal'
-  | 'vertical';
+  | 'vertical'
+  | 'fix-x'
+  | 'fix-y';
 
 export interface Constraint {
   id: string;

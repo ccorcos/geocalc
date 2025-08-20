@@ -68,43 +68,79 @@ describe('ConstraintEvaluator', () => {
       expect(grad2.y).toBeCloseTo(3.2, 5);
     });
 
-    it('should not compute gradients for fully fixed points', () => {
-      const p1 = createPoint(0, 0, true, true); // fixed
-      const p2 = createPoint(3, 4, false, false); // movable
-      
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+  });
 
-      const constraint = createConstraint('distance', [p1.id, p2.id], 10);
+  describe('Fix Constraints', () => {
+    it('should evaluate fix-x constraint with zero error when satisfied', () => {
+      const point = createPoint(5, 10);
+      document.points.set(point.id, point);
+
+      const constraint = createConstraint('fix-x', [point.id], 5);
       const result = evaluator.evaluate(constraint, document);
 
-      expect(result.gradient.has(p1.id)).toBe(false);
-      expect(result.gradient.has(p2.id)).toBe(true);
+      expect(result.constraintId).toBe(constraint.id);
+      expect(result.error).toBeCloseTo(0, 10);
     });
 
-    it('should compute partial gradients for partially fixed points', () => {
-      const p1 = createPoint(0, 0, true, false); // X fixed, Y movable
-      const p2 = createPoint(3, 4, false, true); // X movable, Y fixed
-      
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+    it('should evaluate fix-x constraint with positive error when not satisfied', () => {
+      const point = createPoint(8, 10); // x should be 5
+      document.points.set(point.id, point);
 
-      const constraint = createConstraint('distance', [p1.id, p2.id], 10);
+      const constraint = createConstraint('fix-x', [point.id], 5);
       const result = evaluator.evaluate(constraint, document);
 
-      expect(result.gradient.has(p1.id)).toBe(true);
-      expect(result.gradient.has(p2.id)).toBe(true);
+      expect(result.error).toBe(9); // (8-5)² = 9
+    });
 
-      const grad1 = result.gradient.get(p1.id)!;
-      const grad2 = result.gradient.get(p2.id)!;
+    it('should compute correct gradients for fix-x constraint', () => {
+      const point = createPoint(8, 10);
+      document.points.set(point.id, point);
 
-      // p1 has X fixed, so grad1.x should be 0
-      expect(grad1.x).toBe(0);
-      expect(grad1.y).not.toBe(0);
+      const constraint = createConstraint('fix-x', [point.id], 5);
+      const result = evaluator.evaluate(constraint, document);
 
-      // p2 has Y fixed, so grad2.y should be 0  
-      expect(grad2.x).not.toBe(0);
-      expect(grad2.y).toBe(0);
+      expect(result.gradient.has(point.id)).toBe(true);
+      const grad = result.gradient.get(point.id)!;
+
+      // Gradient should only affect x coordinate
+      expect(grad.x).toBe(6); // 2 * (8-5) = 6
+      expect(grad.y).toBe(0);
+    });
+
+    it('should evaluate fix-y constraint with zero error when satisfied', () => {
+      const point = createPoint(5, 10);
+      document.points.set(point.id, point);
+
+      const constraint = createConstraint('fix-y', [point.id], 10);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.constraintId).toBe(constraint.id);
+      expect(result.error).toBeCloseTo(0, 10);
+    });
+
+    it('should evaluate fix-y constraint with positive error when not satisfied', () => {
+      const point = createPoint(5, 13); // y should be 10
+      document.points.set(point.id, point);
+
+      const constraint = createConstraint('fix-y', [point.id], 10);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.error).toBe(9); // (13-10)² = 9
+    });
+
+    it('should compute correct gradients for fix-y constraint', () => {
+      const point = createPoint(5, 13);
+      document.points.set(point.id, point);
+
+      const constraint = createConstraint('fix-y', [point.id], 10);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.gradient.has(point.id)).toBe(true);
+      const grad = result.gradient.get(point.id)!;
+
+      // Gradient should only affect y coordinate
+      expect(grad.x).toBe(0);
+      expect(grad.y).toBe(6); // 2 * (13-10) = 6
     });
   });
 

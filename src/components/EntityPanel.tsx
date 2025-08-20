@@ -7,7 +7,19 @@ interface EntityPanelProps {
 }
 
 export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
-  const { document, selection, isSolving, currentTool, updatePoint, togglePointFixedX, togglePointFixedY } = useStore();
+  const { 
+    document, 
+    selection, 
+    isSolving, 
+    currentTool, 
+    updatePoint, 
+    addFixXConstraint,
+    addFixYConstraint,
+    removeFixXConstraint,
+    removeFixYConstraint,
+    getFixXConstraint,
+    getFixYConstraint
+  } = useStore();
   const evaluator = new ConstraintEvaluator();
   const [editingCoord, setEditingCoord] = useState<{pointId: string; coord: 'x' | 'y'; value: string} | null>(null);
 
@@ -44,10 +56,23 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
 
   // Handle coordinate fixed state toggling
   const handleCoordFixedToggle = (pointId: string, coord: 'x' | 'y') => {
+    const point = document.points.get(pointId);
+    if (!point) return;
+    
     if (coord === 'x') {
-      togglePointFixedX(pointId);
+      const hasFixX = getFixXConstraint(pointId) !== null;
+      if (hasFixX) {
+        removeFixXConstraint(pointId);
+      } else {
+        addFixXConstraint(pointId, point.x);
+      }
     } else {
-      togglePointFixedY(pointId);
+      const hasFixY = getFixYConstraint(pointId) !== null;
+      if (hasFixY) {
+        removeFixYConstraint(pointId);
+      } else {
+        addFixYConstraint(pointId, point.y);
+      }
     }
   };
 
@@ -296,13 +321,13 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                       />
                     ) : (
                       <span 
-                        className={`coord-value ${point.fixedX ? 'fixed' : 'editable'}`}
+                        className={`coord-value ${getFixXConstraint(id) ? 'fixed' : 'editable'}`}
                         onClick={() => handleCoordClick(id, 'x', point.x)}
                         onContextMenu={(e) => {
                           e.preventDefault();
                           handleCoordFixedToggle(id, 'x');
                         }}
-                        title={point.fixedX ? "Fixed X coordinate (right-click to unfix)" : "Click to edit, right-click to fix"}
+                        title={getFixXConstraint(id) ? "Fixed X coordinate (right-click to unfix)" : "Click to edit, right-click to fix"}
                       >
                         {formatNumber(point.x)}
                       </span>
@@ -323,13 +348,13 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                       />
                     ) : (
                       <span 
-                        className={`coord-value ${point.fixedY ? 'fixed' : 'editable'}`}
+                        className={`coord-value ${getFixYConstraint(id) ? 'fixed' : 'editable'}`}
                         onClick={() => handleCoordClick(id, 'y', point.y)}
                         onContextMenu={(e) => {
                           e.preventDefault();
                           handleCoordFixedToggle(id, 'y');
                         }}
-                        title={point.fixedY ? "Fixed Y coordinate (right-click to unfix)" : "Click to edit, right-click to fix"}
+                        title={getFixYConstraint(id) ? "Fixed Y coordinate (right-click to unfix)" : "Click to edit, right-click to fix"}
                       >
                         {formatNumber(point.y)}
                       </span>

@@ -80,15 +80,19 @@ export class CanvasRenderer {
 
   private renderPoints(document: GeometryDocument, selection: SelectionState): void {
     document.points.forEach((point) => {
-      this.renderPoint(point, selection);
+      this.renderPoint(point, selection, document);
     });
   }
 
-  private renderPoint(point: Point, selection: SelectionState): void {
+  private renderPoint(point: Point, selection: SelectionState, document: GeometryDocument): void {
     const isSelected = selection.selectedIds.has(point.id);
     const isHovered = selection.hoveredId === point.id;
-    const isFixed = point.fixedX || point.fixedY;
-    const isFullyFixed = point.fixedX && point.fixedY;
+    
+    // Check for fix constraints
+    const hasFixX = this.hasFixXConstraint(point.id, document);
+    const hasFixY = this.hasFixYConstraint(point.id, document);
+    const isFixed = hasFixX || hasFixY;
+    const isFullyFixed = hasFixX && hasFixY;
 
     this.ctx.save();
     
@@ -114,11 +118,11 @@ export class CanvasRenderer {
       // Show partial fixing with partial border
       if (!isFullyFixed) {
         this.ctx.beginPath();
-        if (point.fixedX && !point.fixedY) {
+        if (hasFixX && !hasFixY) {
           // Show horizontal line for X-fixed
           this.ctx.moveTo(point.x - radius, point.y);
           this.ctx.lineTo(point.x + radius, point.y);
-        } else if (!point.fixedX && point.fixedY) {
+        } else if (!hasFixX && hasFixY) {
           // Show vertical line for Y-fixed
           this.ctx.moveTo(point.x, point.y - radius);
           this.ctx.lineTo(point.x, point.y + radius);
@@ -315,5 +319,15 @@ export class CanvasRenderer {
 
   getContext(): CanvasRenderingContext2D {
     return this.ctx;
+  }
+
+  private hasFixXConstraint(pointId: string, document: GeometryDocument): boolean {
+    const constraintId = `fix-x-${pointId}`;
+    return document.constraints.has(constraintId);
+  }
+
+  private hasFixYConstraint(pointId: string, document: GeometryDocument): boolean {
+    const constraintId = `fix-y-${pointId}`;
+    return document.constraints.has(constraintId);
   }
 }

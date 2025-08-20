@@ -252,8 +252,21 @@ export class CanvasInteraction {
     if (entityId) {
       // Handle Cmd/Ctrl+Click for toggling point fixed state
       if (cmdKey && store.document.points.has(entityId)) {
-        store.togglePointFixedX(entityId);
-        store.togglePointFixedY(entityId);
+        const point = store.document.points.get(entityId);
+        if (!point) return;
+        
+        const hasFixX = store.getFixXConstraint(entityId) !== null;
+        const hasFixY = store.getFixYConstraint(entityId) !== null;
+        
+        if (hasFixX || hasFixY) {
+          // Remove existing constraints
+          if (hasFixX) store.removeFixXConstraint(entityId);
+          if (hasFixY) store.removeFixYConstraint(entityId);
+        } else {
+          // Add both constraints at current position
+          store.addFixXConstraint(entityId, point.x);
+          store.addFixYConstraint(entityId, point.y);
+        }
         return; // Don't change selection when toggling fixed state
       }
 
@@ -323,9 +336,7 @@ export class CanvasInteraction {
       // Second click - create circle with radius
       const radius = distance(this.tempCircleCenter, { 
         ...worldPos, 
-        id: '', 
-        fixedX: false,
-        fixedY: false
+        id: ''
       });
       
       const circle = createCircle(this.tempCircleCenter.id, radius);

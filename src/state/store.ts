@@ -27,8 +27,12 @@ interface AppState {
   addConstraint: (constraint: Constraint) => void;
   updatePoint: (id: string, updates: Partial<Point>) => void;
   updateCircle: (id: string, updates: Partial<Circle>) => void;
-  togglePointFixedX: (id: string) => void;
-  togglePointFixedY: (id: string) => void;
+  addFixXConstraint: (pointId: string, value: number) => void;
+  addFixYConstraint: (pointId: string, value: number) => void;
+  removeFixXConstraint: (pointId: string) => void;
+  removeFixYConstraint: (pointId: string) => void;
+  getFixXConstraint: (pointId: string) => Constraint | null;
+  getFixYConstraint: (pointId: string) => Constraint | null;
   removeEntity: (id: string) => void;
   
   // Solver actions
@@ -120,21 +124,51 @@ export const useStore = create<AppState>()(
       }
     }),
 
-    togglePointFixedX: (id) => set((state) => {
-      const point = state.document.points.get(id);
-      if (point) {
-        point.fixedX = !point.fixedX;
-        state.document.metadata.modified = new Date();
-      }
+    addFixXConstraint: (pointId, value) => set((state) => {
+      const fixXConstraint = {
+        id: `fix-x-${pointId}`,
+        type: 'fix-x' as const,
+        entityIds: [pointId],
+        value,
+        priority: 1,
+      };
+      state.document.constraints.set(fixXConstraint.id, fixXConstraint);
+      state.document.metadata.modified = new Date();
     }),
 
-    togglePointFixedY: (id) => set((state) => {
-      const point = state.document.points.get(id);
-      if (point) {
-        point.fixedY = !point.fixedY;
-        state.document.metadata.modified = new Date();
-      }
+    addFixYConstraint: (pointId, value) => set((state) => {
+      const fixYConstraint = {
+        id: `fix-y-${pointId}`,
+        type: 'fix-y' as const,
+        entityIds: [pointId],
+        value,
+        priority: 1,
+      };
+      state.document.constraints.set(fixYConstraint.id, fixYConstraint);
+      state.document.metadata.modified = new Date();
     }),
+
+    removeFixXConstraint: (pointId) => set((state) => {
+      const constraintId = `fix-x-${pointId}`;
+      state.document.constraints.delete(constraintId);
+      state.document.metadata.modified = new Date();
+    }),
+
+    removeFixYConstraint: (pointId) => set((state) => {
+      const constraintId = `fix-y-${pointId}`;
+      state.document.constraints.delete(constraintId);
+      state.document.metadata.modified = new Date();
+    }),
+
+    getFixXConstraint: (pointId) => {
+      const state = get();
+      return state.document.constraints.get(`fix-x-${pointId}`) || null;
+    },
+
+    getFixYConstraint: (pointId) => {
+      const state = get();
+      return state.document.constraints.get(`fix-y-${pointId}`) || null;
+    },
 
     removeEntity: (id) => set((state) => {
       state.document.points.delete(id);

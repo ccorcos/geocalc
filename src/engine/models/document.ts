@@ -13,12 +13,10 @@ export const createEmptyDocument = (): GeometryDocument => ({
   },
 });
 
-export const createPoint = (x: number, y: number, fixedX = false, fixedY = false): Point => ({
+export const createPoint = (x: number, y: number): Point => ({
   id: generateId(),
   x,
   y,
-  fixedX,
-  fixedY,
 });
 
 export const createLine = (point1Id: string, point2Id: string, infinite = false): Line => ({
