@@ -22,6 +22,7 @@ export class CanvasRenderer {
     this.renderCircles(document, selection);
     this.renderPoints(document, selection);
     this.renderConstraints(document);
+    this.renderGridLegend(viewport);
   }
 
   private clear(): void {
@@ -189,6 +190,87 @@ export class CanvasRenderer {
   private renderConstraints(document: GeometryDocument): void {
     // TODO: Render constraint indicators (small icons, dimension lines, etc.)
     // For now, we'll skip this and add it later
+  }
+
+  private renderGridLegend(viewport: Viewport): void {
+    const gridSpacingPixels = 50; // Fixed pixel spacing between grid lines
+    const minGridSize = 20; // Minimum pixels between grid lines
+    const actualGridSpacing = gridSpacingPixels * viewport.zoom; // Pixels between lines on screen
+    
+    if (actualGridSpacing < minGridSize) return; // Don't show legend if grid is too dense
+
+    // Calculate the world unit size that each grid square represents
+    const worldUnitsPerGridSquare = gridSpacingPixels / viewport.zoom;
+
+    this.ctx.save();
+    // Reset transform to screen coordinates
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    
+    // Draw legend background - make it wider for longer numbers
+    const legendWidth = 140;
+    const legendHeight = 30;
+    const margin = 10;
+    const x = this.canvas.width - legendWidth - margin;
+    const y = this.canvas.height - legendHeight - margin;
+    
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    this.ctx.fillRect(x, y, legendWidth, legendHeight);
+    
+    this.ctx.strokeStyle = '#ccc';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(x, y, legendWidth, legendHeight);
+    
+    // Draw grid scale indicator
+    const scaleLineY = y + legendHeight / 2;
+    const scaleStartX = x + 10;
+    const scaleLineLength = Math.min(50, actualGridSpacing); // Use actual grid spacing but cap at 50px
+    const scaleEndX = scaleStartX + scaleLineLength;
+    
+    this.ctx.strokeStyle = '#666';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.moveTo(scaleStartX, scaleLineY);
+    this.ctx.lineTo(scaleEndX, scaleLineY);
+    
+    // Add tick marks
+    this.ctx.moveTo(scaleStartX, scaleLineY - 3);
+    this.ctx.lineTo(scaleStartX, scaleLineY + 3);
+    this.ctx.moveTo(scaleEndX, scaleLineY - 3);
+    this.ctx.lineTo(scaleEndX, scaleLineY + 3);
+    this.ctx.stroke();
+    
+    // Add label with dynamic unit size
+    this.ctx.fillStyle = '#333';
+    this.ctx.font = '12px Arial';
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'middle';
+    
+    // Format the world units nicely based on zoom level
+    let unitsText: string;
+    const scaledUnits = worldUnitsPerGridSquare * (scaleLineLength / gridSpacingPixels);
+    
+    if (scaledUnits >= 1000) {
+      unitsText = `${(scaledUnits / 1000).toFixed(1)}k`;
+    } else if (scaledUnits >= 100) {
+      unitsText = `${Math.round(scaledUnits)}`;
+    } else if (scaledUnits >= 10) {
+      unitsText = `${scaledUnits.toFixed(1)}`;
+    } else if (scaledUnits >= 1) {
+      unitsText = `${scaledUnits.toFixed(1)}`;
+    } else if (scaledUnits >= 0.1) {
+      unitsText = `${scaledUnits.toFixed(2)}`;
+    } else {
+      unitsText = `${scaledUnits.toFixed(3)}`;
+    }
+    
+    this.ctx.fillText(`${unitsText} units`, scaleEndX + 8, scaleLineY);
+    
+    // Add zoom level indicator
+    this.ctx.font = '10px Arial';
+    this.ctx.fillStyle = '#999';
+    this.ctx.fillText(`${(viewport.zoom * 100).toFixed(0)}%`, x + 5, y + legendHeight - 5);
+    
+    this.ctx.restore();
   }
 
   resize(width: number, height: number): void {

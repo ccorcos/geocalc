@@ -153,12 +153,24 @@ export const useStore = create<AppState>()(
       const newZoom = Math.max(0.1, Math.min(10, oldZoom * factor));
       
       if (newZoom !== oldZoom) {
-        const worldCenter = get().screenToWorld(centerX, centerY);
-        state.viewport.zoom = newZoom;
-        const newWorldCenter = get().screenToWorld(centerX, centerY);
+        // Get the world point under the mouse BEFORE zoom change
+        const worldPointBeforeZoom = {
+          x: (centerX - state.viewport.width / 2) / oldZoom + state.viewport.x,
+          y: (centerY - state.viewport.height / 2) / oldZoom + state.viewport.y,
+        };
         
-        state.viewport.x += (worldCenter.x - newWorldCenter.x);
-        state.viewport.y += (worldCenter.y - newWorldCenter.y);
+        // Change the zoom level
+        state.viewport.zoom = newZoom;
+        
+        // Calculate where that same world point would be AFTER zoom change
+        const worldPointAfterZoom = {
+          x: (centerX - state.viewport.width / 2) / newZoom + state.viewport.x,
+          y: (centerY - state.viewport.height / 2) / newZoom + state.viewport.y,
+        };
+        
+        // Adjust viewport position to keep the world point under the mouse
+        state.viewport.x += (worldPointBeforeZoom.x - worldPointAfterZoom.x);
+        state.viewport.y += (worldPointBeforeZoom.y - worldPointAfterZoom.y);
       }
     }),
 
