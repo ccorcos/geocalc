@@ -3,9 +3,11 @@ import { Canvas } from './components/Canvas/Canvas';
 import { Toolbar } from './components/Toolbar/Toolbar';
 import { ConstraintPanel } from './components/ConstraintPanel/ConstraintPanel';
 import { EntityPanel } from './components/EntityPanel';
+import { useStore } from './state/store';
 
 function App() {
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const { setCurrentTool } = useStore();
 
   useEffect(() => {
     const updateCanvasSize = () => {
@@ -24,6 +26,49 @@ function App() {
     
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't trigger shortcuts if user is typing in an input field
+      const activeElement = document.activeElement;
+      if (activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.contentEditable === 'true'
+      )) {
+        return;
+      }
+
+      switch (event.key.toLowerCase()) {
+        case 'p':
+          event.preventDefault();
+          setCurrentTool('point');
+          break;
+        case 'l':
+          event.preventDefault();
+          setCurrentTool('line');
+          break;
+        case 'o':
+        case 'c':
+          event.preventDefault();
+          setCurrentTool('circle');
+          break;
+        case 'v':
+        case 'escape':
+          event.preventDefault();
+          setCurrentTool('select');
+          break;
+        case 'r':
+          event.preventDefault();
+          setCurrentTool('constraint');
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setCurrentTool]);
 
   return (
     <div style={{ 

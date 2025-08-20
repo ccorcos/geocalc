@@ -16,7 +16,7 @@ describe('Constraint Solving Integration Tests', () => {
   describe('Real-World Scenarios', () => {
     it('should construct a square from arbitrary points', () => {
       // Start with 4 random points
-      const p1 = createPoint(0, 0, true); // fixed corner
+      const p1 = createPoint(0, 0, true, true); // fixed corner
       const p2 = createPoint(7, 2); // will become adjacent corner
       const p3 = createPoint(3, 8); // will become opposite corner
       const p4 = createPoint(1, 5); // will become adjacent corner
@@ -94,7 +94,7 @@ describe('Constraint Solving Integration Tests', () => {
     });
 
     it('should construct an equilateral triangle', () => {
-      const p1 = createPoint(0, 0, true); // fixed vertex
+      const p1 = createPoint(0, 0, true, true); // fixed vertex
       const p2 = createPoint(10, 0); // base point
       const p3 = createPoint(5, 10); // apex
 
@@ -137,8 +137,8 @@ describe('Constraint Solving Integration Tests', () => {
 
     it('should handle a constrained linkage mechanism', () => {
       // Create a four-bar linkage mechanism
-      const ground1 = createPoint(0, 0, true); // fixed ground point
-      const ground2 = createPoint(10, 0, true); // fixed ground point
+      const ground1 = createPoint(0, 0, true, true); // fixed ground point
+      const ground2 = createPoint(10, 0, true, true); // fixed ground point
       const joint1 = createPoint(3, 4); // moving joint
       const joint2 = createPoint(7, 4); // moving joint
 
@@ -179,8 +179,8 @@ describe('Constraint Solving Integration Tests', () => {
 
     it('should solve parallel parking constraints', () => {
       // Simulate parallel parking: car must fit between two obstacles
-      const obstacleRear = createPoint(0, 0, true);
-      const obstacleFront = createPoint(20, 0, true);
+      const obstacleRear = createPoint(0, 0, true, true);
+      const obstacleFront = createPoint(20, 0, true, true);
       
       // Car corners (initially not parallel parked)
       const carRearLeft = createPoint(2, 5);
@@ -260,7 +260,7 @@ describe('Constraint Solving Integration Tests', () => {
 
     it('should solve architectural drafting constraints', () => {
       // Design a simple house floor plan with rooms
-      const corner1 = createPoint(0, 0, true); // fixed corner
+      const corner1 = createPoint(0, 0, true, true); // fixed corner
       const corner2 = createPoint(20, 0); // house width
       const corner3 = createPoint(20, 15); // house depth
       const corner4 = createPoint(0, 15); // complete rectangle

@@ -12,6 +12,7 @@ export class CanvasInteraction {
   private tempLineStart: Point | null = null;
   private tempCircleCenter: Point | null = null;
   private constraintTool = new ConstraintTool();
+  private circleRadiusDrag: { circleId: string; initialRadius: number } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -126,6 +127,27 @@ export class CanvasInteraction {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  private findCircleRadiusDragTarget(worldX: number, worldY: number): string | null {
+    const store = useStore.getState();
+    const { document } = store;
+    const tolerance = 15 / store.viewport.zoom; // Slightly larger tolerance for radius drag
+
+    for (const [id, circle] of document.circles) {
+      const center = document.points.get(circle.centerId);
+      if (!center) continue;
+
+      const distToCenter = Math.sqrt((center.x - worldX) ** 2 + (center.y - worldY) ** 2);
+      const distToCircle = Math.abs(distToCenter - circle.radius);
+      
+      // Check if clicking near the circle edge (not the center)
+      if (distToCircle <= tolerance && distToCenter > tolerance) {
+        return id;
+      }
+    }
+
+    return null;
+  }
+
   private handleMouseDown = (e: MouseEvent): void => {
     const mousePos = this.getMousePos(e);
     const worldPos = this.getWorldPos(mousePos.x, mousePos.y);
@@ -137,7 +159,7 @@ export class CanvasInteraction {
 
     switch (store.currentTool) {
       case 'select':
-        this.handleSelectMouseDown(worldPos, e.shiftKey);
+        this.handleSelectMouseDown(worldPos, e.shiftKey, e.metaKey || e.ctrlKey);
         break;
       case 'point':
         this.handlePointMouseDown(worldPos);
@@ -177,6 +199,9 @@ export class CanvasInteraction {
 
     this.isMouseDown = false;
     
+    // Reset circle radius drag state
+    this.circleRadiusDrag = null;
+    
     const store = useStore.getState();
     store.setDragState(false);
   };
@@ -190,6 +215,7 @@ export class CanvasInteraction {
     // Reset temporary states when leaving canvas
     this.tempLineStart = null;
     this.tempCircleCenter = null;
+    this.circleRadiusDrag = null;
   };
 
   private handleWheel = (e: WheelEvent): void => {
@@ -201,11 +227,36 @@ export class CanvasInteraction {
     store.zoomViewport(zoomFactor, mousePos.x, mousePos.y);
   };
 
-  private handleSelectMouseDown(worldPos: { x: number; y: number }, shiftKey: boolean): void {
+  private handleSelectMouseDown(worldPos: { x: number; y: number }, shiftKey: boolean, cmdKey: boolean = false): void {
     const store = useStore.getState();
+    
+    // Check for circle radius drag first
+    const circleRadiusTarget = this.findCircleRadiusDragTarget(worldPos.x, worldPos.y);
+    if (circleRadiusTarget && !shiftKey && !cmdKey) {
+      const circle = store.document.circles.get(circleRadiusTarget);
+      if (circle) {
+        // Set up circle radius dragging
+        this.circleRadiusDrag = {
+          circleId: circleRadiusTarget,
+          initialRadius: circle.radius
+        };
+        
+        // Select the circle
+        store.setSelection({ selectedIds: new Set([circleRadiusTarget]) });
+        return;
+      }
+    }
+
     const entityId = this.findEntityAt(worldPos.x, worldPos.y);
 
     if (entityId) {
+      // Handle Cmd/Ctrl+Click for toggling point fixed state
+      if (cmdKey && store.document.points.has(entityId)) {
+        store.togglePointFixedX(entityId);
+        store.togglePointFixedY(entityId);
+        return; // Don't change selection when toggling fixed state
+      }
+
       const selectedIds = new Set(store.selection.selectedIds);
       
       if (shiftKey) {
@@ -234,6 +285,9 @@ export class CanvasInteraction {
     const store = useStore.getState();
     const point = createPoint(worldPos.x, worldPos.y);
     store.addPoint(point);
+    
+    // Auto-revert to select tool after creating point
+    store.setCurrentTool('select');
   }
 
   private handleLineMouseDown(worldPos: { x: number; y: number }): void {
@@ -252,6 +306,9 @@ export class CanvasInteraction {
       store.addLine(line);
       
       this.tempLineStart = null;
+      
+      // Auto-revert to select tool after completing line
+      store.setCurrentTool('select');
     }
   }
 
@@ -267,13 +324,17 @@ export class CanvasInteraction {
       const radius = distance(this.tempCircleCenter, { 
         ...worldPos, 
         id: '', 
-        fixed: false 
+        fixedX: false,
+        fixedY: false
       });
       
       const circle = createCircle(this.tempCircleCenter.id, radius);
       store.addCircle(circle);
       
       this.tempCircleCenter = null;
+      
+      // Auto-revert to select tool after completing circle
+      store.setCurrentTool('select');
     }
   }
 
@@ -304,6 +365,25 @@ export class CanvasInteraction {
   private handleMouseDrag(mousePos: { x: number; y: number }, worldPos: { x: number; y: number }): void {
     const store = useStore.getState();
     
+    // Handle circle radius dragging
+    if (this.circleRadiusDrag && store.currentTool === 'select') {
+      const circle = store.document.circles.get(this.circleRadiusDrag.circleId);
+      const center = circle ? store.document.points.get(circle.centerId) : null;
+      
+      if (circle && center) {
+        // Calculate new radius as distance from center to mouse
+        const newRadius = Math.sqrt(
+          (worldPos.x - center.x) ** 2 + (worldPos.y - center.y) ** 2
+        );
+        
+        // Update circle radius (minimum radius of 1)
+        store.updateCircle(this.circleRadiusDrag.circleId, {
+          radius: Math.max(1, newRadius)
+        });
+      }
+      return;
+    }
+    
     if (store.currentTool === 'select' && store.isDragging && store.dragStartPoint) {
       // Drag selected points
       const dx = worldPos.x - store.dragStartPoint.x;
@@ -311,7 +391,7 @@ export class CanvasInteraction {
       
       for (const entityId of store.selection.selectedIds) {
         const point = store.document.points.get(entityId);
-        if (point && !point.fixed) {
+        if (point) {
           store.updatePoint(entityId, {
             x: point.x + dx,
             y: point.y + dy,

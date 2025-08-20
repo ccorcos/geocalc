@@ -2,7 +2,8 @@ export interface Point {
   id: string;
   x: number;
   y: number;
-  fixed: boolean;
+  fixedX: boolean;
+  fixedY: boolean;
 }
 
 export interface Line {

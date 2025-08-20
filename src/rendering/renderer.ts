@@ -87,24 +87,55 @@ export class CanvasRenderer {
   private renderPoint(point: Point, selection: SelectionState): void {
     const isSelected = selection.selectedIds.has(point.id);
     const isHovered = selection.hoveredId === point.id;
+    const isFixed = point.fixedX || point.fixedY;
+    const isFullyFixed = point.fixedX && point.fixedY;
 
     this.ctx.save();
     
     // Point circle
     this.ctx.beginPath();
-    this.ctx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+    const radius = isFixed ? 5 : 4; // Fixed points are slightly larger
+    this.ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
     
-    if (point.fixed) {
-      this.ctx.fillStyle = isSelected ? '#ff6b6b' : isHovered ? '#ff9999' : '#e74c3c';
+    if (isFixed) {
+      this.ctx.fillStyle = isSelected ? '#ff4757' : isHovered ? '#ff6b81' : '#e74c3c';
     } else {
       this.ctx.fillStyle = isSelected ? '#4dabf7' : isHovered ? '#74c0fc' : '#339af0';
     }
     
     this.ctx.fill();
     
+    // Fixed points get a distinctive border
+    if (isFixed) {
+      this.ctx.strokeStyle = '#c44569';
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+      
+      // Show partial fixing with partial border
+      if (!isFullyFixed) {
+        this.ctx.beginPath();
+        if (point.fixedX && !point.fixedY) {
+          // Show horizontal line for X-fixed
+          this.ctx.moveTo(point.x - radius, point.y);
+          this.ctx.lineTo(point.x + radius, point.y);
+        } else if (!point.fixedX && point.fixedY) {
+          // Show vertical line for Y-fixed
+          this.ctx.moveTo(point.x, point.y - radius);
+          this.ctx.lineTo(point.x, point.y + radius);
+        }
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+      }
+    }
+    
     // Selection ring
     if (isSelected || isHovered) {
-      this.ctx.strokeStyle = isSelected ? '#1971c2' : '#74c0fc';
+      this.ctx.beginPath();
+      this.ctx.arc(point.x, point.y, radius + 2, 0, 2 * Math.PI);
+      this.ctx.strokeStyle = isFixed 
+        ? (isSelected ? '#c44569' : '#ff6b81')
+        : (isSelected ? '#1971c2' : '#74c0fc');
       this.ctx.lineWidth = 2;
       this.ctx.stroke();
     }

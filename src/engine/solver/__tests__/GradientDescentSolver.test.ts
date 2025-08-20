@@ -16,7 +16,7 @@ describe('GradientDescentSolver', () => {
   describe('Basic Solving', () => {
     it('should solve simple distance constraint', () => {
       // Create two points that are 5 units apart
-      const p1 = createPoint(0, 0, true); // fixed point
+      const p1 = createPoint(0, 0, true, true); // fixed point
       const p2 = createPoint(3, 4); // movable, currently at distance 5
       
       document.points.set(p1.id, p1);
@@ -64,7 +64,7 @@ describe('GradientDescentSolver', () => {
 
     it('should handle multiple distance constraints', () => {
       // Create triangle with specific side lengths
-      const p1 = createPoint(0, 0, true); // fixed
+      const p1 = createPoint(0, 0, true, true); // fixed
       const p2 = createPoint(10, 0); // movable
       const p3 = createPoint(5, 5); // movable
 
@@ -157,8 +157,8 @@ describe('GradientDescentSolver', () => {
   describe('Parallel and Perpendicular Constraints', () => {
     it('should solve parallel lines constraint', () => {
       // Create two non-parallel lines
-      const p1 = createPoint(0, 0, true);
-      const p2 = createPoint(2, 0, true);
+      const p1 = createPoint(0, 0, true, true);
+      const p2 = createPoint(2, 0, true, true);
       const p3 = createPoint(0, 2);
       const p4 = createPoint(1, 3);
 
@@ -194,8 +194,8 @@ describe('GradientDescentSolver', () => {
     });
 
     it('should solve perpendicular lines constraint', () => {
-      const p1 = createPoint(0, 0, true);
-      const p2 = createPoint(2, 0, true); // horizontal line
+      const p1 = createPoint(0, 0, true, true);
+      const p2 = createPoint(2, 0, true, true); // horizontal line
       const p3 = createPoint(1, 1);
       const p4 = createPoint(2, 2); // diagonal line
 
@@ -233,7 +233,7 @@ describe('GradientDescentSolver', () => {
   describe('Complex Constraint Systems', () => {
     it('should solve system with mixed constraint types', () => {
       // Create a right-angled triangle with specific dimensions
-      const p1 = createPoint(0, 0, true); // origin, fixed
+      const p1 = createPoint(0, 0, true, true); // origin, fixed
       const p2 = createPoint(5, 0); // on x-axis
       const p3 = createPoint(0, 3); // on y-axis
 
@@ -310,7 +310,7 @@ describe('GradientDescentSolver', () => {
     });
 
     it('should respect tolerance setting', () => {
-      const p1 = createPoint(0, 0, true);
+      const p1 = createPoint(0, 0, true, true);
       const p2 = createPoint(3, 4);
       
       document.points.set(p1.id, p1);
@@ -334,7 +334,7 @@ describe('GradientDescentSolver', () => {
   describe('Edge Cases', () => {
     it('should handle overconstrained systems gracefully', () => {
       // Two conflicting distance constraints
-      const p1 = createPoint(0, 0, true);
+      const p1 = createPoint(0, 0, true, true);
       const p2 = createPoint(3, 4);
       
       document.points.set(p1.id, p1);
@@ -378,7 +378,7 @@ describe('GradientDescentSolver', () => {
 
   describe('Solver State Management', () => {
     it('should reset velocity between different solve calls', () => {
-      const p1 = createPoint(0, 0, true);
+      const p1 = createPoint(0, 0, true, true);
       const p2 = createPoint(1, 1);
       
       document.points.set(p1.id, p1);

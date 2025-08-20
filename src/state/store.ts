@@ -26,6 +26,9 @@ interface AppState {
   addCircle: (circle: Circle) => void;
   addConstraint: (constraint: Constraint) => void;
   updatePoint: (id: string, updates: Partial<Point>) => void;
+  updateCircle: (id: string, updates: Partial<Circle>) => void;
+  togglePointFixedX: (id: string) => void;
+  togglePointFixedY: (id: string) => void;
   removeEntity: (id: string) => void;
   
   // Solver actions
@@ -105,6 +108,30 @@ export const useStore = create<AppState>()(
       const point = state.document.points.get(id);
       if (point) {
         Object.assign(point, updates);
+        state.document.metadata.modified = new Date();
+      }
+    }),
+
+    updateCircle: (id, updates) => set((state) => {
+      const circle = state.document.circles.get(id);
+      if (circle) {
+        Object.assign(circle, updates);
+        state.document.metadata.modified = new Date();
+      }
+    }),
+
+    togglePointFixedX: (id) => set((state) => {
+      const point = state.document.points.get(id);
+      if (point) {
+        point.fixedX = !point.fixedX;
+        state.document.metadata.modified = new Date();
+      }
+    }),
+
+    togglePointFixedY: (id) => set((state) => {
+      const point = state.document.points.get(id);
+      if (point) {
+        point.fixedY = !point.fixedY;
         state.document.metadata.modified = new Date();
       }
     }),

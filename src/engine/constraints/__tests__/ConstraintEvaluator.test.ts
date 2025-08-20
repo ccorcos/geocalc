@@ -68,9 +68,9 @@ describe('ConstraintEvaluator', () => {
       expect(grad2.y).toBeCloseTo(3.2, 5);
     });
 
-    it('should not compute gradients for fixed points', () => {
-      const p1 = createPoint(0, 0, true); // fixed
-      const p2 = createPoint(3, 4, false); // movable
+    it('should not compute gradients for fully fixed points', () => {
+      const p1 = createPoint(0, 0, true, true); // fixed
+      const p2 = createPoint(3, 4, false, false); // movable
       
       document.points.set(p1.id, p1);
       document.points.set(p2.id, p2);
@@ -80,6 +80,31 @@ describe('ConstraintEvaluator', () => {
 
       expect(result.gradient.has(p1.id)).toBe(false);
       expect(result.gradient.has(p2.id)).toBe(true);
+    });
+
+    it('should compute partial gradients for partially fixed points', () => {
+      const p1 = createPoint(0, 0, true, false); // X fixed, Y movable
+      const p2 = createPoint(3, 4, false, true); // X movable, Y fixed
+      
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      const constraint = createConstraint('distance', [p1.id, p2.id], 10);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.gradient.has(p1.id)).toBe(true);
+      expect(result.gradient.has(p2.id)).toBe(true);
+
+      const grad1 = result.gradient.get(p1.id)!;
+      const grad2 = result.gradient.get(p2.id)!;
+
+      // p1 has X fixed, so grad1.x should be 0
+      expect(grad1.x).toBe(0);
+      expect(grad1.y).not.toBe(0);
+
+      // p2 has Y fixed, so grad2.y should be 0  
+      expect(grad2.x).not.toBe(0);
+      expect(grad2.y).toBe(0);
     });
   });
 

@@ -51,18 +51,20 @@ export class ConstraintEvaluator {
     if (currentDistance > 0) {
       const factor = 2 * (currentDistance - targetDistance) / currentDistance;
       
-      if (!point1.fixed) {
-        gradient.set(point1.id, {
-          x: factor * (point1.x - point2.x),
-          y: factor * (point1.y - point2.y),
-        });
+      if (!point1.fixedX || !point1.fixedY) {
+        const gradient1 = {
+          x: (!point1.fixedX) ? factor * (point1.x - point2.x) : 0,
+          y: (!point1.fixedY) ? factor * (point1.y - point2.y) : 0,
+        };
+        gradient.set(point1.id, gradient1);
       }
       
-      if (!point2.fixed) {
-        gradient.set(point2.id, {
-          x: factor * (point2.x - point1.x),
-          y: factor * (point2.y - point1.y),
-        });
+      if (!point2.fixedX || !point2.fixedY) {
+        const gradient2 = {
+          x: (!point2.fixedX) ? factor * (point2.x - point1.x) : 0,
+          y: (!point2.fixedY) ? factor * (point2.y - point1.y) : 0,
+        };
+        gradient.set(point2.id, gradient2);
       }
     }
 
@@ -103,7 +105,7 @@ export class ConstraintEvaluator {
 
     // Numerical gradient approximation
     [p1a, p1b, p2a, p2b].forEach(point => {
-      if (point.fixed) return;
+      if (point.fixedX && point.fixedY) return;
 
       const originalX = point.x;
       const originalY = point.y;
@@ -126,10 +128,12 @@ export class ConstraintEvaluator {
       
       point.y = originalY;
 
-      gradient.set(point.id, {
-        x: (errorX - error) / epsilon,
-        y: (errorY - error) / epsilon,
-      });
+      if (!point.fixedX || !point.fixedY) {
+        gradient.set(point.id, {
+          x: (!point.fixedX) ? (errorX - error) / epsilon : 0,
+          y: (!point.fixedY) ? (errorY - error) / epsilon : 0,
+        });
+      }
     });
 
     return { constraintId: constraint.id, error, gradient };
@@ -168,7 +172,7 @@ export class ConstraintEvaluator {
     const epsilon = 1e-6;
 
     [p1a, p1b, p2a, p2b].forEach(point => {
-      if (point.fixed) return;
+      if (point.fixedX && point.fixedY) return;
 
       const originalX = point.x;
       const originalY = point.y;
@@ -191,10 +195,12 @@ export class ConstraintEvaluator {
       
       point.y = originalY;
 
-      gradient.set(point.id, {
-        x: (errorX - error) / epsilon,
-        y: (errorY - error) / epsilon,
-      });
+      if (!point.fixedX || !point.fixedY) {
+        gradient.set(point.id, {
+          x: (!point.fixedX) ? (errorX - error) / epsilon : 0,
+          y: (!point.fixedY) ? (errorY - error) / epsilon : 0,
+        });
+      }
     });
 
     return { constraintId: constraint.id, error, gradient };
@@ -222,12 +228,20 @@ export class ConstraintEvaluator {
 
     const gradient = new Map<string, { x: number; y: number }>();
     
-    if (!p1.fixed) {
-      gradient.set(p1.id, { x: 0, y: -2 * dy });
+    if (!p1.fixedX || !p1.fixedY) {
+      const gradient1 = {
+        x: 0,
+        y: (!p1.fixedY) ? -2 * dy : 0,
+      };
+      gradient.set(p1.id, gradient1);
     }
     
-    if (!p2.fixed) {
-      gradient.set(p2.id, { x: 0, y: 2 * dy });
+    if (!p2.fixedX || !p2.fixedY) {
+      const gradient2 = {
+        x: 0,
+        y: (!p2.fixedY) ? 2 * dy : 0,
+      };
+      gradient.set(p2.id, gradient2);
     }
 
     return { constraintId: constraint.id, error, gradient };
@@ -255,12 +269,20 @@ export class ConstraintEvaluator {
 
     const gradient = new Map<string, { x: number; y: number }>();
     
-    if (!p1.fixed) {
-      gradient.set(p1.id, { x: -2 * dx, y: 0 });
+    if (!p1.fixedX || !p1.fixedY) {
+      const gradient1 = {
+        x: (!p1.fixedX) ? -2 * dx : 0,
+        y: 0,
+      };
+      gradient.set(p1.id, gradient1);
     }
     
-    if (!p2.fixed) {
-      gradient.set(p2.id, { x: 2 * dx, y: 0 });
+    if (!p2.fixedX || !p2.fixedY) {
+      const gradient2 = {
+        x: (!p2.fixedX) ? 2 * dx : 0,
+        y: 0,
+      };
+      gradient.set(p2.id, gradient2);
     }
 
     return { constraintId: constraint.id, error, gradient };

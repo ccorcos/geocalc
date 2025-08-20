@@ -51,7 +51,7 @@ export class GradientDescentSolver {
       let hasMovement = false;
       aggregatedGradients.forEach((gradient, pointId) => {
         const point = currentDocument.points.get(pointId);
-        if (!point || point.fixed) return;
+        if (!point) return;
 
         // Get or initialize velocity for this point
         if (!this.velocity.has(pointId)) {
@@ -59,13 +59,22 @@ export class GradientDescentSolver {
         }
         const velocity = this.velocity.get(pointId)!;
 
-        // Update velocity with momentum
-        velocity.x = options.momentum * velocity.x - options.learningRate * gradient.x;
-        velocity.y = options.momentum * velocity.y - options.learningRate * gradient.y;
+        // Update velocity with momentum (only for non-fixed coordinates)
+        if (!point.fixedX) {
+          velocity.x = options.momentum * velocity.x - options.learningRate * gradient.x;
+        } else {
+          velocity.x = 0;
+        }
+        
+        if (!point.fixedY) {
+          velocity.y = options.momentum * velocity.y - options.learningRate * gradient.y;
+        } else {
+          velocity.y = 0;
+        }
 
-        // Update position
-        const newX = point.x + velocity.x;
-        const newY = point.y + velocity.y;
+        // Update position (only for non-fixed coordinates)
+        const newX = point.fixedX ? point.x : point.x + velocity.x;
+        const newY = point.fixedY ? point.y : point.y + velocity.y;
 
         // Check if there's actual movement
         if (Math.abs(newX - point.x) > options.tolerance || 

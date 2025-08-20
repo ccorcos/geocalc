@@ -44,13 +44,25 @@ describe('Document Operations', () => {
       expect(point.id).toBeDefined();
       expect(point.x).toBe(10);
       expect(point.y).toBe(20);
-      expect(point.fixed).toBe(false);
+      expect(point.fixedX).toBe(false);
+      expect(point.fixedY).toBe(false);
     });
 
     it('should create fixed point when specified', () => {
-      const point = createPoint(5, 15, true);
+      const point = createPoint(5, 15, true, true);
       
-      expect(point.fixed).toBe(true);
+      expect(point.fixedX).toBe(true);
+      expect(point.fixedY).toBe(true);
+    });
+
+    it('should create partially fixed point', () => {
+      const pointXFixed = createPoint(5, 15, true, false);
+      const pointYFixed = createPoint(5, 15, false, true);
+      
+      expect(pointXFixed.fixedX).toBe(true);
+      expect(pointXFixed.fixedY).toBe(false);
+      expect(pointYFixed.fixedX).toBe(false);
+      expect(pointYFixed.fixedY).toBe(true);
     });
 
     it('should generate unique IDs for different points', () => {

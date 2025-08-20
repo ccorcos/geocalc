@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
 import { ConstraintEvaluator } from '../engine/constraints/ConstraintEvaluator';
 
@@ -7,12 +7,54 @@ interface EntityPanelProps {
 }
 
 export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
-  const { document, selection, isSolving } = useStore();
+  const { document, selection, isSolving, currentTool, updatePoint, togglePointFixedX, togglePointFixedY } = useStore();
   const evaluator = new ConstraintEvaluator();
+  const [editingCoord, setEditingCoord] = useState<{pointId: string; coord: 'x' | 'y'; value: string} | null>(null);
+
+  // Handle coordinate editing
+  const handleCoordClick = (pointId: string, coord: 'x' | 'y', currentValue: number) => {
+    setEditingCoord({
+      pointId,
+      coord,
+      value: formatNumber(currentValue)
+    });
+  };
+
+  const handleCoordSubmit = () => {
+    if (!editingCoord) return;
+    
+    const newValue = parseFloat(editingCoord.value);
+    if (!isNaN(newValue)) {
+      updatePoint(editingCoord.pointId, {
+        [editingCoord.coord]: newValue
+      });
+    }
+    setEditingCoord(null);
+  };
+
+  const handleCoordKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleCoordSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setEditingCoord(null);
+    }
+  };
+
+  // Handle coordinate fixed state toggling
+  const handleCoordFixedToggle = (pointId: string, coord: 'x' | 'y') => {
+    if (coord === 'x') {
+      togglePointFixedX(pointId);
+    } else {
+      togglePointFixedY(pointId);
+    }
+  };
 
   // Handle entity selection from panel
-  const handleEntityClick = (entityId: string, shiftKey: boolean) => {
+  const handleEntityClick = (entityId: string, shiftKey: boolean, cmdKey: boolean = false) => {
     const store = useStore.getState();
+
     const selectedIds = new Set(store.selection.selectedIds);
     
     if (shiftKey) {
@@ -35,6 +77,21 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Delete' || event.key === 'Backspace') {
+        // Don't delete entities if user is typing in an input field
+        const activeElement = document.activeElement;
+        if (activeElement && (
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.contentEditable === 'true'
+        )) {
+          return; // Let the browser handle the keypress normally
+        }
+
+        // Don't delete entities when constraint tool is active (ConstraintPanel is open)
+        if (currentTool === 'constraint') {
+          return; // Completely disable entity deletion during constraint creation
+        }
+
         const store = useStore.getState();
         const selectedIds = Array.from(store.selection.selectedIds);
         
@@ -65,7 +122,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
 
     window.document.addEventListener('keydown', handleKeyDown);
     return () => window.document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [currentTool]);
 
   // Format number to 3 decimal places
   const formatNumber = (num: number | undefined | null): string => {
@@ -213,14 +270,72 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
             {pointsArray.map(({ id, point, name }) => (
               <div 
                 key={id} 
-                className={`entity-item compact clickable ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
-                onClick={(e) => handleEntityClick(id, e.shiftKey)}
+                className={`entity-item ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
                 onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
                 onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
               >
-                <span className="entity-name">{name}</span>
-                <span className="entity-data">{`{x: ${formatNumber(point.x)}, y: ${formatNumber(point.y)}}`}</span>
-                {point.fixed && <span className="fixed-badge">Fixed</span>}
+                <span 
+                  className="entity-name clickable"
+                  onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
+                >
+                  {name}
+                </span>
+                <div className="coordinate-controls">
+                  <div className="coordinate-group">
+                    <span className="coord-label">x:</span>
+                    {editingCoord?.pointId === id && editingCoord.coord === 'x' ? (
+                      <input
+                        type="number"
+                        step="any"
+                        className="coord-input"
+                        value={editingCoord.value}
+                        onChange={(e) => setEditingCoord({...editingCoord, value: e.target.value})}
+                        onBlur={handleCoordSubmit}
+                        onKeyDown={handleCoordKeyDown}
+                        autoFocus
+                      />
+                    ) : (
+                      <span 
+                        className={`coord-value ${point.fixedX ? 'fixed' : 'editable'}`}
+                        onClick={() => handleCoordClick(id, 'x', point.x)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          handleCoordFixedToggle(id, 'x');
+                        }}
+                        title={point.fixedX ? "Fixed X coordinate (right-click to unfix)" : "Click to edit, right-click to fix"}
+                      >
+                        {formatNumber(point.x)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="coordinate-group">
+                    <span className="coord-label">y:</span>
+                    {editingCoord?.pointId === id && editingCoord.coord === 'y' ? (
+                      <input
+                        type="number"
+                        step="any"
+                        className="coord-input"
+                        value={editingCoord.value}
+                        onChange={(e) => setEditingCoord({...editingCoord, value: e.target.value})}
+                        onBlur={handleCoordSubmit}
+                        onKeyDown={handleCoordKeyDown}
+                        autoFocus
+                      />
+                    ) : (
+                      <span 
+                        className={`coord-value ${point.fixedY ? 'fixed' : 'editable'}`}
+                        onClick={() => handleCoordClick(id, 'y', point.y)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          handleCoordFixedToggle(id, 'y');
+                        }}
+                        title={point.fixedY ? "Fixed Y coordinate (right-click to unfix)" : "Click to edit, right-click to fix"}
+                      >
+                        {formatNumber(point.y)}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -245,7 +360,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                   <div 
                     key={id} 
                     className={`entity-item compact clickable ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
-                    onClick={(e) => handleEntityClick(id, e.shiftKey)}
+                    onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
                     onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
                     onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
                   >
@@ -272,7 +387,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                   <div 
                     key={id} 
                     className={`entity-item compact clickable ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
-                    onClick={(e) => handleEntityClick(id, e.shiftKey)}
+                    onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
                     onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
                     onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
                   >
@@ -439,6 +554,69 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
 
         .entity-item.clickable:active {
           background: #e0e7ff;
+        }
+
+        .coordinate-controls {
+          display: flex;
+          gap: 12px;
+          flex-grow: 1;
+        }
+
+        .coordinate-group {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .coord-label {
+          font-size: 10px;
+          color: #666;
+          font-weight: 500;
+        }
+
+        .coord-value {
+          font-family: 'Monaco', 'Menlo', monospace;
+          font-size: 10px;
+          padding: 2px 4px;
+          border-radius: 3px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .coord-value.editable {
+          color: #333;
+          background: transparent;
+        }
+
+        .coord-value.editable:hover {
+          background: #f0f0f0;
+        }
+
+        .coord-value.fixed {
+          color: #c44569;
+          background: #ffe4e1;
+          font-weight: bold;
+          border: 1px solid #ffb3ba;
+        }
+
+        .coord-value.fixed:hover {
+          background: #ffd1cc;
+        }
+
+        .coord-input {
+          font-family: 'Monaco', 'Menlo', monospace;
+          font-size: 10px;
+          padding: 2px 4px;
+          border: 1px solid #2196f3;
+          border-radius: 3px;
+          width: 60px;
+          background: white;
+          outline: none;
+        }
+
+        .coord-input:focus {
+          border-color: #1976d2;
+          box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
         }
 
         .entity-item:hover {
