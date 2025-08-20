@@ -31,10 +31,12 @@ export const ConstraintPanel: React.FC = () => {
     if (selectedIds.length === 2) {
       const [entity1, entity2] = selectedEntities;
       
-      // Two points -> distance constraint
+      // Two points -> distance, same-x, same-y constraints
       if (entity1?.type === 'point' && entity2?.type === 'point') {
         return [
-          { type: 'distance', label: 'Fixed Distance', needsValue: true }
+          { type: 'distance', label: 'Fixed Distance', needsValue: true },
+          { type: 'same-x', label: 'Same X Coordinate', needsValue: false },
+          { type: 'same-y', label: 'Same Y Coordinate', needsValue: false }
         ];
       }
       
@@ -43,6 +45,17 @@ export const ConstraintPanel: React.FC = () => {
         return [
           { type: 'parallel', label: 'Parallel', needsValue: false },
           { type: 'perpendicular', label: 'Perpendicular', needsValue: false }
+        ];
+      }
+    }
+
+    if (selectedIds.length === 3) {
+      const [entity1, entity2, entity3] = selectedEntities;
+      
+      // Three points -> angle constraint  
+      if (entity1?.type === 'point' && entity2?.type === 'point' && entity3?.type === 'point') {
+        return [
+          { type: 'angle', label: 'Fixed Angle (degrees)', needsValue: true }
         ];
       }
     }
@@ -87,6 +100,37 @@ export const ConstraintPanel: React.FC = () => {
             }
           }
         }
+      } else if (selectedConstraintType === 'angle' && selectedIds.length === 3) {
+        const point1 = document.points.get(selectedIds[0]);
+        const point2 = document.points.get(selectedIds[1]); // vertex
+        const point3 = document.points.get(selectedIds[2]);
+        
+        if (point1 && point2 && point3) {
+          if (constraintValue.trim() === '') {
+            // Calculate current angle
+            const v1x = point1.x - point2.x;
+            const v1y = point1.y - point2.y;
+            const v2x = point3.x - point2.x;
+            const v2y = point3.y - point2.y;
+            
+            const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+            const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+            
+            if (mag1 > 1e-10 && mag2 > 1e-10) {
+              const dotProduct = v1x * v2x + v1y * v2y;
+              const cosAngle = Math.max(-1, Math.min(1, dotProduct / (mag1 * mag2)));
+              value = Math.acos(cosAngle) * (180 / Math.PI); // Convert to degrees
+            } else {
+              value = 90; // Default to 90 degrees for degenerate case
+            }
+          } else {
+            value = parseFloat(constraintValue);
+            if (isNaN(value) || value < 0 || value > 180) {
+              alert('Please enter a valid angle between 0 and 180 degrees');
+              return;
+            }
+          }
+        }
       }
     }
 
@@ -114,7 +158,8 @@ export const ConstraintPanel: React.FC = () => {
         <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>Constraint Tool</h4>
         <p style={{ margin: 0, fontSize: '12px', color: '#6c757d' }}>
           Select entities to create constraints:
-          <br />• Two points → Distance
+          <br />• Two points → Distance, Same X/Y
+          <br />• Three points → Fixed Angle
           <br />• Two lines → Parallel/Perpendicular  
           <br />• One line → Horizontal/Vertical
         </p>
@@ -174,14 +219,16 @@ export const ConstraintPanel: React.FC = () => {
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>
             Value: {selectedConstraintType === 'distance' && '(leave empty for current distance)'}
+            {selectedConstraintType === 'angle' && '(leave empty for current angle)'}
           </label>
           <input
             type="number"
             step="0.1"
             min="0"
+            max={selectedConstraintType === 'angle' ? "180" : undefined}
             value={constraintValue}
             onChange={(e) => setConstraintValue(e.target.value)}
-            placeholder="Enter value..."
+            placeholder={selectedConstraintType === 'angle' ? 'Enter angle (0-180°)...' : 'Enter value...'}
             style={{
               width: '100%',
               padding: '5px',
