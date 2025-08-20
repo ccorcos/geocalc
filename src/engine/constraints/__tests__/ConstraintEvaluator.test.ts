@@ -344,6 +344,206 @@ describe('ConstraintEvaluator', () => {
     });
   });
 
+  describe('Same-X Constraints', () => {
+    it('should evaluate same-x constraint with zero error when satisfied', () => {
+      const p1 = createPoint(5, 10);
+      const p2 = createPoint(5, 20); // same x-coordinate
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      const constraint = createConstraint('same-x', [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.constraintId).toBe(constraint.id);
+      expect(result.error).toBe(0);
+    });
+
+    it('should evaluate same-x constraint with positive error when not satisfied', () => {
+      const p1 = createPoint(5, 10);
+      const p2 = createPoint(8, 20); // x difference = 3
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      const constraint = createConstraint('same-x', [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.error).toBe(9); // (5-8)² = 9
+    });
+
+    it('should compute correct gradients for same-x constraint', () => {
+      const p1 = createPoint(5, 10);
+      const p2 = createPoint(8, 20); // x difference = 3
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      const constraint = createConstraint('same-x', [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.gradient.has(p1.id)).toBe(true);
+      expect(result.gradient.has(p2.id)).toBe(true);
+
+      const grad1 = result.gradient.get(p1.id)!;
+      const grad2 = result.gradient.get(p2.id)!;
+
+      // Gradients should only affect x coordinates and be opposite
+      expect(grad1.x).toBe(-6); // 2 * (5-8) = -6
+      expect(grad1.y).toBe(0);
+      expect(grad2.x).toBe(6); // 2 * (8-5) = 6  
+      expect(grad2.y).toBe(0);
+    });
+  });
+
+  describe('Same-Y Constraints', () => {
+    it('should evaluate same-y constraint with zero error when satisfied', () => {
+      const p1 = createPoint(10, 5);
+      const p2 = createPoint(20, 5); // same y-coordinate
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      const constraint = createConstraint('same-y', [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.constraintId).toBe(constraint.id);
+      expect(result.error).toBe(0);
+    });
+
+    it('should evaluate same-y constraint with positive error when not satisfied', () => {
+      const p1 = createPoint(10, 5);
+      const p2 = createPoint(20, 9); // y difference = 4
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      const constraint = createConstraint('same-y', [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.error).toBe(16); // (5-9)² = 16
+    });
+
+    it('should compute correct gradients for same-y constraint', () => {
+      const p1 = createPoint(10, 5);
+      const p2 = createPoint(20, 9); // y difference = 4
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      const constraint = createConstraint('same-y', [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.gradient.has(p1.id)).toBe(true);
+      expect(result.gradient.has(p2.id)).toBe(true);
+
+      const grad1 = result.gradient.get(p1.id)!;
+      const grad2 = result.gradient.get(p2.id)!;
+
+      // Gradients should only affect y coordinates and be opposite
+      expect(grad1.x).toBe(0);
+      expect(grad1.y).toBe(-8); // 2 * (5-9) = -8
+      expect(grad2.x).toBe(0);
+      expect(grad2.y).toBe(8); // 2 * (9-5) = 8
+    });
+  });
+
+  describe('Angle Constraints', () => {
+    it('should evaluate angle constraint with zero error when satisfied', () => {
+      // Create right angle: (0,1), (0,0), (1,0) - 90 degrees
+      const p1 = createPoint(0, 1);
+      const p2 = createPoint(0, 0); // vertex
+      const p3 = createPoint(1, 0);
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+      document.points.set(p3.id, p3);
+
+      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90); // 90 degrees
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.constraintId).toBe(constraint.id);
+      expect(result.error).toBeCloseTo(0, 5);
+    });
+
+    it('should evaluate angle constraint with positive error when not satisfied', () => {
+      // Create 45-degree angle but constrain to 90 degrees
+      const p1 = createPoint(1, 1);
+      const p2 = createPoint(0, 0); // vertex  
+      const p3 = createPoint(1, 0);
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+      document.points.set(p3.id, p3);
+
+      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90); // want 90 degrees
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.error).toBeGreaterThan(0); // Should have error since actual angle is 45°
+    });
+
+    it('should compute gradients for angle constraint', () => {
+      const p1 = createPoint(1, 1);
+      const p2 = createPoint(0, 0); // vertex
+      const p3 = createPoint(1, 0);
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+      document.points.set(p3.id, p3);
+
+      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90);
+      const result = evaluator.evaluate(constraint, document);
+
+      // Should have gradients for all three points
+      expect(result.gradient.has(p1.id)).toBe(true);
+      expect(result.gradient.has(p2.id)).toBe(true);
+      expect(result.gradient.has(p3.id)).toBe(true);
+
+      // Gradients should be non-zero (we're using numerical approximation)
+      const grad1 = result.gradient.get(p1.id)!;
+      const grad2 = result.gradient.get(p2.id)!;
+      const grad3 = result.gradient.get(p3.id)!;
+
+      // At least one gradient component should be non-zero for each point
+      expect(Math.abs(grad1.x) + Math.abs(grad1.y)).toBeGreaterThan(0);
+      expect(Math.abs(grad2.x) + Math.abs(grad2.y)).toBeGreaterThan(0);
+      expect(Math.abs(grad3.x) + Math.abs(grad3.y)).toBeGreaterThan(0);
+    });
+
+    it('should handle special angle cases', () => {
+      // Test 180-degree angle (straight line)
+      const p1 = createPoint(-1, 0);
+      const p2 = createPoint(0, 0); // vertex
+      const p3 = createPoint(1, 0);
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+      document.points.set(p3.id, p3);
+
+      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 180); // 180 degrees
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.error).toBeCloseTo(0, 3);
+    });
+
+    it('should handle degenerate angle cases gracefully', () => {
+      // Coincident points
+      const p1 = createPoint(0, 0);
+      const p2 = createPoint(0, 0); // vertex, same as p1
+      const p3 = createPoint(1, 0);
+
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+      document.points.set(p3.id, p3);
+
+      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90);
+      const result = evaluator.evaluate(constraint, document);
+
+      expect(result.error).toBe(0); // Should handle gracefully
+      expect(result.gradient.size).toBe(0);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should return zero error for constraint with missing entities', () => {
       const constraint = createConstraint('distance', ['non-existent-1', 'non-existent-2'], 10);

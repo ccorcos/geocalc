@@ -24,6 +24,12 @@ export class ConstraintEvaluator {
         return this.evaluateFixX(constraint, document);
       case 'fix-y':
         return this.evaluateFixY(constraint, document);
+      case 'same-x':
+        return this.evaluateSameX(constraint, document);
+      case 'same-y':
+        return this.evaluateSameY(constraint, document);
+      case 'angle':
+        return this.evaluateAngle(constraint, document);
       default:
         return {
           constraintId: constraint.id,
@@ -298,5 +304,154 @@ export class ConstraintEvaluator {
     });
 
     return { constraintId: constraint.id, error, gradient };
+  }
+
+  private evaluateSameX(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+    if (constraint.entityIds.length !== 2) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const point1 = document.points.get(constraint.entityIds[0]);
+    const point2 = document.points.get(constraint.entityIds[1]);
+    
+    if (!point1 || !point2) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    // Error is the squared difference in x coordinates
+    const dx = point1.x - point2.x;
+    const error = dx ** 2;
+
+    const gradient = new Map<string, { x: number; y: number }>();
+    // Gradient pushes points toward same x coordinate
+    gradient.set(point1.id, { x: 2 * dx, y: 0 });
+    gradient.set(point2.id, { x: -2 * dx, y: 0 });
+
+    return { constraintId: constraint.id, error, gradient };
+  }
+
+  private evaluateSameY(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+    if (constraint.entityIds.length !== 2) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const point1 = document.points.get(constraint.entityIds[0]);
+    const point2 = document.points.get(constraint.entityIds[1]);
+    
+    if (!point1 || !point2) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    // Error is the squared difference in y coordinates
+    const dy = point1.y - point2.y;
+    const error = dy ** 2;
+
+    const gradient = new Map<string, { x: number; y: number }>();
+    // Gradient pushes points toward same y coordinate
+    gradient.set(point1.id, { x: 0, y: 2 * dy });
+    gradient.set(point2.id, { x: 0, y: -2 * dy });
+
+    return { constraintId: constraint.id, error, gradient };
+  }
+
+  private evaluateAngle(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+    if (constraint.entityIds.length !== 3 || constraint.value === undefined) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const point1 = document.points.get(constraint.entityIds[0]);
+    const point2 = document.points.get(constraint.entityIds[1]); // vertex point
+    const point3 = document.points.get(constraint.entityIds[2]);
+    
+    if (!point1 || !point2 || !point3) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    // Calculate vectors from vertex to other two points
+    const v1x = point1.x - point2.x;
+    const v1y = point1.y - point2.y;
+    const v2x = point3.x - point2.x;
+    const v2y = point3.y - point2.y;
+
+    // Calculate magnitudes
+    const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+    const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+
+    if (mag1 < 1e-10 || mag2 < 1e-10) {
+      // Degenerate case: points too close
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    // Calculate current angle using dot product
+    const dotProduct = v1x * v2x + v1y * v2y;
+    const cosCurrentAngle = dotProduct / (mag1 * mag2);
+    
+    // Clamp to avoid numerical issues with acos
+    const clampedCos = Math.max(-1, Math.min(1, cosCurrentAngle));
+    const currentAngle = Math.acos(clampedCos);
+    
+    // Target angle in radians
+    const targetAngle = constraint.value * (Math.PI / 180); // Convert degrees to radians
+    
+    // Error is squared difference in angles
+    const angleError = currentAngle - targetAngle;
+    const error = angleError ** 2;
+
+    // Use numerical gradient approximation for simplicity
+    const gradient = new Map<string, { x: number; y: number }>();
+    const epsilon = 1e-6;
+
+    [point1, point2, point3].forEach(point => {
+      const originalX = point.x;
+      const originalY = point.y;
+
+      // Gradient with respect to x
+      point.x = originalX + epsilon;
+      const errorX = this.calculateAngleError(constraint, document);
+      point.x = originalX;
+
+      // Gradient with respect to y  
+      point.y = originalY + epsilon;
+      const errorY = this.calculateAngleError(constraint, document);
+      point.y = originalY;
+
+      gradient.set(point.id, {
+        x: (errorX - error) / epsilon,
+        y: (errorY - error) / epsilon,
+      });
+    });
+
+    return { constraintId: constraint.id, error, gradient };
+  }
+
+  private calculateAngleError(constraint: Constraint, document: GeometryDocument): number {
+    const point1 = document.points.get(constraint.entityIds[0]);
+    const point2 = document.points.get(constraint.entityIds[1]); // vertex
+    const point3 = document.points.get(constraint.entityIds[2]);
+    
+    if (!point1 || !point2 || !point3 || constraint.value === undefined) {
+      return 0;
+    }
+
+    const v1x = point1.x - point2.x;
+    const v1y = point1.y - point2.y;
+    const v2x = point3.x - point2.x;
+    const v2y = point3.y - point2.y;
+
+    const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+    const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+
+    if (mag1 < 1e-10 || mag2 < 1e-10) {
+      return 0;
+    }
+
+    const dotProduct = v1x * v2x + v1y * v2y;
+    const cosCurrentAngle = Math.max(-1, Math.min(1, dotProduct / (mag1 * mag2)));
+    const currentAngle = Math.acos(cosCurrentAngle);
+    
+    const targetAngle = constraint.value * (Math.PI / 180);
+    const angleError = currentAngle - targetAngle;
+    
+    return angleError ** 2;
   }
 }

@@ -28,7 +28,9 @@ export type ConstraintType =
   | 'horizontal'
   | 'vertical'
   | 'fix-x'
-  | 'fix-y';
+  | 'fix-y'
+  | 'same-x'
+  | 'same-y';
 
 export interface Constraint {
   id: string;

@@ -321,6 +321,115 @@ describe('GradientDescentSolver', () => {
       // Hypotenuse should be 5 (3-4-5 triangle)
       expect(distance(solvedP2, solvedP3)).toBeCloseTo(5, 3);
     });
+
+    it('should solve same-x constraint', () => {
+      const p1 = createPoint(2, 5);
+      const p2 = createPoint(8, 10); // different x coordinates
+      
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      // Fix p1 to provide anchor
+      const fixP1X = createConstraint('fix-x', [p1.id], 2);
+      const fixP1Y = createConstraint('fix-y', [p1.id], 5);
+      document.constraints.set(fixP1X.id, fixP1X);
+      document.constraints.set(fixP1Y.id, fixP1Y);
+
+      const constraint = createConstraint('same-x', [p1.id, p2.id]);
+      document.constraints.set(constraint.id, constraint);
+
+      const result = solver.solve(document);
+      expect(result.success).toBe(true);
+
+      const solvedP1 = result.document.points.get(p1.id)!;
+      const solvedP2 = result.document.points.get(p2.id)!;
+
+      // Points should have same x coordinate
+      expect(Math.abs(solvedP1.x - solvedP2.x)).toBeLessThan(0.01);
+      // P1 should remain fixed
+      expect(solvedP1.x).toBeCloseTo(2, 3);
+      expect(solvedP1.y).toBeCloseTo(5, 3);
+      // P2 should move to match P1's x coordinate
+      expect(solvedP2.x).toBeCloseTo(2, 3);
+    });
+
+    it('should solve same-y constraint', () => {
+      const p1 = createPoint(5, 3);
+      const p2 = createPoint(10, 9); // different y coordinates
+      
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+
+      // Fix p1 to provide anchor
+      const fixP1X = createConstraint('fix-x', [p1.id], 5);
+      const fixP1Y = createConstraint('fix-y', [p1.id], 3);
+      document.constraints.set(fixP1X.id, fixP1X);
+      document.constraints.set(fixP1Y.id, fixP1Y);
+
+      const constraint = createConstraint('same-y', [p1.id, p2.id]);
+      document.constraints.set(constraint.id, constraint);
+
+      const result = solver.solve(document);
+      expect(result.success).toBe(true);
+
+      const solvedP1 = result.document.points.get(p1.id)!;
+      const solvedP2 = result.document.points.get(p2.id)!;
+
+      // Points should have same y coordinate
+      expect(Math.abs(solvedP1.y - solvedP2.y)).toBeLessThan(0.01);
+      // P1 should remain fixed
+      expect(solvedP1.x).toBeCloseTo(5, 3);
+      expect(solvedP1.y).toBeCloseTo(3, 3);
+      // P2 should move to match P1's y coordinate
+      expect(solvedP2.y).toBeCloseTo(3, 3);
+    });
+
+    it('should solve angle constraint', () => {
+      // Create points that don't form the target angle initially
+      const p1 = createPoint(1, 1); 
+      const p2 = createPoint(0, 0); // vertex
+      const p3 = createPoint(2, 0);
+      
+      document.points.set(p1.id, p1);
+      document.points.set(p2.id, p2);
+      document.points.set(p3.id, p3);
+
+      // Fix vertex and one arm to provide stability
+      const fixP2X = createConstraint('fix-x', [p2.id], 0);
+      const fixP2Y = createConstraint('fix-y', [p2.id], 0);
+      const fixP3X = createConstraint('fix-x', [p3.id], 2);
+      const fixP3Y = createConstraint('fix-y', [p3.id], 0);
+      document.constraints.set(fixP2X.id, fixP2X);
+      document.constraints.set(fixP2Y.id, fixP2Y);
+      document.constraints.set(fixP3X.id, fixP3X);
+      document.constraints.set(fixP3Y.id, fixP3Y);
+
+      // Constrain angle to 90 degrees
+      const angleConstraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90);
+      document.constraints.set(angleConstraint.id, angleConstraint);
+
+      const result = solver.solve(document);
+      expect(result.success).toBe(true);
+
+      const solvedP1 = result.document.points.get(p1.id)!;
+      const solvedP2 = result.document.points.get(p2.id)!;
+      const solvedP3 = result.document.points.get(p3.id)!;
+
+      // Calculate the angle between the vectors
+      const v1x = solvedP1.x - solvedP2.x;
+      const v1y = solvedP1.y - solvedP2.y;
+      const v2x = solvedP3.x - solvedP2.x;
+      const v2y = solvedP3.y - solvedP2.y;
+
+      const dotProduct = v1x * v2x + v1y * v2y;
+      const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+      const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+      
+      const cosAngle = dotProduct / (mag1 * mag2);
+      const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI);
+
+      expect(angle).toBeCloseTo(90, 1); // Within 1 degree of 90°
+    });
   });
 
   describe('Solver Configuration', () => {

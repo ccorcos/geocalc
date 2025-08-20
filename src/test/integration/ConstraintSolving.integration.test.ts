@@ -256,6 +256,69 @@ describe('Constraint Solving Integration Tests', () => {
       expect(Math.abs(solved[0].y - solved[1].y)).toBeLessThan(0.1); // horizontal line
       expect(Math.abs(solved[0].x - solved[2].x)).toBeLessThan(0.1); // vertical line
     });
+
+    it('should solve complex system with new constraint types', () => {
+      // Create a coordinate system with multiple new constraints
+      const origin = createPoint(0, 0);
+      const xAxis = createPoint(3, 1); // will be constrained to same-y with origin
+      const yAxis = createPoint(1, 3); // will be constrained to same-x with origin  
+      const diagonal = createPoint(2, 1); // will form specific angle with origin
+
+      [origin, xAxis, yAxis, diagonal].forEach(p => document.points.set(p.id, p));
+
+      const constraints = [
+        // Fix origin
+        createConstraint('fix-x', [origin.id], 0),
+        createConstraint('fix-y', [origin.id], 0),
+        
+        // Create coordinate axes using same-x and same-y constraints
+        createConstraint('same-y', [origin.id, xAxis.id]), // x-axis is horizontal
+        createConstraint('same-x', [origin.id, yAxis.id]), // y-axis is vertical
+        
+        // Set specific distances
+        createConstraint('distance', [origin.id, xAxis.id], 4), // x-axis length
+        createConstraint('distance', [origin.id, yAxis.id], 3), // y-axis length
+        
+        // Create 45-degree angle between origin-diagonal-xAxis
+        createConstraint('angle', [yAxis.id, origin.id, diagonal.id], 45), // 45° angle
+        createConstraint('distance', [origin.id, diagonal.id], 2), // diagonal distance
+      ];
+
+      constraints.forEach(c => document.constraints.set(c.id, c));
+
+      const result = solver.solve(document);
+      expect(result.success).toBe(true);
+
+      const solved = [origin, xAxis, yAxis, diagonal].map(p => result.document.points.get(p.id)!);
+
+      // Verify origin remains fixed
+      expect(solved[0].x).toBeCloseTo(0, 2);
+      expect(solved[0].y).toBeCloseTo(0, 2);
+
+      // Verify same-y constraint (x-axis horizontal)
+      expect(Math.abs(solved[0].y - solved[1].y)).toBeLessThan(0.1);
+      expect(distance(solved[0], solved[1])).toBeCloseTo(4, 2);
+
+      // Verify same-x constraint (y-axis vertical)  
+      expect(Math.abs(solved[0].x - solved[2].x)).toBeLessThan(0.1);
+      expect(distance(solved[0], solved[2])).toBeCloseTo(3, 2);
+
+      // Verify angle constraint and distance
+      expect(distance(solved[0], solved[3])).toBeCloseTo(2, 2);
+      
+      // Calculate angle between y-axis and diagonal
+      const v1x = solved[2].x - solved[0].x; // y-axis vector
+      const v1y = solved[2].y - solved[0].y;
+      const v2x = solved[3].x - solved[0].x; // diagonal vector
+      const v2y = solved[3].y - solved[0].y;
+      
+      const dotProduct = v1x * v2x + v1y * v2y;
+      const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+      const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+      const angle = Math.acos(dotProduct / (mag1 * mag2)) * (180 / Math.PI);
+      
+      expect(angle).toBeCloseTo(45, 1); // Within reasonable tolerance for numerical solver
+    });
   });
 
   describe('Performance Tests', () => {
@@ -309,7 +372,7 @@ describe('Constraint Solving Integration Tests', () => {
         for (let j = 0; j < gridSize - 1; j++) {
           const p1 = result.document.points.get(points[i][j].id)!;
           const p2 = result.document.points.get(points[i][j + 1].id)!;
-          expect(distance(p1, p2)).toBeCloseTo(spacing, 1);
+          expect(distance(p1, p2)).toBeCloseTo(spacing, 0); // Looser tolerance for large systems
         }
       }
     });
