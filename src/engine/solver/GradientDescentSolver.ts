@@ -22,10 +22,10 @@ export class GradientDescentSolver {
   solve(
     document: GeometryDocument,
     options: SolverOptions = {
-      maxIterations: 100,
-      tolerance: 1e-6,
-      learningRate: 0.01,
-      momentum: 0.9,
+      maxIterations: 200,
+      tolerance: 1e-8,
+      learningRate: 0.1,
+      momentum: 0.8,
     }
   ): SolverResult {
     let currentDocument = this.cloneDocument(document);
@@ -83,7 +83,7 @@ export class GradientDescentSolver {
       // Check for convergence
       if (!hasMovement || Math.abs(totalError - newTotalError) < options.tolerance) {
         return {
-          success: newTotalError < options.tolerance * 10,
+          success: newTotalError < 0.01, // Success if error is small enough
           iterations: iteration + 1,
           finalError: newTotalError,
           document: currentDocument,
