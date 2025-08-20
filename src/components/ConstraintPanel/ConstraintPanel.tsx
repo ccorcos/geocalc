@@ -9,7 +9,7 @@ export const ConstraintPanel: React.FC = () => {
   const [selectedConstraintType, setSelectedConstraintType] = useState<ConstraintType>('distance');
   const [constraintValue, setConstraintValue] = useState<string>('');
 
-  if (currentTool !== 'constraint' || selection.selectedIds.size === 0) {
+  if (currentTool !== 'select' || selection.selectedIds.size === 0) {
     return null;
   }
 
@@ -137,8 +137,10 @@ export const ConstraintPanel: React.FC = () => {
     const constraint = createConstraint(selectedConstraintType, selectedIds, value);
     addConstraint(constraint);
     
-    // Clear selection after creating constraint
-    useStore.getState().setSelection({ selectedIds: new Set() });
+    // Clear selection and return to select mode after creating constraint
+    const store = useStore.getState();
+    store.setSelection({ selectedIds: new Set() });
+    store.setCurrentTool('select');
     setConstraintValue('');
   };
 

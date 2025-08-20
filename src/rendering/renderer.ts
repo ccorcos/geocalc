@@ -12,7 +12,12 @@ export class CanvasRenderer {
   render(
     document: GeometryDocument,
     viewport: Viewport,
-    selection: SelectionState
+    selection: SelectionState,
+    interactionStates?: {
+      tempLineStart?: Point | null;
+      tempCircleCenter?: Point | null;
+      selectionRect?: { startX: number; startY: number; endX: number; endY: number } | null;
+    }
   ): void {
     this.clear();
     this.setupTransform(viewport);
@@ -22,6 +27,14 @@ export class CanvasRenderer {
     this.renderCircles(document, selection);
     this.renderPoints(document, selection);
     this.renderConstraints(document);
+    
+    // Render interaction states
+    if (interactionStates) {
+      if (interactionStates.selectionRect) {
+        this.renderSelectionRect(interactionStates.selectionRect);
+      }
+    }
+    
     this.renderGridLegend(viewport);
   }
 
@@ -319,6 +332,27 @@ export class CanvasRenderer {
 
   getContext(): CanvasRenderingContext2D {
     return this.ctx;
+  }
+
+  private renderSelectionRect(rect: { startX: number; startY: number; endX: number; endY: number }): void {
+    this.ctx.save();
+    
+    // Draw selection rectangle with dashed border
+    this.ctx.strokeStyle = '#2196f3';
+    this.ctx.lineWidth = 1.5 / this.ctx.getTransform().a; // Scale line width with zoom
+    this.ctx.setLineDash([5 / this.ctx.getTransform().a, 3 / this.ctx.getTransform().a]);
+    this.ctx.fillStyle = 'rgba(33, 150, 243, 0.1)';
+    
+    const width = rect.endX - rect.startX;
+    const height = rect.endY - rect.startY;
+    
+    // Fill rectangle
+    this.ctx.fillRect(rect.startX, rect.startY, width, height);
+    
+    // Stroke rectangle
+    this.ctx.strokeRect(rect.startX, rect.startY, width, height);
+    
+    this.ctx.restore();
   }
 
   private hasFixXConstraint(pointId: string, document: GeometryDocument): boolean {

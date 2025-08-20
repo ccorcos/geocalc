@@ -30,7 +30,8 @@ export type ConstraintType =
   | 'fix-x'
   | 'fix-y'
   | 'same-x'
-  | 'same-y';
+  | 'same-y'
+  | 'fix-radius';
 
 export interface Constraint {
   id: string;
@@ -60,7 +61,7 @@ export interface Viewport {
   height: number;
 }
 
-export type ToolType = 'select' | 'point' | 'line' | 'circle' | 'constraint';
+export type ToolType = 'select' | 'point' | 'line' | 'circle';
 
 export interface SelectionState {
   selectedIds: Set<string>;

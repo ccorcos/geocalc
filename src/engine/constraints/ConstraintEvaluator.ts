@@ -30,6 +30,8 @@ export class ConstraintEvaluator {
         return this.evaluateSameY(constraint, document);
       case 'angle':
         return this.evaluateAngle(constraint, document);
+      case 'fix-radius':
+        return this.evaluateFixRadius(constraint, document);
       default:
         return {
           constraintId: constraint.id,
@@ -453,5 +455,30 @@ export class ConstraintEvaluator {
     const angleError = currentAngle - targetAngle;
     
     return angleError ** 2;
+  }
+
+  private evaluateFixRadius(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+    if (constraint.entityIds.length !== 1 || constraint.value === undefined) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const circle = document.circles.get(constraint.entityIds[0]);
+    if (!circle) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const targetRadius = constraint.value;
+    const currentRadius = circle.radius;
+    const error = (currentRadius - targetRadius) ** 2;
+
+    // For fix-radius constraints, we don't allow the radius to change
+    // The gradient affects the center point to maintain the fixed radius
+    const gradient = new Map<string, { x: number; y: number }>();
+    
+    // For circles, we typically don't apply gradients to constrain radius directly
+    // since radius is a property of the circle, not a point position
+    // This constraint would be handled by preventing radius changes in the solver
+    
+    return { constraintId: constraint.id, error, gradient };
   }
 }

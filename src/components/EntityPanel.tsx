@@ -13,6 +13,8 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
     isSolving, 
     currentTool, 
     updatePoint, 
+    updateCircle,
+    addConstraint,
     addFixXConstraint,
     addFixYConstraint,
     removeFixXConstraint,
@@ -22,6 +24,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   } = useStore();
   const evaluator = new ConstraintEvaluator();
   const [editingCoord, setEditingCoord] = useState<{pointId: string; coord: 'x' | 'y'; value: string} | null>(null);
+  const [editingRadius, setEditingRadius] = useState<{circleId: string; value: string} | null>(null);
 
   // Handle coordinate editing
   const handleCoordClick = (pointId: string, coord: 'x' | 'y', currentValue: number) => {
@@ -76,6 +79,64 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
     }
   };
 
+  // Handle radius editing
+  const handleRadiusClick = (circleId: string, currentValue: number) => {
+    setEditingRadius({
+      circleId,
+      value: formatNumber(currentValue)
+    });
+  };
+
+  const handleRadiusSubmit = () => {
+    if (!editingRadius) return;
+    
+    const newValue = parseFloat(editingRadius.value);
+    if (!isNaN(newValue) && newValue > 0) {
+      updateCircle(editingRadius.circleId, {
+        radius: newValue
+      });
+    }
+    setEditingRadius(null);
+  };
+
+  const handleRadiusKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleRadiusSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setEditingRadius(null);
+    }
+  };
+
+  // Handle radius fixed state toggling
+  const handleRadiusFixedToggle = (circleId: string) => {
+    const circle = document.circles.get(circleId);
+    if (!circle) return;
+    
+    // Check if there's already a fix-radius constraint for this circle
+    const existingConstraint = Array.from(document.constraints.entries())
+      .find(([, constraint]) => 
+        constraint.type === 'fix-radius' && 
+        constraint.entityIds.includes(circleId)
+      );
+    
+    if (existingConstraint) {
+      // Remove the constraint
+      useStore.getState().removeEntity(existingConstraint[0]);
+    } else {
+      // Add a fix-radius constraint
+      const fixRadiusConstraint = {
+        id: `constraint-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'fix-radius' as const,
+        entityIds: [circleId],
+        value: circle.radius,
+        priority: 1
+      };
+      addConstraint(fixRadiusConstraint);
+    }
+  };
+
   // Handle entity selection from panel
   const handleEntityClick = (entityId: string, shiftKey: boolean, cmdKey: boolean = false) => {
     const store = useStore.getState();
@@ -112,10 +173,6 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
           return; // Let the browser handle the keypress normally
         }
 
-        // Don't delete entities when constraint tool is active (ConstraintPanel is open)
-        if (currentTool === 'constraint') {
-          return; // Completely disable entity deletion during constraint creation
-        }
 
         const store = useStore.getState();
         const selectedIds = Array.from(store.selection.selectedIds);
@@ -408,21 +465,60 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                 const center = document.points.get(circle.centerId);
                 const centerName = pointsArray.find(p => p.id === circle.centerId)?.name || 'C';
                 
+                // Check if radius is fixed
+                const hasFixRadius = Array.from(document.constraints.entries())
+                  .some(([, constraint]) => 
+                    constraint.type === 'fix-radius' && 
+                    constraint.entityIds.includes(id)
+                  );
+                
                 return (
                   <div 
                     key={id} 
-                    className={`entity-item compact clickable ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
-                    onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
+                    className={`entity-item ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
                     onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
                     onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
                   >
-                    <span className="entity-name">{name}</span>
-                    <span className="entity-data">
-                      {center ? 
-                        `{r: ${formatNumber(circle.radius)}, center: ${centerName}}` : 
-                        `{r: ${formatNumber(circle.radius)}, center: N/A}`
-                      }
+                    <span 
+                      className="entity-name clickable"
+                      onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
+                    >
+                      {name}
                     </span>
+                    <div className="circle-controls">
+                      <div className="coordinate-group">
+                        <span className="coord-label">r:</span>
+                        {editingRadius?.circleId === id ? (
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            className="coord-input"
+                            value={editingRadius.value}
+                            onChange={(e) => setEditingRadius({...editingRadius, value: e.target.value})}
+                            onBlur={handleRadiusSubmit}
+                            onKeyDown={handleRadiusKeyDown}
+                            autoFocus
+                          />
+                        ) : (
+                          <span 
+                            className={`coord-value ${hasFixRadius ? 'fixed' : 'editable'}`}
+                            onClick={() => handleRadiusClick(id, circle.radius)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              handleRadiusFixedToggle(id);
+                            }}
+                            title={hasFixRadius ? "Fixed radius (right-click to unfix)" : "Click to edit, right-click to fix"}
+                          >
+                            {formatNumber(circle.radius)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="center-info">
+                        <span className="coord-label">center:</span>
+                        <span className="entity-data">{centerName}</span>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -587,10 +683,25 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
           flex-grow: 1;
         }
 
+        .circle-controls {
+          display: flex;
+          gap: 12px;
+          flex-grow: 1;
+          align-items: center;
+        }
+
         .coordinate-group {
           display: flex;
           align-items: center;
           gap: 4px;
+        }
+
+        .center-info {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 10px;
+          color: #666;
         }
 
         .coord-label {

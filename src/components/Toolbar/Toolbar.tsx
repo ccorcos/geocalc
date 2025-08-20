@@ -60,10 +60,6 @@ export const Toolbar: React.FC = () => {
         Circle
       </ToolButton>
       
-      <ToolButton tool="constraint" currentTool={currentTool} onClick={setCurrentTool}>
-        Constraint
-      </ToolButton>
-      
       <div style={{ marginLeft: '20px', marginRight: '20px' }}>
         <button
           onClick={solve}
@@ -84,11 +80,10 @@ export const Toolbar: React.FC = () => {
       </div>
       
       <div style={{ marginLeft: 'auto', fontSize: '12px', color: '#6c757d' }}>
-        {currentTool === 'select' && 'Click to select, drag to move'}
+        {currentTool === 'select' && 'Click to select, drag to move. Selected entities show constraint options.'}
         {currentTool === 'point' && 'Click to place point'}
         {currentTool === 'line' && 'Click two points to create line'}
         {currentTool === 'circle' && 'Click center, then click for radius'}
-        {currentTool === 'constraint' && 'Select entities to constrain'}
       </div>
     </div>
   );

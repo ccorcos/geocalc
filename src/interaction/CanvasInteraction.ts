@@ -13,6 +13,7 @@ export class CanvasInteraction {
   private tempCircleCenter: Point | null = null;
   private constraintTool = new ConstraintTool();
   private circleRadiusDrag: { circleId: string; initialRadius: number } | null = null;
+  private selectionRect: { startX: number; startY: number; endX: number; endY: number } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -94,6 +95,48 @@ export class CanvasInteraction {
     return null;
   }
 
+  private getEntitiesInRect(rect: { startX: number; startY: number; endX: number; endY: number }): Set<string> {
+    const store = useStore.getState();
+    const { document } = store;
+    const selectedIds = new Set<string>();
+    
+    // Normalize rectangle coordinates
+    const minX = Math.min(rect.startX, rect.endX);
+    const maxX = Math.max(rect.startX, rect.endX);
+    const minY = Math.min(rect.startY, rect.endY);
+    const maxY = Math.max(rect.startY, rect.endY);
+    
+    // Check points
+    for (const [id, point] of document.points) {
+      if (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY) {
+        selectedIds.add(id);
+      }
+    }
+    
+    // Check lines (select if both endpoints are in rectangle)
+    for (const [id, line] of document.lines) {
+      const point1 = document.points.get(line.point1Id);
+      const point2 = document.points.get(line.point2Id);
+      if (point1 && point2) {
+        const p1InRect = point1.x >= minX && point1.x <= maxX && point1.y >= minY && point1.y <= maxY;
+        const p2InRect = point2.x >= minX && point2.x <= maxX && point2.y >= minY && point2.y <= maxY;
+        if (p1InRect && p2InRect) {
+          selectedIds.add(id);
+        }
+      }
+    }
+    
+    // Check circles (select if center is in rectangle)
+    for (const [id, circle] of document.circles) {
+      const center = document.points.get(circle.centerId);
+      if (center && center.x >= minX && center.x <= maxX && center.y >= minY && center.y <= maxY) {
+        selectedIds.add(id);
+      }
+    }
+    
+    return selectedIds;
+  }
+
   private distanceToLineSegment(point: Point, lineStart: Point, lineEnd: Point): number {
     const A = point.x - lineStart.x;
     const B = point.y - lineStart.y;
@@ -168,10 +211,7 @@ export class CanvasInteraction {
         this.handleLineMouseDown(worldPos);
         break;
       case 'circle':
-        this.handleCircleMouseDown(worldPos);
-        break;
-      case 'constraint':
-        this.handleConstraintMouseDown(worldPos, e.shiftKey);
+        this.handleCircleMouseDown(worldPos, e);
         break;
     }
   };
@@ -199,10 +239,43 @@ export class CanvasInteraction {
 
     this.isMouseDown = false;
     
-    // Reset circle radius drag state
-    this.circleRadiusDrag = null;
-    
     const store = useStore.getState();
+    
+    // Handle circle tool completion
+    if (store.currentTool === 'circle' && this.circleRadiusDrag && this.tempCircleCenter) {
+      // If cmd key was held during mousedown, add fix-radius constraint
+      if ((this.circleRadiusDrag as any).shouldFixRadius) {
+        const circle = store.document.circles.get(this.circleRadiusDrag.circleId);
+        if (circle) {
+          const fixRadiusConstraint = {
+            id: `constraint-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            type: 'fix-radius' as const,
+            entityIds: [circle.id],
+            value: circle.radius,
+            priority: 1
+          };
+          store.addConstraint(fixRadiusConstraint);
+        }
+      }
+      
+      // Reset temporary states
+      this.tempCircleCenter = null;
+      this.circleRadiusDrag = null;
+      
+      // Auto-revert to select tool after completing circle
+      store.setCurrentTool('select');
+    }
+    
+    // Reset circle radius drag state for select tool
+    if (store.currentTool === 'select') {
+      this.circleRadiusDrag = null;
+    }
+    
+    // Complete rectangular selection
+    if (this.selectionRect) {
+      this.selectionRect = null;
+    }
+    
     store.setDragState(false);
   };
 
@@ -216,6 +289,7 @@ export class CanvasInteraction {
     this.tempLineStart = null;
     this.tempCircleCenter = null;
     this.circleRadiusDrag = null;
+    this.selectionRect = null;
   };
 
   private handleWheel = (e: WheelEvent): void => {
@@ -223,8 +297,20 @@ export class CanvasInteraction {
     const mousePos = this.getMousePos(e);
     const store = useStore.getState();
     
-    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    store.zoomViewport(zoomFactor, mousePos.x, mousePos.y);
+    // Distinguish between pinch-to-zoom and scroll-to-pan
+    // ctrlKey is set during pinch gestures on trackpad
+    if (e.ctrlKey) {
+      // Pinch to zoom with reduced sensitivity
+      const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
+      store.zoomViewport(zoomFactor, mousePos.x, mousePos.y);
+    } else {
+      // Two-finger scroll to pan
+      const panSensitivity = 1.0;
+      store.panViewport(
+        e.deltaX * panSensitivity / store.viewport.zoom,
+        e.deltaY * panSensitivity / store.viewport.zoom
+      );
+    }
   };
 
   private handleSelectMouseDown(worldPos: { x: number; y: number }, shiftKey: boolean, cmdKey: boolean = false): void {
@@ -279,18 +365,36 @@ export class CanvasInteraction {
           selectedIds.add(entityId);
         }
       } else {
-        selectedIds.clear();
-        selectedIds.add(entityId);
+        // If clicking on an already selected entity, don't change the selection
+        // This allows multi-entity dragging
+        if (!selectedIds.has(entityId)) {
+          selectedIds.clear();
+          selectedIds.add(entityId);
+        }
       }
       
       store.setSelection({ selectedIds });
       
-      // Start dragging if it's a point
-      if (store.document.points.has(entityId)) {
+      // Start dragging if any selected entities can be moved
+      const hasMovableEntities = Array.from(selectedIds).some(id => 
+        store.document.points.has(id) || 
+        store.document.circles.has(id) || 
+        store.document.lines.has(id)
+      );
+      
+      if (hasMovableEntities) {
         store.setDragState(true, worldPos);
       }
     } else if (!shiftKey) {
       store.setSelection({ selectedIds: new Set() });
+      
+      // Start rectangular selection
+      this.selectionRect = {
+        startX: worldPos.x,
+        startY: worldPos.y,
+        endX: worldPos.x,
+        endY: worldPos.y
+      };
     }
   }
 
@@ -325,59 +429,55 @@ export class CanvasInteraction {
     }
   }
 
-  private handleCircleMouseDown(worldPos: { x: number; y: number }): void {
+  private handleCircleMouseDown(worldPos: { x: number; y: number }, e: MouseEvent): void {
     const store = useStore.getState();
+    const cmdKey = e.metaKey || e.ctrlKey;
     
-    if (!this.tempCircleCenter) {
-      // First click - create center point
-      this.tempCircleCenter = createPoint(worldPos.x, worldPos.y);
-      store.addPoint(this.tempCircleCenter);
+    // Check if clicking on an existing point
+    const existingPointId = this.findEntityAt(worldPos.x, worldPos.y);
+    const existingPoint = existingPointId ? store.document.points.get(existingPointId) : null;
+    
+    if (existingPoint) {
+      // Use existing point as center
+      this.tempCircleCenter = existingPoint;
+      
+      // Set up for potential dragging to define radius
+      this.circleRadiusDrag = {
+        circleId: '', // Will be set when circle is created
+        initialRadius: 50 / store.viewport.zoom
+      };
     } else {
-      // Second click - create circle with radius
-      const radius = distance(this.tempCircleCenter, { 
-        ...worldPos, 
-        id: ''
-      });
+      // Create new center point
+      const centerPoint = createPoint(worldPos.x, worldPos.y);
+      store.addPoint(centerPoint);
+      this.tempCircleCenter = centerPoint;
       
-      const circle = createCircle(this.tempCircleCenter.id, radius);
-      store.addCircle(circle);
-      
-      this.tempCircleCenter = null;
-      
-      // Auto-revert to select tool after completing circle
-      store.setCurrentTool('select');
+      // Set up for potential dragging to define radius
+      this.circleRadiusDrag = {
+        circleId: '', // Will be set when circle is created
+        initialRadius: 50 / store.viewport.zoom
+      };
+    }
+    
+    // Create initial circle with default radius
+    const defaultRadius = 50 / store.viewport.zoom;
+    const circle = createCircle(this.tempCircleCenter.id, defaultRadius);
+    store.addCircle(circle);
+    this.circleRadiusDrag!.circleId = circle.id;
+    
+    // Store initial state for potential radius fixing
+    if (cmdKey) {
+      // Mark that we want to fix radius after creation
+      (this.circleRadiusDrag as any).shouldFixRadius = true;
     }
   }
 
-  private handleConstraintMouseDown(worldPos: { x: number; y: number }, shiftKey: boolean = false): void {
-    const store = useStore.getState();
-    const entityId = this.findEntityAt(worldPos.x, worldPos.y);
-
-    if (entityId) {
-      const selectedIds = new Set(store.selection.selectedIds);
-      
-      if (shiftKey) {
-        if (selectedIds.has(entityId)) {
-          selectedIds.delete(entityId);
-        } else {
-          selectedIds.add(entityId);
-        }
-      } else {
-        selectedIds.clear();
-        selectedIds.add(entityId);
-      }
-      
-      store.setSelection({ selectedIds });
-    } else if (!shiftKey) {
-      store.setSelection({ selectedIds: new Set() });
-    }
-  }
 
   private handleMouseDrag(mousePos: { x: number; y: number }, worldPos: { x: number; y: number }): void {
     const store = useStore.getState();
     
-    // Handle circle radius dragging
-    if (this.circleRadiusDrag && store.currentTool === 'select') {
+    // Handle circle radius dragging (both for select tool and circle tool)
+    if (this.circleRadiusDrag && (store.currentTool === 'select' || store.currentTool === 'circle')) {
       const circle = store.document.circles.get(this.circleRadiusDrag.circleId);
       const center = circle ? store.document.points.get(circle.centerId) : null;
       
@@ -396,11 +496,12 @@ export class CanvasInteraction {
     }
     
     if (store.currentTool === 'select' && store.isDragging && store.dragStartPoint) {
-      // Drag selected points
+      // Drag selected entities
       const dx = worldPos.x - store.dragStartPoint.x;
       const dy = worldPos.y - store.dragStartPoint.y;
       
       for (const entityId of store.selection.selectedIds) {
+        // Move points directly
         const point = store.document.points.get(entityId);
         if (point) {
           store.updatePoint(entityId, {
@@ -408,14 +509,50 @@ export class CanvasInteraction {
             y: point.y + dy,
           });
         }
+        
+        // Move circles by moving their center points
+        const circle = store.document.circles.get(entityId);
+        if (circle) {
+          const centerPoint = store.document.points.get(circle.centerId);
+          if (centerPoint) {
+            store.updatePoint(circle.centerId, {
+              x: centerPoint.x + dx,
+              y: centerPoint.y + dy,
+            });
+          }
+        }
+        
+        // Move lines by moving their endpoint points
+        const line = store.document.lines.get(entityId);
+        if (line) {
+          const point1 = store.document.points.get(line.point1Id);
+          const point2 = store.document.points.get(line.point2Id);
+          
+          if (point1) {
+            store.updatePoint(line.point1Id, {
+              x: point1.x + dx,
+              y: point1.y + dy,
+            });
+          }
+          
+          if (point2) {
+            store.updatePoint(line.point2Id, {
+              x: point2.x + dx,
+              y: point2.y + dy,
+            });
+          }
+        }
       }
       
       store.setDragState(true, worldPos);
-    } else if (store.currentTool === 'select' && !store.selection.selectedIds.size) {
-      // Pan viewport
-      const dx = mousePos.x - this.lastMousePos.x;
-      const dy = mousePos.y - this.lastMousePos.y;
-      store.panViewport(-dx / store.viewport.zoom, -dy / store.viewport.zoom);
+    } else if (store.currentTool === 'select' && this.selectionRect) {
+      // Update rectangular selection
+      this.selectionRect.endX = worldPos.x;
+      this.selectionRect.endY = worldPos.y;
+      
+      // Find entities within selection rectangle
+      const selectedIds = this.getEntitiesInRect(this.selectionRect);
+      store.setSelection({ selectedIds });
     }
   }
 
@@ -430,5 +567,9 @@ export class CanvasInteraction {
 
   getTempCircleCenter(): Point | null {
     return this.tempCircleCenter;
+  }
+
+  getSelectionRect(): { startX: number; startY: number; endX: number; endY: number } | null {
+    return this.selectionRect;
   }
 }

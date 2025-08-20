@@ -59,10 +59,6 @@ function App() {
           event.preventDefault();
           setCurrentTool('select');
           break;
-        case 'r':
-          event.preventDefault();
-          setCurrentTool('constraint');
-          break;
       }
     };
 
