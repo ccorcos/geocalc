@@ -21,6 +21,8 @@ export type GeometryEntity = Point | Line | Circle;
 
 export type ConstraintType = 
   | 'distance'
+  | 'x-distance'
+  | 'y-distance'
   | 'parallel' 
   | 'perpendicular'
   | 'tangent'

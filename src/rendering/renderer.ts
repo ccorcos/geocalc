@@ -17,6 +17,7 @@ export class CanvasRenderer {
       tempLineStart?: Point | null;
       tempCircleCenter?: Point | null;
       selectionRect?: { startX: number; startY: number; endX: number; endY: number } | null;
+      linePreview?: { startPoint: Point; endPoint: { x: number; y: number } } | null;
     }
   ): void {
     this.clear();
@@ -30,6 +31,9 @@ export class CanvasRenderer {
     
     // Render interaction states
     if (interactionStates) {
+      if (interactionStates.linePreview) {
+        this.renderLinePreview(interactionStates.linePreview);
+      }
       if (interactionStates.selectionRect) {
         this.renderSelectionRect(interactionStates.selectionRect);
       }
@@ -347,6 +351,23 @@ export class CanvasRenderer {
 
   getContext(): CanvasRenderingContext2D {
     return this.ctx;
+  }
+
+  private renderLinePreview(linePreview: { startPoint: Point; endPoint: { x: number; y: number } }): void {
+    this.ctx.save();
+    
+    // Draw preview line with dashed style
+    this.ctx.strokeStyle = '#666666';
+    this.ctx.lineWidth = 2 / this.ctx.getTransform().a; // Scale line width with zoom
+    this.ctx.setLineDash([8 / this.ctx.getTransform().a, 4 / this.ctx.getTransform().a]);
+    this.ctx.globalAlpha = 0.7;
+    
+    this.ctx.beginPath();
+    this.ctx.moveTo(linePreview.startPoint.x, linePreview.startPoint.y);
+    this.ctx.lineTo(linePreview.endPoint.x, linePreview.endPoint.y);
+    this.ctx.stroke();
+    
+    this.ctx.restore();
   }
 
   private renderSelectionRect(rect: { startX: number; startY: number; endX: number; endY: number }): void {

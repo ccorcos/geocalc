@@ -180,14 +180,46 @@ export const useStore = create<AppState>()(
     },
 
     removeEntity: (id) => set((state) => {
-      state.document.points.delete(id);
-      state.document.lines.delete(id);
-      state.document.circles.delete(id);
-      state.document.constraints.delete(id);
-      state.selection.selectedIds.delete(id);
-      if (state.selection.hoveredId === id) {
-        state.selection.hoveredId = null;
+      // Track which entities need to be deleted
+      const toDelete = new Set([id]);
+      
+      // If deleting a point, find dependent lines and circles
+      if (state.document.points.has(id)) {
+        // Find lines that use this point
+        for (const [lineId, line] of state.document.lines) {
+          if (line.point1Id === id || line.point2Id === id) {
+            toDelete.add(lineId);
+          }
+        }
+        
+        // Find circles that use this point as center
+        for (const [circleId, circle] of state.document.circles) {
+          if (circle.centerId === id) {
+            toDelete.add(circleId);
+          }
+        }
       }
+      
+      // Find constraints that depend on any entity being deleted
+      for (const [constraintId, constraint] of state.document.constraints) {
+        if (constraint.entityIds.some(entityId => toDelete.has(entityId))) {
+          toDelete.add(constraintId);
+        }
+      }
+      
+      // Delete all entities and constraints
+      for (const entityId of toDelete) {
+        state.document.points.delete(entityId);
+        state.document.lines.delete(entityId);
+        state.document.circles.delete(entityId);
+        state.document.constraints.delete(entityId);
+        state.selection.selectedIds.delete(entityId);
+        
+        if (state.selection.hoveredId === entityId) {
+          state.selection.hoveredId = null;
+        }
+      }
+      
       state.document.metadata.modified = new Date();
     }),
 

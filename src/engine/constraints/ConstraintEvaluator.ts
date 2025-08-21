@@ -12,6 +12,10 @@ export class ConstraintEvaluator {
     switch (constraint.type) {
       case 'distance':
         return this.evaluateDistance(constraint, document);
+      case 'x-distance':
+        return this.evaluateXDistance(constraint, document);
+      case 'y-distance':
+        return this.evaluateYDistance(constraint, document);
       case 'parallel':
         return this.evaluateParallel(constraint, document);
       case 'perpendicular':
@@ -497,6 +501,60 @@ export class ConstraintEvaluator {
     // since radius is a property of the circle, not a point position
     // This constraint would be handled by preventing radius changes in the solver
     
+    return { constraintId: constraint.id, error, gradient };
+  }
+
+  private evaluateXDistance(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+    if (constraint.entityIds.length !== 2 || constraint.value === undefined) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const point1 = document.points.get(constraint.entityIds[0]);
+    const point2 = document.points.get(constraint.entityIds[1]);
+    
+    if (!point1 || !point2) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const targetXDistance = constraint.value;
+    // Preserve direction: point2.x - point1.x (positive means point2 is to the right of point1)
+    const currentXDistance = point2.x - point1.x;
+    const error = (currentXDistance - targetXDistance) ** 2;
+
+    const gradient = new Map<string, { x: number; y: number }>();
+    const errorDerivative = 2 * (currentXDistance - targetXDistance);
+    
+    // Gradient: d/dx1 = -errorDerivative, d/dx2 = errorDerivative
+    gradient.set(point1.id, { x: -errorDerivative, y: 0 });
+    gradient.set(point2.id, { x: errorDerivative, y: 0 });
+
+    return { constraintId: constraint.id, error, gradient };
+  }
+
+  private evaluateYDistance(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+    if (constraint.entityIds.length !== 2 || constraint.value === undefined) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const point1 = document.points.get(constraint.entityIds[0]);
+    const point2 = document.points.get(constraint.entityIds[1]);
+    
+    if (!point1 || !point2) {
+      return { constraintId: constraint.id, error: 0, gradient: new Map() };
+    }
+
+    const targetYDistance = constraint.value;
+    // Preserve direction: point2.y - point1.y (positive means point2 is above point1)
+    const currentYDistance = point2.y - point1.y;
+    const error = (currentYDistance - targetYDistance) ** 2;
+
+    const gradient = new Map<string, { x: number; y: number }>();
+    const errorDerivative = 2 * (currentYDistance - targetYDistance);
+    
+    // Gradient: d/dy1 = -errorDerivative, d/dy2 = errorDerivative
+    gradient.set(point1.id, { x: 0, y: -errorDerivative });
+    gradient.set(point2.id, { x: 0, y: errorDerivative });
+
     return { constraintId: constraint.id, error, gradient };
   }
 }

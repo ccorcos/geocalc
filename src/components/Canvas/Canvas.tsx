@@ -51,11 +51,13 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
       const tempLineStart = interactionRef.current.getTempLineStart();
       const tempCircleCenter = interactionRef.current.getTempCircleCenter();
       const selectionRect = interactionRef.current.getSelectionRect();
+      const linePreview = interactionRef.current.getLinePreview();
       
       rendererRef.current.render(document, viewport, selection, {
         tempLineStart,
         tempCircleCenter,
-        selectionRect
+        selectionRect,
+        linePreview
       });
     }
   }, [document, viewport, selection, isDragging]);
@@ -73,13 +75,14 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
     const animate = () => {
       if (interactionRef.current) {
         const selectionRect = interactionRef.current.getSelectionRect();
-        const isActive = !!selectionRect;
+        const linePreview = interactionRef.current.getLinePreview();
+        const isActive = !!selectionRect || !!linePreview;
         
         if (isActive) {
           renderCanvas();
           wasActive = true;
         } else if (wasActive) {
-          // Render one final time to clear the selection rect
+          // Render one final time to clear interactive states
           renderCanvas();
           wasActive = false;
         }

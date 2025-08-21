@@ -7,7 +7,7 @@ import { useStore } from './state/store';
 
 function App() {
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
-  const { setCurrentTool } = useStore();
+  const { setCurrentTool, selection, removeEntity } = useStore();
 
   useEffect(() => {
     const updateCanvasSize = () => {
@@ -58,12 +58,20 @@ function App() {
           event.preventDefault();
           setCurrentTool('select');
           break;
+        case 'delete':
+        case 'backspace':
+          event.preventDefault();
+          // Delete all selected entities
+          Array.from(selection.selectedIds).forEach(id => {
+            removeEntity(id);
+          });
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setCurrentTool]);
+  }, [setCurrentTool, selection.selectedIds, removeEntity]);
 
   return (
     <div style={{ 

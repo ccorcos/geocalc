@@ -51,9 +51,13 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
           { type: 'same-y' as ConstraintType, label: 'Same Y Coordinate', needsValue: false }
         ];
         
-        // Add distance constraint only for exactly 2 points
+        // Add distance constraints only for exactly 2 points
         if (selectedIds.length === 2) {
-          constraints.unshift({ type: 'distance', label: 'Fixed Distance', needsValue: true });
+          constraints.unshift(
+            { type: 'distance', label: 'Fixed Distance', needsValue: true },
+            { type: 'x-distance', label: 'Fixed X Distance', needsValue: true },
+            { type: 'y-distance', label: 'Fixed Y Distance', needsValue: true }
+          );
         }
         
         return constraints;
@@ -107,17 +111,29 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
     let value: number | undefined;
 
     if (constraintDef.needsValue) {
-      if (selectedConstraintType === 'distance' && selectedIds.length === 2) {
+      if ((selectedConstraintType === 'distance' || selectedConstraintType === 'x-distance' || selectedConstraintType === 'y-distance') && selectedIds.length === 2) {
         const point1 = document.points.get(selectedIds[0]);
         const point2 = document.points.get(selectedIds[1]);
         
         if (point1 && point2) {
           if (constraintValue.trim() === '') {
-            value = distance(point1, point2);
+            // Set initial value based on constraint type
+            if (selectedConstraintType === 'distance') {
+              value = distance(point1, point2);
+            } else if (selectedConstraintType === 'x-distance') {
+              value = point2.x - point1.x; // Preserve direction
+            } else if (selectedConstraintType === 'y-distance') {
+              value = point2.y - point1.y; // Preserve direction
+            }
           } else {
             value = parseFloat(constraintValue);
-            if (isNaN(value) || value <= 0) {
-              alert('Please enter a valid positive number for distance');
+            if (isNaN(value)) {
+              alert('Please enter a valid number');
+              return;
+            }
+            // Only distance constraints require positive values
+            if (selectedConstraintType === 'distance' && value <= 0) {
+              alert('Distance must be positive');
               return;
             }
           }
@@ -176,9 +192,16 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
   const handleConstraintValueSubmit = () => {
     if (!editingConstraint) return;
     
+    const constraint = document.constraints.get(editingConstraint.constraintId);
     const newValue = parseFloat(editingConstraint.value);
-    if (!isNaN(newValue) && newValue > 0) {
-      updateConstraint(editingConstraint.constraintId, { value: newValue });
+    
+    if (!isNaN(newValue)) {
+      // Only distance constraints require positive values
+      if (constraint?.type === 'distance' && newValue <= 0) {
+        // Don't update, just close the editor
+      } else {
+        updateConstraint(editingConstraint.constraintId, { value: newValue });
+      }
     }
     setEditingConstraint(null);
   };
@@ -297,10 +320,10 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
             padding: '8px',
             margin: '0 0 8px 0',
             borderRadius: '4px',
-            border: '1px solid #28a745',
-            backgroundColor: '#f8fff9',
+            border: '1px solid #ccc',
+            backgroundColor: '#f8f9fa',
           }}>
-            <div style={{ marginBottom: '6px', fontSize: '11px', fontWeight: 600, color: '#28a745' }}>
+            <div style={{ marginBottom: '6px', fontSize: '11px', fontWeight: 600, color: '#333' }}>
               Create New Constraint ({selectedIds.length} selected)
             </div>
             <select
@@ -327,11 +350,17 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
               <input
                 type="number"
                 step="0.1"
-                min="0"
+                min={selectedConstraintType === 'distance' || selectedConstraintType === 'angle' ? "0" : undefined}
                 max={selectedConstraintType === 'angle' ? "180" : undefined}
                 value={constraintValue}
                 onChange={(e) => setConstraintValue(e.target.value)}
-                placeholder={selectedConstraintType === 'angle' ? 'Enter angle (0-180°)...' : 'Enter value...'}
+                placeholder={
+                  selectedConstraintType === 'angle' ? 'Enter angle (0-180°)...' :
+                  selectedConstraintType === 'distance' ? 'Enter distance...' :
+                  selectedConstraintType === 'x-distance' ? 'Enter X distance (+/-)...' :
+                  selectedConstraintType === 'y-distance' ? 'Enter Y distance (+/-)...' :
+                  'Enter value...'
+                }
                 style={{
                   width: '100%',
                   padding: '4px 6px',
@@ -348,7 +377,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
               style={{
                 width: '100%',
                 padding: '6px 12px',
-                backgroundColor: '#28a745',
+                backgroundColor: '#0066cc',
                 color: 'white',
                 border: 'none',
                 borderRadius: '3px',
@@ -447,7 +476,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
                         <input
                           type="number"
                           step="0.001"
-                          min="0.001"
+                          min={constraint.type === 'distance' ? "0.001" : undefined}
                           value={editingConstraint.value}
                           onChange={(e) => setEditingConstraint({...editingConstraint, value: e.target.value})}
                           onBlur={handleConstraintValueSubmit}

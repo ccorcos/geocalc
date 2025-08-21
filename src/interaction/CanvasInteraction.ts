@@ -8,6 +8,7 @@ export class CanvasInteraction {
   private canvas: HTMLCanvasElement;
   private isMouseDown = false;
   private lastMousePos = { x: 0, y: 0 };
+  private currentMousePos = { x: 0, y: 0 };
   private dragStartPos = { x: 0, y: 0 };
   private tempLineStart: Point | null = null;
   private tempCircleCenter: Point | null = null;
@@ -232,6 +233,7 @@ export class CanvasInteraction {
     }
 
     this.lastMousePos = mousePos;
+    this.currentMousePos = worldPos;
   };
 
   private handleMouseUp = (e: MouseEvent): void => {
@@ -435,14 +437,29 @@ export class CanvasInteraction {
   private handleLineMouseDown(worldPos: { x: number; y: number }): void {
     const store = useStore.getState();
     
+    // Check if clicking on an existing point
+    const existingPointId = this.findEntityAt(worldPos.x, worldPos.y);
+    const existingPoint = existingPointId ? store.document.points.get(existingPointId) : null;
+    
     if (!this.tempLineStart) {
-      // First click - create start point
-      this.tempLineStart = createPoint(worldPos.x, worldPos.y);
-      store.addPoint(this.tempLineStart);
+      // First click - use existing point or create new point
+      if (existingPoint) {
+        this.tempLineStart = existingPoint;
+      } else {
+        this.tempLineStart = createPoint(worldPos.x, worldPos.y);
+        store.addPoint(this.tempLineStart);
+      }
     } else {
-      // Second click - create end point and line
-      const endPoint = createPoint(worldPos.x, worldPos.y);
-      store.addPoint(endPoint);
+      // Second click - use existing point or create new point, then create line
+      let endPoint: Point;
+      if (existingPoint && existingPoint.id !== this.tempLineStart.id) {
+        // Use existing point (but not the same as start point)
+        endPoint = existingPoint;
+      } else {
+        // Create new end point
+        endPoint = createPoint(worldPos.x, worldPos.y);
+        store.addPoint(endPoint);
+      }
       
       const line = createLine(this.tempLineStart.id, endPoint.id, false);
       store.addLine(line);
@@ -592,6 +609,16 @@ export class CanvasInteraction {
 
   getTempCircleCenter(): Point | null {
     return this.tempCircleCenter;
+  }
+
+  getLinePreview(): { startPoint: Point; endPoint: { x: number; y: number } } | null {
+    if (this.tempLineStart) {
+      return {
+        startPoint: this.tempLineStart,
+        endPoint: this.currentMousePos
+      };
+    }
+    return null;
   }
 
   getSelectionRect(): { startX: number; startY: number; endX: number; endY: number } | null {
