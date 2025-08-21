@@ -430,9 +430,6 @@ export class CanvasInteraction {
     const store = useStore.getState();
     const point = createPoint(worldPos.x, worldPos.y);
     store.addPoint(point);
-    
-    // Auto-revert to select tool after creating point
-    store.setCurrentTool('select');
   }
 
   private handleLineMouseDown(worldPos: { x: number; y: number }): void {

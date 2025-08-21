@@ -25,6 +25,7 @@ interface AppState {
   addLine: (line: Line) => void;
   addCircle: (circle: Circle) => void;
   addConstraint: (constraint: Constraint) => void;
+  updateConstraint: (id: string, updates: Partial<Constraint>) => void;
   updatePoint: (id: string, updates: Partial<Point>) => void;
   updateCircle: (id: string, updates: Partial<Circle>) => void;
   addFixXConstraint: (pointId: string, value: number) => void;
@@ -106,6 +107,14 @@ export const useStore = create<AppState>()(
     addConstraint: (constraint) => set((state) => {
       state.document.constraints.set(constraint.id, constraint);
       state.document.metadata.modified = new Date();
+    }),
+
+    updateConstraint: (id, updates) => set((state) => {
+      const constraint = state.document.constraints.get(id);
+      if (constraint) {
+        Object.assign(constraint, updates);
+        state.document.metadata.modified = new Date();
+      }
     }),
 
     updatePoint: (id, updates) => set((state) => {

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Canvas } from './components/Canvas/Canvas';
-import { Toolbar } from './components/Toolbar/Toolbar';
-import { StatusBar } from './components/StatusBar/StatusBar';
+import { FloatingToolbar } from './components/FloatingToolbar/FloatingToolbar';
 import { EntityPanel } from './components/EntityPanel';
+import { ConstraintPanel } from './components/ConstraintPanel';
 import { useStore } from './state/store';
 
 function App() {
@@ -11,14 +11,12 @@ function App() {
 
   useEffect(() => {
     const updateCanvasSize = () => {
-      const toolbarHeight = 60; // Approximate toolbar height
-      const statusBarHeight = 60; // StatusBar height
-      const panelWidth = 280; // EntityPanel width
+      const panelWidth = 560; // Both panels width (280 * 2)
       const padding = 20;
       
       setCanvasSize({
         width: window.innerWidth - panelWidth - padding,
-        height: window.innerHeight - toolbarHeight - statusBarHeight - padding,
+        height: window.innerHeight - padding,
       });
     };
 
@@ -75,36 +73,53 @@ function App() {
       height: '100vh',
       overflow: 'hidden',
       backgroundColor: '#f8f9fa',
-      position: 'relative',
+      display: 'grid',
+      gridTemplateColumns: '280px 1fr 280px',
+      gridTemplateRows: '1fr',
+      gap: 0,
     }}>
-      <Toolbar />
+      {/* Left Panel - Entities */}
       <div style={{
+        backgroundColor: '#f8f9fa',
         display: 'flex',
-        height: `calc(100vh - 60px)`, // Subtract toolbar height
+        alignItems: 'stretch',
       }}>
-        <div style={{
-          flex: 1,
-          padding: '10px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-          <div style={{
-            border: '1px solid #dee2e6',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            backgroundColor: 'white',
-          }}>
-            <Canvas 
-              width={canvasSize.width} 
-              height={canvasSize.height} 
-            />
-          </div>
-        </div>
         <EntityPanel />
       </div>
-      <StatusBar />
+
+      {/* Canvas */}
+      <div style={{
+        padding: '10px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+        backgroundColor: '#f8f9fa',
+      }}>
+        <div style={{
+          border: '1px solid #dee2e6',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          backgroundColor: 'white',
+          position: 'relative',
+        }}>
+          <Canvas 
+            width={canvasSize.width} 
+            height={canvasSize.height} 
+          />
+        </div>
+        <FloatingToolbar />
+      </div>
+
+      {/* Right Panel - Constraints */}
+      <div style={{
+        backgroundColor: '#f8f9fa',
+        display: 'flex',
+        alignItems: 'stretch',
+      }}>
+        <ConstraintPanel />
+      </div>
     </div>
   );
 }

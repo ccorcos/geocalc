@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
-import { ConstraintEvaluator } from '../engine/constraints/ConstraintEvaluator';
+import { distance } from '../utils/math';
 
 interface EntityPanelProps {
   className?: string;
@@ -10,8 +10,6 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   const { 
     document, 
     selection, 
-    isSolving, 
-    currentTool, 
     updatePoint, 
     updateCircle,
     addConstraint,
@@ -22,17 +20,15 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
     getFixXConstraint,
     getFixYConstraint
   } = useStore();
-  const evaluator = new ConstraintEvaluator();
+  
   const [editingCoord, setEditingCoord] = useState<{pointId: string; coord: 'x' | 'y'; value: string} | null>(null);
   const [editingRadius, setEditingRadius] = useState<{circleId: string; value: string} | null>(null);
 
   // Handle coordinate editing
   const handleCoordClick = (pointId: string, coord: 'x' | 'y', currentValue: number, cmdKey: boolean = false) => {
     if (cmdKey) {
-      // Cmd+click to toggle fixed state
       handleCoordFixedToggle(pointId, coord);
     } else {
-      // Regular click to edit
       setEditingCoord({
         pointId,
         coord,
@@ -53,48 +49,38 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
     setEditingCoord(null);
   };
 
-  const handleCoordKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleCoordSubmit();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setEditingCoord(null);
-    }
-  };
-
-  // Handle coordinate fixed state toggling
   const handleCoordFixedToggle = (pointId: string, coord: 'x' | 'y') => {
     const point = document.points.get(pointId);
     if (!point) return;
     
-    if (coord === 'x') {
-      const hasFixX = getFixXConstraint(pointId) !== null;
-      if (hasFixX) {
+    const currentValue = coord === 'x' ? point.x : point.y;
+    const existingConstraint = coord === 'x' 
+      ? getFixXConstraint(pointId)
+      : getFixYConstraint(pointId);
+    
+    if (existingConstraint) {
+      if (coord === 'x') {
         removeFixXConstraint(pointId);
       } else {
-        addFixXConstraint(pointId, point.x);
+        removeFixYConstraint(pointId);
       }
     } else {
-      const hasFixY = getFixYConstraint(pointId) !== null;
-      if (hasFixY) {
-        removeFixYConstraint(pointId);
+      if (coord === 'x') {
+        addFixXConstraint(pointId, currentValue);
       } else {
-        addFixYConstraint(pointId, point.y);
+        addFixYConstraint(pointId, currentValue);
       }
     }
   };
 
   // Handle radius editing
-  const handleRadiusClick = (circleId: string, currentValue: number, cmdKey: boolean = false) => {
+  const handleRadiusClick = (circleId: string, currentRadius: number, cmdKey: boolean = false) => {
     if (cmdKey) {
-      // Cmd+click to toggle fixed state
       handleRadiusFixedToggle(circleId);
     } else {
-      // Regular click to edit
       setEditingRadius({
         circleId,
-        value: formatNumber(currentValue)
+        value: formatNumber(currentRadius)
       });
     }
   };
@@ -102,121 +88,71 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   const handleRadiusSubmit = () => {
     if (!editingRadius) return;
     
-    const newValue = parseFloat(editingRadius.value);
-    if (!isNaN(newValue) && newValue > 0) {
+    const newRadius = parseFloat(editingRadius.value);
+    if (!isNaN(newRadius) && newRadius > 0) {
       updateCircle(editingRadius.circleId, {
-        radius: newValue
+        radius: newRadius
       });
     }
     setEditingRadius(null);
   };
 
-  const handleRadiusKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleRadiusSubmit();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setEditingRadius(null);
-    }
-  };
-
-  // Handle radius fixed state toggling
   const handleRadiusFixedToggle = (circleId: string) => {
     const circle = document.circles.get(circleId);
     if (!circle) return;
     
-    // Check if there's already a fix-radius constraint for this circle
-    const existingConstraint = Array.from(document.constraints.entries())
-      .find(([, constraint]) => 
-        constraint.type === 'fix-radius' && 
-        constraint.entityIds.includes(circleId)
-      );
+    const constraintId = `fix-radius-${circleId}`;
+    const existingConstraint = document.constraints.get(constraintId);
     
     if (existingConstraint) {
-      // Remove the constraint
-      useStore.getState().removeEntity(existingConstraint[0]);
+      useStore.getState().removeEntity(constraintId);
     } else {
-      // Add a fix-radius constraint
       const fixRadiusConstraint = {
-        id: `constraint-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: constraintId,
         type: 'fix-radius' as const,
         entityIds: [circleId],
         value: circle.radius,
-        priority: 1
+        priority: 1,
       };
       addConstraint(fixRadiusConstraint);
     }
   };
 
-  // Handle entity selection from panel
-  const handleEntityClick = (entityId: string, shiftKey: boolean, cmdKey: boolean = false) => {
-    const store = useStore.getState();
-
-    const selectedIds = new Set(store.selection.selectedIds);
+  const handleEntityClick = (entityId: string, shiftKey: boolean = false, cmdKey: boolean = false) => {
+    const currentSelection = new Set(selection.selectedIds);
     
-    if (shiftKey) {
-      // Multi-select mode
-      if (selectedIds.has(entityId)) {
-        selectedIds.delete(entityId);
+    if (cmdKey || shiftKey) {
+      if (currentSelection.has(entityId)) {
+        currentSelection.delete(entityId);
       } else {
-        selectedIds.add(entityId);
+        currentSelection.add(entityId);
       }
     } else {
-      // Single select mode
-      selectedIds.clear();
-      selectedIds.add(entityId);
+      currentSelection.clear();
+      currentSelection.add(entityId);
     }
     
-    store.setSelection({ selectedIds });
+    useStore.getState().setSelection({ selectedIds: currentSelection });
   };
 
-  // Handle keyboard events for deletion
+  // Keyboard event handling
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        // Don't delete entities if user is typing in an input field
-        const activeElement = document.activeElement;
-        if (activeElement && (
-          activeElement.tagName === 'INPUT' ||
-          activeElement.tagName === 'TEXTAREA' ||
-          activeElement.contentEditable === 'true'
-        )) {
-          return; // Let the browser handle the keypress normally
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        if (editingCoord) {
+          handleCoordSubmit();
+        } else if (editingRadius) {
+          handleRadiusSubmit();
         }
-
-
-        const store = useStore.getState();
-        const selectedIds = Array.from(store.selection.selectedIds);
-        
-        if (selectedIds.length > 0) {
-          event.preventDefault();
-          
-          // Delete selected entities and their related constraints
-          selectedIds.forEach(id => {
-            // Find and delete constraints that reference this entity
-            const constraintsToDelete = Array.from(store.document.constraints.entries())
-              .filter(([, constraint]) => constraint.entityIds.includes(id))
-              .map(([constraintId]) => constraintId);
-            
-            // Delete the constraints first
-            constraintsToDelete.forEach(constraintId => {
-              store.removeEntity(constraintId);
-            });
-            
-            // Delete the entity
-            store.removeEntity(id);
-          });
-          
-          // Clear selection
-          store.setSelection({ selectedIds: new Set() });
-        }
+      } else if (e.key === 'Escape') {
+        setEditingCoord(null);
+        setEditingRadius(null);
       }
     };
 
     window.document.addEventListener('keydown', handleKeyDown);
     return () => window.document.removeEventListener('keydown', handleKeyDown);
-  }, [currentTool]);
+  }, [editingCoord, editingRadius]);
 
   // Format number to 3 decimal places
   const formatNumber = (num: number | undefined | null): string => {
@@ -240,687 +176,267 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
     return name;
   };
 
-  // Create sorted arrays with human names
-  const pointsArray = Array.from(document.points.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, point], index) => ({ id, point, name: getHumanName(index) }));
-    
-  const linesArray = Array.from(document.lines.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, line], index) => ({ id, line, name: getHumanName(index) }));
-    
-  const circlesArray = Array.from(document.circles.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, circle], index) => ({ id, circle, name: getHumanName(index) }));
-
-  // Get constraint evaluation results
-  const getConstraintValues = () => {
-    const results = new Map<string, { current: number; target: number; error: number }>();
-    
-    for (const [id, constraint] of document.constraints) {
-      try {
-        const evaluation = evaluator.evaluate(constraint, document);
-        let currentValue = 0;
-        let targetValue = 0;
-        
-        // Extract current and target values based on constraint type
-        if (constraint.type === 'distance') {
-          // For distance constraints
-          if (constraint.entityIds.length === 2) {
-            const point1 = document.points.get(constraint.entityIds[0]);
-            const point2 = document.points.get(constraint.entityIds[1]);
-            if (point1 && point2) {
-              currentValue = Math.sqrt((point2.x - point1.x) ** 2 + (point2.y - point1.y) ** 2);
-              targetValue = constraint.value ?? 0;
-            }
-          }
-        } else if (constraint.type === 'horizontal') {
-          // For horizontal constraints - target is 0 y-difference
-          if (constraint.entityIds.length === 1) {
-            const line = document.lines.get(constraint.entityIds[0]);
-            if (line) {
-              const p1 = document.points.get(line.point1Id);
-              const p2 = document.points.get(line.point2Id);
-              if (p1 && p2) {
-                currentValue = Math.abs(p2.y - p1.y);
-                targetValue = 0;
-              }
-            }
-          }
-        } else if (constraint.type === 'vertical') {
-          // For vertical constraints - target is 0 x-difference
-          if (constraint.entityIds.length === 1) {
-            const line = document.lines.get(constraint.entityIds[0]);
-            if (line) {
-              const p1 = document.points.get(line.point1Id);
-              const p2 = document.points.get(line.point2Id);
-              if (p1 && p2) {
-                currentValue = Math.abs(p2.x - p1.x);
-                targetValue = 0;
-              }
-            }
-          }
-        } else if (constraint.type === 'parallel' || constraint.type === 'perpendicular') {
-          // For parallel/perpendicular - show dot product
-          if (constraint.entityIds.length === 2) {
-            const line1 = document.lines.get(constraint.entityIds[0]);
-            const line2 = document.lines.get(constraint.entityIds[1]);
-            if (line1 && line2) {
-              const p1a = document.points.get(line1.point1Id);
-              const p1b = document.points.get(line1.point2Id);
-              const p2a = document.points.get(line2.point1Id);
-              const p2b = document.points.get(line2.point2Id);
-              if (p1a && p1b && p2a && p2b) {
-                const v1 = { x: p1b.x - p1a.x, y: p1b.y - p1a.y };
-                const v2 = { x: p2b.x - p2a.x, y: p2b.y - p2a.y };
-                const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-                const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-                if (len1 > 0 && len2 > 0) {
-                  currentValue = (v1.x * v2.x + v1.y * v2.y) / (len1 * len2);
-                  targetValue = constraint.type === 'parallel' ? 1 : 0;
-                }
-              }
-            }
-          }
-        }
-        
-        results.set(id, {
-          current: currentValue,
-          target: targetValue,
-          error: Math.sqrt(evaluation.error) // Convert squared error back to linear error
-        });
-      } catch (error) {
-        // If evaluation fails, set safe default values
-        results.set(id, {
-          current: 0,
-          target: constraint.value ?? 0,
-          error: 0
-        });
-      }
-    }
-    
-    return results;
-  };
-
-  const constraintValues = getConstraintValues();
-
   return (
-    <div className={`entity-panel ${className}`}>
-      <div className="panel-header">
-        <h3>Entities & Constraints</h3>
-        {isSolving && (
-          <div className="solving-indicator">
-            <span className="solving-dot"></span>
-            Solving...
-          </div>
-        )}
+    <div className={`entity-panel ${className}`} style={{
+      background: 'white',
+      borderRight: '1px solid #e0e0e0',
+      height: '100%',
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      fontSize: '12px',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '10px 12px',
+        borderBottom: '1px solid #e0e0e0',
+        background: '#f8f9fa',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}>
+        <h3 style={{
+          margin: 0,
+          fontSize: '14px',
+          fontWeight: 600,
+          color: '#333',
+        }}>
+          Entities ({document.points.size + document.lines.size + document.circles.size})
+        </h3>
       </div>
-
-      <div className="panel-content">
-        {/* Points Section */}
-        <div className="entity-section">
-          <h4>Points ({document.points.size})</h4>
-          <div className="entity-list">
-            {pointsArray.map(({ id, point, name }) => (
-              <div 
-                key={id} 
-                className={`entity-item ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
-                onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
-                onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
-              >
-                <span 
-                  className="entity-name clickable"
-                  onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
-                >
-                  {name}
-                </span>
-                <div className="coordinate-controls">
-                  <div className="coordinate-group">
-                    <span className="coord-label">x:</span>
-                    {editingCoord?.pointId === id && editingCoord.coord === 'x' ? (
-                      <input
-                        type="number"
-                        step="any"
-                        className="coord-input"
-                        value={editingCoord.value}
-                        onChange={(e) => setEditingCoord({...editingCoord, value: e.target.value})}
-                        onBlur={handleCoordSubmit}
-                        onKeyDown={handleCoordKeyDown}
-                        autoFocus
-                      />
-                    ) : (
-                      <span 
-                        className={`coord-value ${getFixXConstraint(id) ? 'fixed' : 'editable'}`}
-                        onClick={(e) => handleCoordClick(id, 'x', point.x, e.metaKey || e.ctrlKey)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          handleCoordFixedToggle(id, 'x');
-                        }}
-                        title={getFixXConstraint(id) ? "Fixed X coordinate (cmd+click or right-click to unfix)" : "Click to edit, cmd+click or right-click to fix"}
-                      >
-                        {formatNumber(point.x)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="coordinate-group">
-                    <span className="coord-label">y:</span>
-                    {editingCoord?.pointId === id && editingCoord.coord === 'y' ? (
-                      <input
-                        type="number"
-                        step="any"
-                        className="coord-input"
-                        value={editingCoord.value}
-                        onChange={(e) => setEditingCoord({...editingCoord, value: e.target.value})}
-                        onBlur={handleCoordSubmit}
-                        onKeyDown={handleCoordKeyDown}
-                        autoFocus
-                      />
-                    ) : (
-                      <span 
-                        className={`coord-value ${getFixYConstraint(id) ? 'fixed' : 'editable'}`}
-                        onClick={(e) => handleCoordClick(id, 'y', point.y, e.metaKey || e.ctrlKey)}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          handleCoordFixedToggle(id, 'y');
-                        }}
-                        title={getFixYConstraint(id) ? "Fixed Y coordinate (cmd+click or right-click to unfix)" : "Click to edit, cmd+click or right-click to fix"}
-                      >
-                        {formatNumber(point.y)}
-                      </span>
-                    )}
-                  </div>
-                </div>
+      
+      {/* Scrollable content */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '8px',
+      }}>
+        {Array.from(document.points.entries()).map(([id, point], index) => {
+          const name = getHumanName(index);
+          const hasFixX = !!getFixXConstraint(id);
+          const hasFixY = !!getFixYConstraint(id);
+          
+          return (
+            <div 
+              key={id} 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '6px 8px',
+                margin: '2px 0',
+                borderRadius: '4px',
+                border: selection.selectedIds.has(id) ? '1px solid #4dabf7' : '1px solid transparent',
+                backgroundColor: selection.selectedIds.has(id) ? '#e3f2fd' : selection.hoveredId === id ? '#f5f5f5' : 'white',
+                cursor: 'pointer',
+                fontSize: '11px',
+              }}
+              onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
+              onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
+              onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
+            >
+              <span style={{ fontWeight: 600, minWidth: '20px' }}>{name}</span>
+              <span style={{ margin: '0 8px', color: '#666' }}>point</span>
+              <div style={{ display: 'flex', gap: '6px', marginLeft: 'auto' }}>
+                {editingCoord?.pointId === id && editingCoord.coord === 'x' ? (
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={editingCoord.value}
+                    onChange={(e) => setEditingCoord({...editingCoord, value: e.target.value})}
+                    onBlur={handleCoordSubmit}
+                    style={{
+                      width: '50px',
+                      padding: '1px 4px',
+                      border: '1px solid #ccc',
+                      borderRadius: '2px',
+                      fontSize: '10px',
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    style={{ 
+                      color: hasFixX ? '#dc3545' : '#666',
+                      cursor: 'pointer',
+                      padding: '1px 3px',
+                      borderRadius: '2px',
+                      backgroundColor: hasFixX ? '#ffebee' : 'transparent',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCoordClick(id, 'x', point.x, e.metaKey || e.ctrlKey);
+                    }}
+                  >
+                    x: {formatNumber(point.x)}
+                  </span>
+                )}
+                {editingCoord?.pointId === id && editingCoord.coord === 'y' ? (
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={editingCoord.value}
+                    onChange={(e) => setEditingCoord({...editingCoord, value: e.target.value})}
+                    onBlur={handleCoordSubmit}
+                    style={{
+                      width: '50px',
+                      padding: '1px 4px',
+                      border: '1px solid #ccc',
+                      borderRadius: '2px',
+                      fontSize: '10px',
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    style={{ 
+                      color: hasFixY ? '#dc3545' : '#666',
+                      cursor: 'pointer',
+                      padding: '1px 3px',
+                      borderRadius: '2px',
+                      backgroundColor: hasFixY ? '#ffebee' : 'transparent',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCoordClick(id, 'y', point.y, e.metaKey || e.ctrlKey);
+                    }}
+                  >
+                    y: {formatNumber(point.y)}
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          );
+        })}
 
-        {/* Lines Section */}
-        {document.lines.size > 0 && (
-          <div className="entity-section">
-            <h4>Lines ({document.lines.size})</h4>
-            <div className="entity-list">
-              {linesArray.map(({ id, line, name }) => {
-                const point1 = document.points.get(line.point1Id);
-                const point2 = document.points.get(line.point2Id);
-                const length = point1 && point2 ? 
-                  Math.sqrt((point2.x - point1.x) ** 2 + (point2.y - point1.y) ** 2) : 0;
-                
-                // Find human names for the points
-                const point1Name = pointsArray.find(p => p.id === line.point1Id)?.name || 'P1';
-                const point2Name = pointsArray.find(p => p.id === line.point2Id)?.name || 'P2';
-                
-                return (
-                  <div 
-                    key={id} 
-                    className={`entity-item compact clickable ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
-                    onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
-                    onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
-                    onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
+        {Array.from(document.lines.entries()).map(([id, line], index) => {
+          const name = getHumanName(document.points.size + index);
+          const point1 = document.points.get(line.point1Id);
+          const point2 = document.points.get(line.point2Id);
+          const point1Index = Array.from(document.points.keys()).indexOf(line.point1Id);
+          const point2Index = Array.from(document.points.keys()).indexOf(line.point2Id);
+          const point1Name = point1Index >= 0 ? getHumanName(point1Index) : '?';
+          const point2Name = point2Index >= 0 ? getHumanName(point2Index) : '?';
+          
+          let length = 0;
+          if (point1 && point2) {
+            length = distance(point1, point2);
+          }
+
+          return (
+            <div 
+              key={id} 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '6px 8px',
+                margin: '2px 0',
+                borderRadius: '4px',
+                border: selection.selectedIds.has(id) ? '1px solid #4dabf7' : '1px solid transparent',
+                backgroundColor: selection.selectedIds.has(id) ? '#e3f2fd' : selection.hoveredId === id ? '#f5f5f5' : 'white',
+                cursor: 'pointer',
+                fontSize: '11px',
+              }}
+              onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
+              onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
+              onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
+            >
+              <span style={{ fontWeight: 600, minWidth: '20px' }}>{name}</span>
+              <span style={{ margin: '0 8px', color: '#666' }}>line</span>
+              <div style={{ marginLeft: 'auto', color: '#666', fontSize: '10px' }}>
+                len: {formatNumber(length)}, {point1Name}→{point2Name}
+                {line.infinite && <span style={{ marginLeft: '4px', color: '#007bff' }}>∞</span>}
+              </div>
+            </div>
+          );
+        })}
+
+        {Array.from(document.circles.entries()).map(([id, circle], index) => {
+          const name = getHumanName(document.points.size + document.lines.size + index);
+          const centerPoint = document.points.get(circle.centerId);
+          const centerIndex = Array.from(document.points.keys()).indexOf(circle.centerId);
+          const centerName = centerIndex >= 0 ? getHumanName(centerIndex) : '?';
+          const hasFixRadius = !!document.constraints.get(`fix-radius-${id}`);
+
+          return (
+            <div 
+              key={id} 
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '6px 8px',
+                margin: '2px 0',
+                borderRadius: '4px',
+                border: selection.selectedIds.has(id) ? '1px solid #4dabf7' : '1px solid transparent',
+                backgroundColor: selection.selectedIds.has(id) ? '#e3f2fd' : selection.hoveredId === id ? '#f5f5f5' : 'white',
+                cursor: 'pointer',
+                fontSize: '11px',
+              }}
+              onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
+              onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
+            >
+              <span 
+                style={{ fontWeight: 600, minWidth: '20px', cursor: 'pointer' }}
+                onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
+              >
+                {name}
+              </span>
+              <span style={{ margin: '0 8px', color: '#666' }}>circle</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+                <span style={{ color: '#666', fontSize: '10px' }}>@{centerName}</span>
+                {editingRadius?.circleId === id ? (
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    value={editingRadius.value}
+                    onChange={(e) => setEditingRadius({...editingRadius, value: e.target.value})}
+                    onBlur={handleRadiusSubmit}
+                    style={{
+                      width: '50px',
+                      padding: '1px 4px',
+                      border: '1px solid #ccc',
+                      borderRadius: '2px',
+                      fontSize: '10px',
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    style={{ 
+                      color: hasFixRadius ? '#dc3545' : '#666',
+                      cursor: 'pointer',
+                      padding: '1px 3px',
+                      borderRadius: '2px',
+                      backgroundColor: hasFixRadius ? '#ffebee' : 'transparent',
+                      fontSize: '10px',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRadiusClick(id, circle.radius, e.metaKey || e.ctrlKey);
+                    }}
                   >
-                    <span className="entity-name">{name}</span>
-                    <span className="entity-data">{`{len: ${formatNumber(length)}, ${point1Name}→${point2Name}}`}</span>
-                    {line.infinite && <span className="infinite-badge">∞</span>}
-                  </div>
-                );
-              })}
+                    r: {formatNumber(circle.radius)}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Circles Section */}
-        {document.circles.size > 0 && (
-          <div className="entity-section">
-            <h4>Circles ({document.circles.size})</h4>
-            <div className="entity-list">
-              {circlesArray.map(({ id, circle, name }) => {
-                const center = document.points.get(circle.centerId);
-                const centerName = pointsArray.find(p => p.id === circle.centerId)?.name || 'C';
-                
-                // Check if radius is fixed
-                const hasFixRadius = Array.from(document.constraints.entries())
-                  .some(([, constraint]) => 
-                    constraint.type === 'fix-radius' && 
-                    constraint.entityIds.includes(id)
-                  );
-                
-                return (
-                  <div 
-                    key={id} 
-                    className={`entity-item ${selection.selectedIds.has(id) ? 'selected' : ''} ${selection.hoveredId === id ? 'hovered' : ''}`}
-                    onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
-                    onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
-                  >
-                    <span 
-                      className="entity-name clickable"
-                      onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
-                    >
-                      {name}
-                    </span>
-                    <div className="circle-controls">
-                      <div className="coordinate-group">
-                        <span className="coord-label">r:</span>
-                        {editingRadius?.circleId === id ? (
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            className="coord-input"
-                            value={editingRadius.value}
-                            onChange={(e) => setEditingRadius({...editingRadius, value: e.target.value})}
-                            onBlur={handleRadiusSubmit}
-                            onKeyDown={handleRadiusKeyDown}
-                            autoFocus
-                          />
-                        ) : (
-                          <span 
-                            className={`coord-value ${hasFixRadius ? 'fixed' : 'editable'}`}
-                            onClick={(e) => handleRadiusClick(id, circle.radius, e.metaKey || e.ctrlKey)}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              handleRadiusFixedToggle(id);
-                            }}
-                            title={hasFixRadius ? "Fixed radius (cmd+click or right-click to unfix)" : "Click to edit, cmd+click or right-click to fix"}
-                          >
-                            {formatNumber(circle.radius)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="center-info">
-                        <span className="coord-label">center:</span>
-                        <span className="entity-data">{centerName}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Constraints Section */}
-        {document.constraints.size > 0 && (
-          <div className="entity-section">
-            <h4>Constraints ({document.constraints.size})</h4>
-            <div className="entity-list">
-              {Array.from(document.constraints.entries()).map(([id, constraint]) => {
-                const values = constraintValues.get(id);
-                const isViolated = values && values.error > 0.01;
-                
-                // Get human names for entities
-                const entityNames = constraint.entityIds.map(entityId => {
-                  const pointMatch = pointsArray.find(p => p.id === entityId);
-                  if (pointMatch) return pointMatch.name;
-                  
-                  const lineMatch = linesArray.find(l => l.id === entityId);
-                  if (lineMatch) return lineMatch.name;
-                  
-                  const circleMatch = circlesArray.find(c => c.id === entityId);
-                  if (circleMatch) return circleMatch.name;
-                  
-                  return entityId.slice(0, 6);
-                });
-                
-                return (
-                  <div key={id} className={`entity-item constraint-item ${isViolated ? 'violated' : 'satisfied'}`}>
-                    <div className="constraint-header">
-                      <span className="entity-name">{constraint.type}</span>
-                      <span className="entity-entities">{`{${entityNames.join(', ')}}`}</span>
-                      <span className={`constraint-status ${isViolated ? 'violated' : 'satisfied'}`}>
-                        {isViolated ? '!' : '✓'}
-                      </span>
-                    </div>
-                    {values && (
-                      <div className="constraint-values">
-                        <span className="constraint-value">cur: <strong>{formatNumber(values.current)}</strong></span>
-                        <span className="constraint-value">target: <strong>{formatNumber(values.target)}</strong></span>
-                        <span className={`constraint-value error-value ${isViolated ? 'high-error' : 'low-error'}`}>
-                          err: <strong>{formatNumber(values.error)}</strong>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+          );
+        })}
 
         {/* Empty State */}
-        {document.points.size === 0 && document.lines.size === 0 && 
-         document.circles.size === 0 && document.constraints.size === 0 && (
-          <div className="empty-state">
+        {document.points.size === 0 && document.lines.size === 0 && document.circles.size === 0 && (
+          <div style={{
+            padding: '20px',
+            textAlign: 'center',
+            color: '#666',
+            fontSize: '11px',
+          }}>
             <p>No entities created yet.</p>
-            <p>Use the toolbar to create points, lines, circles, and constraints.</p>
+            <p>Use the toolbar to create points, lines, and circles.</p>
           </div>
         )}
       </div>
-
-      <style>{`
-        .entity-panel {
-          background: white;
-          border-left: 1px solid #e0e0e0;
-          height: 100vh;
-          overflow-y: auto;
-          width: 280px;
-          flex-shrink: 0;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          font-size: 12px;
-        }
-
-        .panel-header {
-          padding: 10px 12px;
-          border-bottom: 1px solid #e0e0e0;
-          background: #f8f9fa;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .panel-header h3 {
-          margin: 0;
-          font-size: 14px;
-          font-weight: 600;
-          color: #333;
-        }
-
-        .solving-indicator {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 11px;
-          color: #0066cc;
-        }
-
-        .solving-dot {
-          width: 6px;
-          height: 6px;
-          background: #0066cc;
-          border-radius: 50%;
-          animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-
-        .panel-content {
-          padding: 0;
-        }
-
-        .entity-section {
-          border-bottom: 1px solid #f0f0f0;
-        }
-
-        .entity-section h4 {
-          margin: 0;
-          padding: 8px 12px 6px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #666;
-          background: #fafafa;
-          border-bottom: 1px solid #f0f0f0;
-        }
-
-        .entity-list {
-          padding: 0;
-        }
-
-        .entity-item {
-          padding: 6px 12px;
-          border-bottom: 1px solid #f8f8f8;
-          transition: background-color 0.2s;
-        }
-
-        .entity-item.compact {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          min-height: 24px;
-        }
-
-        .entity-item.clickable {
-          cursor: pointer;
-          user-select: none;
-        }
-
-        .entity-item.clickable:active {
-          background: #e0e7ff;
-        }
-
-        .coordinate-controls {
-          display: flex;
-          gap: 12px;
-          flex-grow: 1;
-        }
-
-        .circle-controls {
-          display: flex;
-          gap: 12px;
-          flex-grow: 1;
-          align-items: center;
-        }
-
-        .coordinate-group {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .center-info {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 10px;
-          color: #666;
-        }
-
-        .coord-label {
-          font-size: 10px;
-          color: #666;
-          font-weight: 500;
-        }
-
-        .coord-value {
-          font-family: 'Monaco', 'Menlo', monospace;
-          font-size: 10px;
-          padding: 2px 4px;
-          border-radius: 3px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .coord-value.editable {
-          color: #333;
-          background: transparent;
-        }
-
-        .coord-value.editable:hover {
-          background: #f0f0f0;
-        }
-
-        .coord-value.fixed {
-          color: #c44569;
-          background: #ffe4e1;
-          font-weight: bold;
-          border: 1px solid #ffb3ba;
-        }
-
-        .coord-value.fixed:hover {
-          background: #ffd1cc;
-        }
-
-        .coord-input {
-          font-family: 'Monaco', 'Menlo', monospace;
-          font-size: 10px;
-          padding: 2px 4px;
-          border: 1px solid #2196f3;
-          border-radius: 3px;
-          width: 60px;
-          background: white;
-          outline: none;
-        }
-
-        .coord-input:focus {
-          border-color: #1976d2;
-          box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
-        }
-
-        .entity-item:hover {
-          background: #f8f9fa;
-        }
-
-        .entity-item.selected {
-          background: #e3f2fd;
-          border-left: 2px solid #2196f3;
-        }
-
-        .entity-item.hovered {
-          background: #f0f8ff;
-        }
-
-        .entity-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 4px;
-        }
-
-        .entity-name {
-          font-weight: 600;
-          font-size: 11px;
-          color: #333;
-          min-width: 20px;
-          flex-shrink: 0;
-        }
-
-        .entity-data {
-          font-family: 'Monaco', 'Menlo', monospace;
-          font-size: 10px;
-          color: #666;
-          flex-grow: 1;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .fixed-badge, .infinite-badge {
-          background: #ff9800;
-          color: white;
-          padding: 1px 4px;
-          border-radius: 8px;
-          font-size: 8px;
-          font-weight: 500;
-          flex-shrink: 0;
-        }
-
-        .constraint-status {
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 9px;
-          font-weight: bold;
-          flex-shrink: 0;
-        }
-
-        .constraint-status.satisfied {
-          background: #4caf50;
-          color: white;
-        }
-
-        .constraint-status.violated {
-          background: #f44336;
-          color: white;
-        }
-
-        .constraint-item.violated {
-          border-left: 2px solid #f44336;
-          background: #fef8f8;
-        }
-
-        .constraint-item.satisfied {
-          border-left: 2px solid #4caf50;
-          background: #f8fef8;
-        }
-
-        .constraint-header {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 4px;
-        }
-
-        .entity-entities {
-          font-family: 'Monaco', 'Menlo', monospace;
-          font-size: 10px;
-          color: #666;
-          flex-grow: 1;
-        }
-
-        .constraint-values {
-          display: flex;
-          gap: 12px;
-          margin-left: 4px;
-        }
-
-        .constraint-value {
-          font-size: 10px;
-          color: #666;
-        }
-
-        .constraint-value strong {
-          font-family: 'Monaco', 'Menlo', monospace;
-          color: #333;
-        }
-
-        .entity-props {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .prop {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 11px;
-        }
-
-        .prop-label {
-          color: #666;
-          font-weight: 500;
-        }
-
-        .prop-value {
-          color: #333;
-          font-family: 'Monaco', 'Menlo', monospace;
-          font-size: 10px;
-        }
-
-        .error-value.high-error {
-          color: #f44336;
-          font-weight: 600;
-        }
-
-        .error-value.low-error {
-          color: #4caf50;
-        }
-
-        .empty-state {
-          padding: 20px 12px;
-          text-align: center;
-          color: #666;
-        }
-
-        .empty-state p {
-          margin: 6px 0;
-          font-size: 12px;
-        }
-      `}</style>
     </div>
   );
 };

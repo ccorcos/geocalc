@@ -309,51 +309,69 @@ export class ConstraintEvaluator {
   }
 
   private evaluateSameX(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
-    if (constraint.entityIds.length !== 2) {
+    if (constraint.entityIds.length < 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point1 = document.points.get(constraint.entityIds[0]);
-    const point2 = document.points.get(constraint.entityIds[1]);
+    // Get all points involved in the constraint
+    const points = constraint.entityIds
+      .map(id => document.points.get(id))
+      .filter(point => point !== undefined);
     
-    if (!point1 || !point2) {
+    if (points.length < 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    // Error is the squared difference in x coordinates
-    const dx = point1.x - point2.x;
-    const error = dx ** 2;
+    // Use the first point as the reference point
+    const referencePoint = points[0];
+    const targetX = referencePoint.x;
 
+    let totalError = 0;
     const gradient = new Map<string, { x: number; y: number }>();
-    // Gradient pushes points toward same x coordinate
-    gradient.set(point1.id, { x: 2 * dx, y: 0 });
-    gradient.set(point2.id, { x: -2 * dx, y: 0 });
 
-    return { constraintId: constraint.id, error, gradient };
+    // For each point (including the reference), constrain it to the target X
+    points.forEach(point => {
+      const dx = point.x - targetX;
+      totalError += dx ** 2;
+      
+      // Gradient pushes this point toward the target X coordinate
+      gradient.set(point.id, { x: 2 * dx, y: 0 });
+    });
+
+    return { constraintId: constraint.id, error: totalError, gradient };
   }
 
   private evaluateSameY(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
-    if (constraint.entityIds.length !== 2) {
+    if (constraint.entityIds.length < 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point1 = document.points.get(constraint.entityIds[0]);
-    const point2 = document.points.get(constraint.entityIds[1]);
+    // Get all points involved in the constraint
+    const points = constraint.entityIds
+      .map(id => document.points.get(id))
+      .filter(point => point !== undefined);
     
-    if (!point1 || !point2) {
+    if (points.length < 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    // Error is the squared difference in y coordinates
-    const dy = point1.y - point2.y;
-    const error = dy ** 2;
+    // Use the first point as the reference point
+    const referencePoint = points[0];
+    const targetY = referencePoint.y;
 
+    let totalError = 0;
     const gradient = new Map<string, { x: number; y: number }>();
-    // Gradient pushes points toward same y coordinate
-    gradient.set(point1.id, { x: 0, y: 2 * dy });
-    gradient.set(point2.id, { x: 0, y: -2 * dy });
 
-    return { constraintId: constraint.id, error, gradient };
+    // For each point (including the reference), constrain it to the target Y
+    points.forEach(point => {
+      const dy = point.y - targetY;
+      totalError += dy ** 2;
+      
+      // Gradient pushes this point toward the target Y coordinate
+      gradient.set(point.id, { x: 0, y: 2 * dy });
+    });
+
+    return { constraintId: constraint.id, error: totalError, gradient };
   }
 
   private evaluateAngle(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
