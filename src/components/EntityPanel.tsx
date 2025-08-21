@@ -27,12 +27,18 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   const [editingRadius, setEditingRadius] = useState<{circleId: string; value: string} | null>(null);
 
   // Handle coordinate editing
-  const handleCoordClick = (pointId: string, coord: 'x' | 'y', currentValue: number) => {
-    setEditingCoord({
-      pointId,
-      coord,
-      value: formatNumber(currentValue)
-    });
+  const handleCoordClick = (pointId: string, coord: 'x' | 'y', currentValue: number, cmdKey: boolean = false) => {
+    if (cmdKey) {
+      // Cmd+click to toggle fixed state
+      handleCoordFixedToggle(pointId, coord);
+    } else {
+      // Regular click to edit
+      setEditingCoord({
+        pointId,
+        coord,
+        value: formatNumber(currentValue)
+      });
+    }
   };
 
   const handleCoordSubmit = () => {
@@ -80,11 +86,17 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   };
 
   // Handle radius editing
-  const handleRadiusClick = (circleId: string, currentValue: number) => {
-    setEditingRadius({
-      circleId,
-      value: formatNumber(currentValue)
-    });
+  const handleRadiusClick = (circleId: string, currentValue: number, cmdKey: boolean = false) => {
+    if (cmdKey) {
+      // Cmd+click to toggle fixed state
+      handleRadiusFixedToggle(circleId);
+    } else {
+      // Regular click to edit
+      setEditingRadius({
+        circleId,
+        value: formatNumber(currentValue)
+      });
+    }
   };
 
   const handleRadiusSubmit = () => {
@@ -379,12 +391,12 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                     ) : (
                       <span 
                         className={`coord-value ${getFixXConstraint(id) ? 'fixed' : 'editable'}`}
-                        onClick={() => handleCoordClick(id, 'x', point.x)}
+                        onClick={(e) => handleCoordClick(id, 'x', point.x, e.metaKey || e.ctrlKey)}
                         onContextMenu={(e) => {
                           e.preventDefault();
                           handleCoordFixedToggle(id, 'x');
                         }}
-                        title={getFixXConstraint(id) ? "Fixed X coordinate (right-click to unfix)" : "Click to edit, right-click to fix"}
+                        title={getFixXConstraint(id) ? "Fixed X coordinate (cmd+click or right-click to unfix)" : "Click to edit, cmd+click or right-click to fix"}
                       >
                         {formatNumber(point.x)}
                       </span>
@@ -406,12 +418,12 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                     ) : (
                       <span 
                         className={`coord-value ${getFixYConstraint(id) ? 'fixed' : 'editable'}`}
-                        onClick={() => handleCoordClick(id, 'y', point.y)}
+                        onClick={(e) => handleCoordClick(id, 'y', point.y, e.metaKey || e.ctrlKey)}
                         onContextMenu={(e) => {
                           e.preventDefault();
                           handleCoordFixedToggle(id, 'y');
                         }}
-                        title={getFixYConstraint(id) ? "Fixed Y coordinate (right-click to unfix)" : "Click to edit, right-click to fix"}
+                        title={getFixYConstraint(id) ? "Fixed Y coordinate (cmd+click or right-click to unfix)" : "Click to edit, cmd+click or right-click to fix"}
                       >
                         {formatNumber(point.y)}
                       </span>
@@ -503,12 +515,12 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                         ) : (
                           <span 
                             className={`coord-value ${hasFixRadius ? 'fixed' : 'editable'}`}
-                            onClick={() => handleRadiusClick(id, circle.radius)}
+                            onClick={(e) => handleRadiusClick(id, circle.radius, e.metaKey || e.ctrlKey)}
                             onContextMenu={(e) => {
                               e.preventDefault();
                               handleRadiusFixedToggle(id);
                             }}
-                            title={hasFixRadius ? "Fixed radius (right-click to unfix)" : "Click to edit, right-click to fix"}
+                            title={hasFixRadius ? "Fixed radius (cmd+click or right-click to unfix)" : "Click to edit, cmd+click or right-click to fix"}
                           >
                             {formatNumber(circle.radius)}
                           </span>

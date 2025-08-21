@@ -222,10 +222,25 @@ export class CanvasRenderer {
 
     const isSelected = selection.selectedIds.has(circle.id);
     const isHovered = selection.hoveredId === circle.id;
+    
+    // Check if radius is fixed
+    const hasFixRadius = Array.from(document.constraints.entries())
+      .some(([, constraint]) => 
+        constraint.type === 'fix-radius' && 
+        constraint.entityIds.includes(circle.id)
+      );
 
     this.ctx.save();
-    this.ctx.strokeStyle = isSelected ? '#4dabf7' : isHovered ? '#74c0fc' : '#6c757d';
-    this.ctx.lineWidth = isSelected ? 3 : isHovered ? 2 : 1;
+    
+    // Use red color for fixed radius circles, similar to fixed points
+    if (hasFixRadius) {
+      this.ctx.strokeStyle = isSelected ? '#dc3545' : '#c44569';
+      this.ctx.lineWidth = isSelected ? 4 : 2;
+    } else {
+      this.ctx.strokeStyle = isSelected ? '#4dabf7' : isHovered ? '#74c0fc' : '#6c757d';
+      this.ctx.lineWidth = isSelected ? 3 : isHovered ? 2 : 1;
+    }
+    
     this.ctx.fillStyle = 'transparent';
     
     this.ctx.beginPath();

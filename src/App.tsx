@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Canvas } from './components/Canvas/Canvas';
 import { Toolbar } from './components/Toolbar/Toolbar';
-import { ConstraintPanel } from './components/ConstraintPanel/ConstraintPanel';
+import { StatusBar } from './components/StatusBar/StatusBar';
 import { EntityPanel } from './components/EntityPanel';
 import { useStore } from './state/store';
 
@@ -12,12 +12,13 @@ function App() {
   useEffect(() => {
     const updateCanvasSize = () => {
       const toolbarHeight = 60; // Approximate toolbar height
+      const statusBarHeight = 60; // StatusBar height
       const panelWidth = 280; // EntityPanel width
       const padding = 20;
       
       setCanvasSize({
         width: window.innerWidth - panelWidth - padding,
-        height: window.innerHeight - toolbarHeight - padding,
+        height: window.innerHeight - toolbarHeight - statusBarHeight - padding,
       });
     };
 
@@ -103,7 +104,7 @@ function App() {
         </div>
         <EntityPanel />
       </div>
-      <ConstraintPanel />
+      <StatusBar />
     </div>
   );
 }

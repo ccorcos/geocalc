@@ -318,18 +318,46 @@ export class CanvasInteraction {
     
     // Check for circle radius drag first
     const circleRadiusTarget = this.findCircleRadiusDragTarget(worldPos.x, worldPos.y);
-    if (circleRadiusTarget && !shiftKey && !cmdKey) {
+    if (circleRadiusTarget && !shiftKey) {
       const circle = store.document.circles.get(circleRadiusTarget);
       if (circle) {
-        // Set up circle radius dragging
-        this.circleRadiusDrag = {
-          circleId: circleRadiusTarget,
-          initialRadius: circle.radius
-        };
-        
-        // Select the circle
-        store.setSelection({ selectedIds: new Set([circleRadiusTarget]) });
-        return;
+        if (cmdKey) {
+          // Cmd+click on circle radius to toggle fixed state
+          const existingConstraint = Array.from(store.document.constraints.entries())
+            .find(([, constraint]) => 
+              constraint.type === 'fix-radius' && 
+              constraint.entityIds.includes(circleRadiusTarget)
+            );
+          
+          if (existingConstraint) {
+            // Remove the constraint
+            store.removeEntity(existingConstraint[0]);
+          } else {
+            // Add a fix-radius constraint
+            const fixRadiusConstraint = {
+              id: `constraint-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              type: 'fix-radius' as const,
+              entityIds: [circleRadiusTarget],
+              value: circle.radius,
+              priority: 1
+            };
+            store.addConstraint(fixRadiusConstraint);
+          }
+          
+          // Select the circle
+          store.setSelection({ selectedIds: new Set([circleRadiusTarget]) });
+          return;
+        } else {
+          // Set up circle radius dragging
+          this.circleRadiusDrag = {
+            circleId: circleRadiusTarget,
+            initialRadius: circle.radius
+          };
+          
+          // Select the circle
+          store.setSelection({ selectedIds: new Set([circleRadiusTarget]) });
+          return;
+        }
       }
     }
 
