@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
 import { distance } from '../utils/math';
+import { ConstraintContextMenu } from './ConstraintContextMenu';
 
 interface EntityPanelProps {
   className?: string;
@@ -23,6 +24,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   
   const [editingCoord, setEditingCoord] = useState<{pointId: string; coord: 'x' | 'y'; value: string} | null>(null);
   const [editingRadius, setEditingRadius] = useState<{circleId: string; value: string} | null>(null);
+  const [contextMenu, setContextMenu] = useState<{x: number; y: number; entityId: string} | null>(null);
 
   // Handle coordinate editing
   const handleCoordClick = (pointId: string, coord: 'x' | 'y', currentValue: number, cmdKey: boolean = false) => {
@@ -135,6 +137,41 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
     useStore.getState().setSelection({ selectedIds: currentSelection });
   };
 
+  const handleEntityRightClick = (event: React.MouseEvent, entityId: string) => {
+    event.preventDefault();
+    
+    // Ensure the right-clicked entity is selected
+    const currentSelection = new Set(selection.selectedIds);
+    if (!currentSelection.has(entityId)) {
+      currentSelection.clear();
+      currentSelection.add(entityId);
+      useStore.getState().setSelection({ selectedIds: currentSelection });
+    }
+    
+    // Show context menu at mouse position
+    const rect = event.currentTarget.getBoundingClientRect();
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      entityId
+    });
+  };
+
+
+  // Click outside to close context menu
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setContextMenu(null);
+    };
+
+    if (contextMenu) {
+      window.addEventListener('click', handleClickOutside);
+      return () => {
+        window.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [contextMenu]);
+
   // Keyboard event handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -150,8 +187,10 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
       }
     };
 
-    window.document.addEventListener('keydown', handleKeyDown);
-    return () => window.document.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [editingCoord, editingRadius]);
 
   // Format number to 3 decimal places
@@ -232,6 +271,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                 fontSize: '11px',
               }}
               onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
+              onContextMenu={(e) => handleEntityRightClick(e, id)}
               onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
               onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
             >
@@ -338,6 +378,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                 fontSize: '11px',
               }}
               onClick={(e) => handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)}
+              onContextMenu={(e) => handleEntityRightClick(e, id)}
               onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
               onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
             >
@@ -372,6 +413,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
                 cursor: 'pointer',
                 fontSize: '11px',
               }}
+              onContextMenu={(e) => handleEntityRightClick(e, id)}
               onMouseEnter={() => useStore.getState().setSelection({ hoveredId: id })}
               onMouseLeave={() => useStore.getState().setSelection({ hoveredId: null })}
             >
@@ -437,6 +479,15 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
           </div>
         )}
       </div>
+      
+      {/* Context Menu */}
+      {contextMenu && (
+        <ConstraintContextMenu 
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 };

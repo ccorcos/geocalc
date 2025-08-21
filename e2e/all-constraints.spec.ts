@@ -182,37 +182,34 @@ test.describe('All Constraint Types', () => {
     const constraintSelect = helper.constraintPanel.locator('select');
     const hasAngleOption = await constraintSelect.locator('option[value="angle"]').count();
     
-    if (hasAngleOption > 0) {
-      await helper.createConstraint('angle', 90);
-      await helper.expectConstraintExists('angle');
-      await helper.runSolver();
+    // The angle constraint SHOULD be available for 3-point selection
+    expect(hasAngleOption, 'Angle constraint should be available when 3 points are selected').toBeGreaterThan(0);
+    
+    await helper.createConstraint('angle', 90);
+    await helper.expectConstraintExists('angle');
+    await helper.runSolver();
 
-      // Verify angle is approximately 90 degrees
-      const positions = await helper.getPointPositions();
-      const points = Object.values(positions);
-      const pA = points[0];
-      const pB = points[1]; // vertex
-      const pC = points[2];
+    // Verify angle is approximately 90 degrees
+    const positions = await helper.getPointPositions();
+    const points = Object.values(positions);
+    const pA = points[0];
+    const pB = points[1]; // vertex
+    const pC = points[2];
 
-      const v1x = pA.x - pB.x;
-      const v1y = pA.y - pB.y;
-      const v2x = pC.x - pB.x;
-      const v2y = pC.y - pB.y;
-      
-      const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
-      const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
-      
-      const dotProduct = v1x * v2x + v1y * v2y;
-      const cosAngle = dotProduct / (mag1 * mag2);
-      const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI);
-      
-      console.log(`Actual angle: ${angle.toFixed(1)} degrees`);
-      expect(Math.abs(angle - 90)).toBeLessThan(1.0);
-    } else {
-      console.log('Angle constraint not available for 3-point selection, skipping test');
-      // Just verify we can select 3 points
-      expect(hasAngleOption).toBeGreaterThanOrEqual(0);
-    }
+    const v1x = pA.x - pB.x;
+    const v1y = pA.y - pB.y;
+    const v2x = pC.x - pB.x;
+    const v2y = pC.y - pB.y;
+    
+    const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+    const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+    
+    const dotProduct = v1x * v2x + v1y * v2y;
+    const cosAngle = dotProduct / (mag1 * mag2);
+    const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI);
+    
+    console.log(`Actual angle: ${angle.toFixed(1)} degrees`);
+    expect(Math.abs(angle - 90)).toBeLessThan(1.0);
   });
 
   test('horizontal line constraint', async ({ page }) => {

@@ -25,6 +25,7 @@ export class CanvasInteraction {
     this.canvas.addEventListener('mousedown', this.handleMouseDown);
     this.canvas.addEventListener('mousemove', this.handleMouseMove);
     this.canvas.addEventListener('mouseup', this.handleMouseUp);
+    this.canvas.addEventListener('contextmenu', this.handleContextMenu);
     this.canvas.addEventListener('wheel', this.handleWheel);
     this.canvas.addEventListener('mouseleave', this.handleMouseLeave);
   }
@@ -33,6 +34,7 @@ export class CanvasInteraction {
     this.canvas.removeEventListener('mousedown', this.handleMouseDown);
     this.canvas.removeEventListener('mousemove', this.handleMouseMove);
     this.canvas.removeEventListener('mouseup', this.handleMouseUp);
+    this.canvas.removeEventListener('contextmenu', this.handleContextMenu);
     this.canvas.removeEventListener('wheel', this.handleWheel);
     this.canvas.removeEventListener('mouseleave', this.handleMouseLeave);
   }
@@ -292,6 +294,50 @@ export class CanvasInteraction {
     this.tempCircleCenter = null;
     this.circleRadiusDrag = null;
     this.selectionRect = null;
+  };
+
+  private handleContextMenu = (e: MouseEvent): void => {
+    e.preventDefault();
+    
+    const mousePos = this.getMousePos(e);
+    const worldPos = this.getWorldPos(mousePos.x, mousePos.y);
+    const store = useStore.getState();
+
+    // Only show context menu in select mode
+    if (store.currentTool !== 'select') {
+      return;
+    }
+
+    // Find entity at click position
+    const entityId = this.findEntityAt(worldPos.x, worldPos.y);
+
+    if (entityId) {
+      // Select the clicked entity if not already selected
+      const currentSelection = new Set(store.selection.selectedIds);
+      if (!currentSelection.has(entityId)) {
+        currentSelection.clear();
+        currentSelection.add(entityId);
+        store.setSelection({ selectedIds: currentSelection });
+      }
+
+      // Dispatch custom event to show context menu at screen coordinates
+      const contextMenuEvent = new CustomEvent('showConstraintContextMenu', {
+        detail: {
+          x: e.clientX,
+          y: e.clientY,
+        }
+      });
+      window.dispatchEvent(contextMenuEvent);
+    } else if (store.selection.selectedIds.size > 0) {
+      // Right-click on empty space with selection - still show menu
+      const contextMenuEvent = new CustomEvent('showConstraintContextMenu', {
+        detail: {
+          x: e.clientX,
+          y: e.clientY,
+        }
+      });
+      window.dispatchEvent(contextMenuEvent);
+    }
   };
 
   private handleWheel = (e: WheelEvent): void => {

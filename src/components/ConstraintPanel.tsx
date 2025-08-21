@@ -18,14 +18,16 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
     updateConstraint,
     removeEntity,
     solve,
-    isSolving
+    isSolving,
+    selectedConstraintId,
+    setSelectedConstraintId
   } = useStore();
   
   const evaluator = new ConstraintEvaluator();
   const [selectedConstraintType, setSelectedConstraintType] = useState<ConstraintType>('distance');
   const [constraintValue, setConstraintValue] = useState<string>('');
   const [editingConstraint, setEditingConstraint] = useState<{constraintId: string; value: string} | null>(null);
-  const [selectedConstraintId, setSelectedConstraintId] = useState<string | null>(null);
+  // selectedConstraintId now comes from global store
 
   const selectedIds = Array.from(selection.selectedIds);
   const selectedEntities = selectedIds.map(id => {
@@ -258,7 +260,6 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
   };
 
   const constraintCount = document.constraints.size;
-  const entityCount = document.points.size + document.lines.size + document.circles.size;
 
   return (
     <div data-testid="constraint-panel" className={`constraint-panel ${className}`} style={{
@@ -314,82 +315,6 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
         overflowY: 'auto',
         padding: '8px',
       }}>
-        {/* Constraint Creation UI */}
-        {currentTool === 'select' && selectedIds.length > 0 && availableConstraints.length > 0 && (
-          <div style={{
-            padding: '8px',
-            margin: '0 0 8px 0',
-            borderRadius: '4px',
-            border: '1px solid #ccc',
-            backgroundColor: '#f8f9fa',
-          }}>
-            <div style={{ marginBottom: '6px', fontSize: '11px', fontWeight: 600, color: '#333' }}>
-              Create New Constraint ({selectedIds.length} selected)
-            </div>
-            <select
-              value={selectedConstraintType}
-              onChange={(e) => setSelectedConstraintType(e.target.value as ConstraintType)}
-              style={{
-                width: '100%',
-                padding: '4px 6px',
-                border: '1px solid #ccc',
-                borderRadius: '3px',
-                fontSize: '11px',
-                backgroundColor: 'white',
-                marginBottom: '6px',
-              }}
-            >
-              {availableConstraints.map(constraint => (
-                <option key={constraint.type} value={constraint.type}>
-                  {constraint.label}
-                </option>
-              ))}
-            </select>
-
-            {availableConstraints.find(c => c.type === selectedConstraintType)?.needsValue && (
-              <input
-                type="number"
-                step="0.1"
-                min={selectedConstraintType === 'distance' || selectedConstraintType === 'angle' ? "0" : undefined}
-                max={selectedConstraintType === 'angle' ? "180" : undefined}
-                value={constraintValue}
-                onChange={(e) => setConstraintValue(e.target.value)}
-                placeholder={
-                  selectedConstraintType === 'angle' ? 'Enter angle (0-180°)...' :
-                  selectedConstraintType === 'distance' ? 'Enter distance...' :
-                  selectedConstraintType === 'x-distance' ? 'Enter X distance (+/-)...' :
-                  selectedConstraintType === 'y-distance' ? 'Enter Y distance (+/-)...' :
-                  'Enter value...'
-                }
-                style={{
-                  width: '100%',
-                  padding: '4px 6px',
-                  border: '1px solid #ccc',
-                  borderRadius: '3px',
-                  fontSize: '11px',
-                  marginBottom: '6px',
-                }}
-              />
-            )}
-
-            <button
-              onClick={handleCreateConstraint}
-              style={{
-                width: '100%',
-                padding: '6px 12px',
-                backgroundColor: '#0066cc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '3px',
-                fontSize: '11px',
-                cursor: 'pointer',
-                fontWeight: '600',
-              }}
-            >
-              Add Constraint
-            </button>
-          </div>
-        )}
 
         {/* Existing Constraints List */}
         {Array.from(document.constraints.entries()).map(([id, constraint]) => {

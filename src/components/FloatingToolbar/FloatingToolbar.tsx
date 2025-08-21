@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../state/store';
 import { ToolType } from '../../engine/models/types';
+import { ConstraintContextMenu } from '../ConstraintContextMenu';
 
 interface ToolButtonProps {
   tool: ToolType;
@@ -56,6 +57,35 @@ const ToolButton: React.FC<ToolButtonProps> = ({ tool, currentTool, onClick, ico
 
 export const FloatingToolbar: React.FC = () => {
   const { currentTool, setCurrentTool } = useStore();
+  const [showConstraintMenu, setShowConstraintMenu] = useState(false);
+  const [constraintMenuPosition, setConstraintMenuPosition] = useState({ x: 0, y: 0 });
+  const constraintButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handleConstraintButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setConstraintMenuPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.bottom + 8
+    });
+    setShowConstraintMenu(true);
+  };
+
+  // Handle click outside to close constraint menu
+  useEffect(() => {
+    const handleClickOutside = (e: Event) => {
+      const target = e.target as Element;
+      if (target && target.closest('[data-context-menu]')) {
+        return;
+      }
+      setShowConstraintMenu(false);
+    };
+
+    if (showConstraintMenu) {
+      window.addEventListener('click', handleClickOutside);
+      return () => window.removeEventListener('click', handleClickOutside);
+    }
+  }, [showConstraintMenu]);
 
   return (
     <div data-testid="toolbar" style={{
@@ -109,6 +139,60 @@ export const FloatingToolbar: React.FC = () => {
         tooltip="Circle Tool"
         shortcut="C"
       />
+      
+      {/* Separator */}
+      <div style={{
+        width: '1px',
+        height: '32px',
+        backgroundColor: 'rgba(222, 226, 230, 0.8)',
+        margin: '0 4px'
+      }} />
+      
+      {/* Add Constraint Button */}
+      <button
+        ref={constraintButtonRef}
+        data-testid="add-constraint"
+        onClick={handleConstraintButtonClick}
+        title="Add Constraint"
+        style={{
+          width: '44px',
+          height: '44px',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          color: '#495057',
+          border: '1px solid rgba(222, 226, 230, 0.8)',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '18px',
+          fontWeight: 'normal',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s ease',
+          backdropFilter: 'blur(8px)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+          e.currentTarget.style.borderColor = 'rgba(222, 226, 230, 1)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+          e.currentTarget.style.borderColor = 'rgba(222, 226, 230, 0.8)';
+          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+        }}
+      >
+        +
+      </button>
+      
+      {/* Constraint Context Menu */}
+      {showConstraintMenu && (
+        <ConstraintContextMenu
+          x={constraintMenuPosition.x}
+          y={constraintMenuPosition.y}
+          onClose={() => setShowConstraintMenu(false)}
+        />
+      )}
     </div>
   );
 };

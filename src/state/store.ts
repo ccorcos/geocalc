@@ -1,14 +1,16 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { GeometryDocument, ToolType, Viewport, SelectionState, Point, Line, Circle, Constraint } from '../engine/models/types';
+import { GeometryDocument, ToolType, Viewport, SelectionState, Point, Line, Circle, Constraint, ConstraintType } from '../engine/models/types';
 import { createEmptyDocument } from '../engine/models/document';
 import { GradientDescentSolver } from '../engine/solver/GradientDescentSolver';
+
 
 interface AppState {
   document: GeometryDocument;
   currentTool: ToolType;
   viewport: Viewport;
   selection: SelectionState;
+  selectedConstraintId: string | null;
   isDragging: boolean;
   dragStartPoint: { x: number; y: number } | null;
   isSolving: boolean;
@@ -18,6 +20,7 @@ interface AppState {
   setCurrentTool: (tool: ToolType) => void;
   setViewport: (viewport: Partial<Viewport>) => void;
   setSelection: (selection: Partial<SelectionState>) => void;
+  setSelectedConstraintId: (constraintId: string | null) => void;
   setDragState: (isDragging: boolean, dragStartPoint?: { x: number; y: number } | null) => void;
   
   // Geometry actions
@@ -38,6 +41,7 @@ interface AppState {
   
   // Solver actions
   solve: () => void;
+  
   
   // Viewport actions  
   panViewport: (dx: number, dy: number) => void;
@@ -63,6 +67,7 @@ export const useStore = create<AppState>()(
       selectedIds: new Set(),
       hoveredId: null,
     },
+    selectedConstraintId: null,
     isDragging: false,
     dragStartPoint: null,
     isSolving: false,
@@ -78,9 +83,21 @@ export const useStore = create<AppState>()(
     setSelection: (selectionUpdate) => set((state) => {
       if (selectionUpdate.selectedIds !== undefined) {
         state.selection.selectedIds = new Set(selectionUpdate.selectedIds);
+        // Clear constraint selection when entities are selected
+        if (state.selection.selectedIds.size > 0) {
+          state.selectedConstraintId = null;
+        }
       }
       if (selectionUpdate.hoveredId !== undefined) {
         state.selection.hoveredId = selectionUpdate.hoveredId;
+      }
+    }),
+
+    setSelectedConstraintId: (constraintId) => set((state) => {
+      state.selectedConstraintId = constraintId;
+      // Clear entity selection when constraint is selected
+      if (constraintId !== null) {
+        state.selection.selectedIds = new Set();
       }
     }),
     
@@ -244,6 +261,7 @@ export const useStore = create<AppState>()(
         useStore.setState({ isSolving: false });
       }
     },
+
 
     panViewport: (dx, dy) => set((state) => {
       state.viewport.x += dx;

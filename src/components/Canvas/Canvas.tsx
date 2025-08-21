@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useStore } from '../../state/store';
 import { CanvasRenderer } from '../../rendering/renderer';
 import { CanvasInteraction } from '../../interaction/CanvasInteraction';
+import { ConstraintContextMenu } from '../ConstraintContextMenu';
 
 interface CanvasProps {
   width: number;
@@ -12,6 +13,7 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<CanvasRenderer | null>(null);
   const interactionRef = useRef<CanvasInteraction | null>(null);
+  const [contextMenu, setContextMenu] = useState<{x: number; y: number} | null>(null);
   
   const { document, viewport, selection, setViewport, currentTool, isDragging } = useStore();
 
@@ -99,6 +101,30 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
     };
   }, [renderCanvas]);
 
+  // Context menu event listener
+  useEffect(() => {
+    const handleContextMenuEvent = (e: CustomEvent) => {
+      setContextMenu({ x: e.detail.x, y: e.detail.y });
+    };
+
+    const handleClickOutside = (e: Event) => {
+      // Don't close if clicking on the context menu itself
+      const target = e.target as Element;
+      if (target && target.closest('[data-context-menu]')) {
+        return;
+      }
+      setContextMenu(null);
+    };
+
+    window.addEventListener('showConstraintContextMenu', handleContextMenuEvent as EventListener);
+    window.addEventListener('click', handleClickOutside);
+    
+    return () => {
+      window.removeEventListener('showConstraintContextMenu', handleContextMenuEvent as EventListener);
+      window.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
   }, []);
@@ -140,17 +166,26 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
   }, [currentTool, isDragging, selection.hoveredId, selection.selectedIds, document.points, document.circles, document.lines]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      onContextMenu={handleContextMenu}
-      style={{
-        display: 'block',
-        cursor: getCursor(),
-        outline: 'none',
-      }}
-      tabIndex={0}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        onContextMenu={handleContextMenu}
+        style={{
+          display: 'block',
+          cursor: getCursor(),
+          outline: 'none',
+        }}
+        tabIndex={0}
+      />
+      {contextMenu && (
+        <ConstraintContextMenu 
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </>
   );
 };
