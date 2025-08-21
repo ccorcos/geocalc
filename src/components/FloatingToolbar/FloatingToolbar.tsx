@@ -13,6 +13,7 @@ interface ToolButtonProps {
 
 const ToolButton: React.FC<ToolButtonProps> = ({ tool, currentTool, onClick, icon, tooltip, shortcut }) => (
   <button
+    data-testid={`tool-${tool}`}
     onClick={() => onClick(tool)}
     title={`${tooltip} (${shortcut})`}
     style={{
@@ -57,7 +58,7 @@ export const FloatingToolbar: React.FC = () => {
   const { currentTool, setCurrentTool } = useStore();
 
   return (
-    <div style={{
+    <div data-testid="toolbar" style={{
       position: 'absolute',
       top: '20px',
       left: '50%',

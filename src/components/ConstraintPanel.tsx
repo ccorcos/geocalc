@@ -261,7 +261,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
   const entityCount = document.points.size + document.lines.size + document.circles.size;
 
   return (
-    <div className={`constraint-panel ${className}`} style={{
+    <div data-testid="constraint-panel" className={`constraint-panel ${className}`} style={{
       background: 'white',
       borderLeft: '1px solid #e0e0e0',
       height: '100%',

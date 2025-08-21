@@ -177,7 +177,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   };
 
   return (
-    <div className={`entity-panel ${className}`} style={{
+    <div data-testid="entity-panel" className={`entity-panel ${className}`} style={{
       background: 'white',
       borderRight: '1px solid #e0e0e0',
       height: '100%',
@@ -207,7 +207,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
       </div>
       
       {/* Scrollable content */}
-      <div style={{
+      <div data-testid="entity-list" style={{
         flex: 1,
         overflowY: 'auto',
         padding: '8px',
