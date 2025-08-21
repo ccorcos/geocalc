@@ -1,55 +1,60 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { ConstraintEvaluator } from '../ConstraintEvaluator';
-import { createEmptyDocument, createPoint, createLine, createConstraint } from '../../models/document';
-import { GeometryDocument } from '../../models/types';
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  createConstraint,
+  createEmptyGeometry,
+  createLine,
+  createPoint,
+} from "../../models/geometry";
+import { Geometry } from "../../models/types";
+import { ConstraintEvaluator } from "../ConstraintEvaluator";
 
-describe('ConstraintEvaluator', () => {
+describe("ConstraintEvaluator", () => {
   let evaluator: ConstraintEvaluator;
-  let document: GeometryDocument;
+  let geometry: Geometry;
 
   beforeEach(() => {
     evaluator = new ConstraintEvaluator();
-    document = createEmptyDocument();
+    geometry = createEmptyGeometry();
   });
 
-  describe('Distance Constraints', () => {
-    it('should evaluate distance constraint with zero error when satisfied', () => {
+  describe("Distance Constraints", () => {
+    it("should evaluate distance constraint with zero error when satisfied", () => {
       // Create two points 5 units apart
       const p1 = createPoint(0, 0);
       const p2 = createPoint(3, 4); // 3-4-5 triangle, distance = 5
-      
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
 
-      const constraint = createConstraint('distance', [p1.id, p2.id], 5);
-      const result = evaluator.evaluate(constraint, document);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("distance", [p1.id, p2.id], 5);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
       expect(result.error).toBeCloseTo(0, 10);
     });
 
-    it('should evaluate distance constraint with positive error when not satisfied', () => {
+    it("should evaluate distance constraint with positive error when not satisfied", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(3, 4); // actual distance = 5
-      
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
 
-      const constraint = createConstraint('distance', [p1.id, p2.id], 10); // target = 10
-      const result = evaluator.evaluate(constraint, document);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("distance", [p1.id, p2.id], 10); // target = 10
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(25); // (5-10)² = 25
     });
 
-    it('should compute correct gradients for distance constraint', () => {
+    it("should compute correct gradients for distance constraint", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(3, 4); // distance = 5
-      
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
 
-      const constraint = createConstraint('distance', [p1.id, p2.id], 3); // target shorter
-      const result = evaluator.evaluate(constraint, document);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("distance", [p1.id, p2.id], 3); // target shorter
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.gradient.has(p1.id)).toBe(true);
       expect(result.gradient.has(p2.id)).toBe(true);
@@ -67,37 +72,36 @@ describe('ConstraintEvaluator', () => {
       expect(grad2.x).toBeCloseTo(2.4, 5);
       expect(grad2.y).toBeCloseTo(3.2, 5);
     });
-
   });
 
-  describe('Fix Constraints', () => {
-    it('should evaluate fix-x constraint with zero error when satisfied', () => {
+  describe("Fix Constraints", () => {
+    it("should evaluate fix-x constraint with zero error when satisfied", () => {
       const point = createPoint(5, 10);
-      document.points.set(point.id, point);
+      geometry.points.set(point.id, point);
 
-      const constraint = createConstraint('fix-x', [point.id], 5);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("fix-x", [point.id], 5);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
       expect(result.error).toBeCloseTo(0, 10);
     });
 
-    it('should evaluate fix-x constraint with positive error when not satisfied', () => {
+    it("should evaluate fix-x constraint with positive error when not satisfied", () => {
       const point = createPoint(8, 10); // x should be 5
-      document.points.set(point.id, point);
+      geometry.points.set(point.id, point);
 
-      const constraint = createConstraint('fix-x', [point.id], 5);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("fix-x", [point.id], 5);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(9); // (8-5)² = 9
     });
 
-    it('should compute correct gradients for fix-x constraint', () => {
+    it("should compute correct gradients for fix-x constraint", () => {
       const point = createPoint(8, 10);
-      document.points.set(point.id, point);
+      geometry.points.set(point.id, point);
 
-      const constraint = createConstraint('fix-x', [point.id], 5);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("fix-x", [point.id], 5);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.gradient.has(point.id)).toBe(true);
       const grad = result.gradient.get(point.id)!;
@@ -107,33 +111,33 @@ describe('ConstraintEvaluator', () => {
       expect(grad.y).toBe(0);
     });
 
-    it('should evaluate fix-y constraint with zero error when satisfied', () => {
+    it("should evaluate fix-y constraint with zero error when satisfied", () => {
       const point = createPoint(5, 10);
-      document.points.set(point.id, point);
+      geometry.points.set(point.id, point);
 
-      const constraint = createConstraint('fix-y', [point.id], 10);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("fix-y", [point.id], 10);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
       expect(result.error).toBeCloseTo(0, 10);
     });
 
-    it('should evaluate fix-y constraint with positive error when not satisfied', () => {
+    it("should evaluate fix-y constraint with positive error when not satisfied", () => {
       const point = createPoint(5, 13); // y should be 10
-      document.points.set(point.id, point);
+      geometry.points.set(point.id, point);
 
-      const constraint = createConstraint('fix-y', [point.id], 10);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("fix-y", [point.id], 10);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(9); // (13-10)² = 9
     });
 
-    it('should compute correct gradients for fix-y constraint', () => {
+    it("should compute correct gradients for fix-y constraint", () => {
       const point = createPoint(5, 13);
-      document.points.set(point.id, point);
+      geometry.points.set(point.id, point);
 
-      const constraint = createConstraint('fix-y', [point.id], 10);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("fix-y", [point.id], 10);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.gradient.has(point.id)).toBe(true);
       const grad = result.gradient.get(point.id)!;
@@ -144,147 +148,153 @@ describe('ConstraintEvaluator', () => {
     });
   });
 
-  describe('Parallel Constraints', () => {
-    it('should evaluate parallel constraint with zero error when lines are parallel', () => {
+  describe("Parallel Constraints", () => {
+    it("should evaluate parallel constraint with zero error when lines are parallel", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(2, 0);
       const p3 = createPoint(0, 1);
       const p4 = createPoint(2, 1);
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
-      document.points.set(p4.id, p4);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+      geometry.points.set(p4.id, p4);
 
       const line1 = createLine(p1.id, p2.id);
       const line2 = createLine(p3.id, p4.id);
 
-      document.lines.set(line1.id, line1);
-      document.lines.set(line2.id, line2);
+      geometry.lines.set(line1.id, line1);
+      geometry.lines.set(line2.id, line2);
 
-      const constraint = createConstraint('parallel', [line1.id, line2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("parallel", [line1.id, line2.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBeCloseTo(0, 5); // Should be very close to 0
     });
 
-    it('should evaluate parallel constraint with positive error when not parallel', () => {
+    it("should evaluate parallel constraint with positive error when not parallel", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(2, 0); // horizontal line
       const p3 = createPoint(0, 0);
       const p4 = createPoint(0, 2); // vertical line
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
-      document.points.set(p4.id, p4);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+      geometry.points.set(p4.id, p4);
 
       const line1 = createLine(p1.id, p2.id);
       const line2 = createLine(p3.id, p4.id);
 
-      document.lines.set(line1.id, line1);
-      document.lines.set(line2.id, line2);
+      geometry.lines.set(line1.id, line1);
+      geometry.lines.set(line2.id, line2);
 
-      const constraint = createConstraint('parallel', [line1.id, line2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("parallel", [line1.id, line2.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBeGreaterThan(0); // Perpendicular lines should have max error
     });
   });
 
-  describe('Perpendicular Constraints', () => {
-    it('should evaluate perpendicular constraint with zero error when lines are perpendicular', () => {
+  describe("Perpendicular Constraints", () => {
+    it("should evaluate perpendicular constraint with zero error when lines are perpendicular", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(2, 0); // horizontal
       const p3 = createPoint(0, 0);
       const p4 = createPoint(0, 2); // vertical
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
-      document.points.set(p4.id, p4);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+      geometry.points.set(p4.id, p4);
 
       const line1 = createLine(p1.id, p2.id);
       const line2 = createLine(p3.id, p4.id);
 
-      document.lines.set(line1.id, line1);
-      document.lines.set(line2.id, line2);
+      geometry.lines.set(line1.id, line1);
+      geometry.lines.set(line2.id, line2);
 
-      const constraint = createConstraint('perpendicular', [line1.id, line2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("perpendicular", [
+        line1.id,
+        line2.id,
+      ]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBeCloseTo(0, 10);
     });
 
-    it('should evaluate perpendicular constraint with positive error when parallel', () => {
+    it("should evaluate perpendicular constraint with positive error when parallel", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(2, 0);
       const p3 = createPoint(0, 1);
       const p4 = createPoint(2, 1);
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
-      document.points.set(p4.id, p4);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+      geometry.points.set(p4.id, p4);
 
       const line1 = createLine(p1.id, p2.id);
       const line2 = createLine(p3.id, p4.id);
 
-      document.lines.set(line1.id, line1);
-      document.lines.set(line2.id, line2);
+      geometry.lines.set(line1.id, line1);
+      geometry.lines.set(line2.id, line2);
 
-      const constraint = createConstraint('perpendicular', [line1.id, line2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("perpendicular", [
+        line1.id,
+        line2.id,
+      ]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBeGreaterThan(0.5); // Parallel lines should have high error for perpendicular constraint
     });
   });
 
-  describe('Horizontal Constraints', () => {
-    it('should evaluate horizontal constraint with zero error for horizontal line', () => {
+  describe("Horizontal Constraints", () => {
+    it("should evaluate horizontal constraint with zero error for horizontal line", () => {
       const p1 = createPoint(0, 5);
       const p2 = createPoint(10, 5); // same y-coordinate
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
       const line = createLine(p1.id, p2.id);
-      document.lines.set(line.id, line);
+      geometry.lines.set(line.id, line);
 
-      const constraint = createConstraint('horizontal', [line.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("horizontal", [line.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0);
     });
 
-    it('should evaluate horizontal constraint with positive error for non-horizontal line', () => {
+    it("should evaluate horizontal constraint with positive error for non-horizontal line", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(10, 5); // sloped line
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
       const line = createLine(p1.id, p2.id);
-      document.lines.set(line.id, line);
+      geometry.lines.set(line.id, line);
 
-      const constraint = createConstraint('horizontal', [line.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("horizontal", [line.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(25); // (5-0)² = 25
     });
 
-    it('should compute correct gradients for horizontal constraint', () => {
+    it("should compute correct gradients for horizontal constraint", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(5, 3); // y-difference = 3
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
       const line = createLine(p1.id, p2.id);
-      document.lines.set(line.id, line);
+      geometry.lines.set(line.id, line);
 
-      const constraint = createConstraint('horizontal', [line.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("horizontal", [line.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       const grad1 = result.gradient.get(p1.id)!;
       const grad2 = result.gradient.get(p2.id)!;
@@ -292,7 +302,7 @@ describe('ConstraintEvaluator', () => {
       // Gradients should only affect y-coordinates
       expect(grad1.x).toBe(0);
       expect(grad2.x).toBe(0);
-      
+
       // y-gradients should oppose each other
       expect(grad1.y).toBeLessThan(0); // p1.y should decrease
       expect(grad2.y).toBeGreaterThan(0); // p2.y should increase
@@ -300,35 +310,35 @@ describe('ConstraintEvaluator', () => {
     });
   });
 
-  describe('Vertical Constraints', () => {
-    it('should evaluate vertical constraint with zero error for vertical line', () => {
+  describe("Vertical Constraints", () => {
+    it("should evaluate vertical constraint with zero error for vertical line", () => {
       const p1 = createPoint(5, 0);
       const p2 = createPoint(5, 10); // same x-coordinate
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
       const line = createLine(p1.id, p2.id);
-      document.lines.set(line.id, line);
+      geometry.lines.set(line.id, line);
 
-      const constraint = createConstraint('vertical', [line.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("vertical", [line.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0);
     });
 
-    it('should compute correct gradients for vertical constraint', () => {
+    it("should compute correct gradients for vertical constraint", () => {
       const p1 = createPoint(0, 0);
       const p2 = createPoint(4, 5); // x-difference = 4
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
       const line = createLine(p1.id, p2.id);
-      document.lines.set(line.id, line);
+      geometry.lines.set(line.id, line);
 
-      const constraint = createConstraint('vertical', [line.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("vertical", [line.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       const grad1 = result.gradient.get(p1.id)!;
       const grad2 = result.gradient.get(p2.id)!;
@@ -336,7 +346,7 @@ describe('ConstraintEvaluator', () => {
       // Gradients should only affect x-coordinates
       expect(grad1.y).toBe(0);
       expect(grad2.y).toBe(0);
-      
+
       // x-gradients should oppose each other
       expect(grad1.x).toBeLessThan(0); // p1.x should decrease
       expect(grad2.x).toBeGreaterThan(0); // p2.x should increase
@@ -344,43 +354,43 @@ describe('ConstraintEvaluator', () => {
     });
   });
 
-  describe('Same-X Constraints', () => {
-    it('should evaluate same-x constraint with zero error when satisfied', () => {
+  describe("Same-X Constraints", () => {
+    it("should evaluate same-x constraint with zero error when satisfied", () => {
       const p1 = createPoint(5, 10);
       const p2 = createPoint(5, 20); // same x-coordinate
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
-      const constraint = createConstraint('same-x', [p1.id, p2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("same-x", [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
       expect(result.error).toBe(0);
     });
 
-    it('should evaluate same-x constraint with positive error when not satisfied', () => {
+    it("should evaluate same-x constraint with positive error when not satisfied", () => {
       const p1 = createPoint(5, 10);
       const p2 = createPoint(8, 20); // x difference = 3
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
-      const constraint = createConstraint('same-x', [p1.id, p2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("same-x", [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(9); // (5-8)² = 9
     });
 
-    it('should compute correct gradients for same-x constraint', () => {
+    it("should compute correct gradients for same-x constraint", () => {
       const p1 = createPoint(5, 10);
       const p2 = createPoint(8, 20); // x difference = 3
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
-      const constraint = createConstraint('same-x', [p1.id, p2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("same-x", [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.gradient.has(p1.id)).toBe(true);
       expect(result.gradient.has(p2.id)).toBe(true);
@@ -391,48 +401,48 @@ describe('ConstraintEvaluator', () => {
       // Gradients should only affect x coordinates and be opposite
       expect(grad1.x).toBe(-6); // 2 * (5-8) = -6
       expect(grad1.y).toBe(0);
-      expect(grad2.x).toBe(6); // 2 * (8-5) = 6  
+      expect(grad2.x).toBe(6); // 2 * (8-5) = 6
       expect(grad2.y).toBe(0);
     });
   });
 
-  describe('Same-Y Constraints', () => {
-    it('should evaluate same-y constraint with zero error when satisfied', () => {
+  describe("Same-Y Constraints", () => {
+    it("should evaluate same-y constraint with zero error when satisfied", () => {
       const p1 = createPoint(10, 5);
       const p2 = createPoint(20, 5); // same y-coordinate
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
-      const constraint = createConstraint('same-y', [p1.id, p2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("same-y", [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
       expect(result.error).toBe(0);
     });
 
-    it('should evaluate same-y constraint with positive error when not satisfied', () => {
+    it("should evaluate same-y constraint with positive error when not satisfied", () => {
       const p1 = createPoint(10, 5);
       const p2 = createPoint(20, 9); // y difference = 4
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
-      const constraint = createConstraint('same-y', [p1.id, p2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("same-y", [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(16); // (5-9)² = 16
     });
 
-    it('should compute correct gradients for same-y constraint', () => {
+    it("should compute correct gradients for same-y constraint", () => {
       const p1 = createPoint(10, 5);
       const p2 = createPoint(20, 9); // y difference = 4
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
 
-      const constraint = createConstraint('same-y', [p1.id, p2.id]);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("same-y", [p1.id, p2.id]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.gradient.has(p1.id)).toBe(true);
       expect(result.gradient.has(p2.id)).toBe(true);
@@ -448,51 +458,51 @@ describe('ConstraintEvaluator', () => {
     });
   });
 
-  describe('Angle Constraints', () => {
-    it('should evaluate angle constraint with zero error when satisfied', () => {
+  describe("Angle Constraints", () => {
+    it("should evaluate angle constraint with zero error when satisfied", () => {
       // Create right angle: (0,1), (0,0), (1,0) - 90 degrees
       const p1 = createPoint(0, 1);
       const p2 = createPoint(0, 0); // vertex
       const p3 = createPoint(1, 0);
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
 
-      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90); // 90 degrees
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("angle", [p1.id, p2.id, p3.id], 90); // 90 degrees
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
       expect(result.error).toBeCloseTo(0, 5);
     });
 
-    it('should evaluate angle constraint with positive error when not satisfied', () => {
+    it("should evaluate angle constraint with positive error when not satisfied", () => {
       // Create 45-degree angle but constrain to 90 degrees
-      const p1 = createPoint(1, 1);
-      const p2 = createPoint(0, 0); // vertex  
-      const p3 = createPoint(1, 0);
-
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
-
-      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90); // want 90 degrees
-      const result = evaluator.evaluate(constraint, document);
-
-      expect(result.error).toBeGreaterThan(0); // Should have error since actual angle is 45°
-    });
-
-    it('should compute gradients for angle constraint', () => {
       const p1 = createPoint(1, 1);
       const p2 = createPoint(0, 0); // vertex
       const p3 = createPoint(1, 0);
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
 
-      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("angle", [p1.id, p2.id, p3.id], 90); // want 90 degrees
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.error).toBeGreaterThan(0); // Should have error since actual angle is 45°
+    });
+
+    it("should compute gradients for angle constraint", () => {
+      const p1 = createPoint(1, 1);
+      const p2 = createPoint(0, 0); // vertex
+      const p3 = createPoint(1, 0);
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+
+      const constraint = createConstraint("angle", [p1.id, p2.id, p3.id], 90);
+      const result = evaluator.evaluate(constraint, geometry);
 
       // Should have gradients for all three points
       expect(result.gradient.has(p1.id)).toBe(true);
@@ -510,60 +520,67 @@ describe('ConstraintEvaluator', () => {
       expect(Math.abs(grad3.x) + Math.abs(grad3.y)).toBeGreaterThan(0);
     });
 
-    it('should handle special angle cases', () => {
+    it("should handle special angle cases", () => {
       // Test 180-degree angle (straight line)
       const p1 = createPoint(-1, 0);
       const p2 = createPoint(0, 0); // vertex
       const p3 = createPoint(1, 0);
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
 
-      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 180); // 180 degrees
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("angle", [p1.id, p2.id, p3.id], 180); // 180 degrees
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBeCloseTo(0, 3);
     });
 
-    it('should handle degenerate angle cases gracefully', () => {
+    it("should handle degenerate angle cases gracefully", () => {
       // Coincident points
       const p1 = createPoint(0, 0);
       const p2 = createPoint(0, 0); // vertex, same as p1
       const p3 = createPoint(1, 0);
 
-      document.points.set(p1.id, p1);
-      document.points.set(p2.id, p2);
-      document.points.set(p3.id, p3);
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
 
-      const constraint = createConstraint('angle', [p1.id, p2.id, p3.id], 90);
-      const result = evaluator.evaluate(constraint, document);
+      const constraint = createConstraint("angle", [p1.id, p2.id, p3.id], 90);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0); // Should handle gracefully
       expect(result.gradient.size).toBe(0);
     });
   });
 
-  describe('Error Handling', () => {
-    it('should return zero error for constraint with missing entities', () => {
-      const constraint = createConstraint('distance', ['non-existent-1', 'non-existent-2'], 10);
-      const result = evaluator.evaluate(constraint, document);
+  describe("Error Handling", () => {
+    it("should return zero error for constraint with missing entities", () => {
+      const constraint = createConstraint(
+        "distance",
+        ["non-existent-1", "non-existent-2"],
+        10
+      );
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0);
       expect(result.gradient.size).toBe(0);
     });
 
-    it('should handle constraint with wrong number of entities', () => {
-      const constraint = createConstraint('distance', ['single-entity'], 10);
-      const result = evaluator.evaluate(constraint, document);
+    it("should handle constraint with wrong number of entities", () => {
+      const constraint = createConstraint("distance", ["single-entity"], 10);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0);
       expect(result.gradient.size).toBe(0);
     });
 
-    it('should handle unsupported constraint types gracefully', () => {
-      const constraint = createConstraint('tangent' as any, ['entity1', 'entity2']);
-      const result = evaluator.evaluate(constraint, document);
+    it("should handle unsupported constraint types gracefully", () => {
+      const constraint = createConstraint("tangent" as any, [
+        "entity1",
+        "entity2",
+      ]);
+      const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0);
       expect(result.gradient.size).toBe(0);

@@ -1,8 +1,8 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
-import { useStore } from '../../state/store';
-import { CanvasRenderer } from '../../rendering/renderer';
-import { CanvasInteraction } from '../../interaction/CanvasInteraction';
-import { ConstraintContextMenu } from '../ConstraintContextMenu';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { CanvasInteraction } from "../../interaction/CanvasInteraction";
+import { CanvasRenderer } from "../../rendering/renderer";
+import { useStore } from "../../state/store";
+import { ConstraintContextMenu } from "../ConstraintContextMenu";
 
 interface CanvasProps {
   width: number;
@@ -13,20 +13,30 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<CanvasRenderer | null>(null);
   const interactionRef = useRef<CanvasInteraction | null>(null);
-  const [contextMenu, setContextMenu] = useState<{x: number; y: number} | null>(null);
-  
-  const { geometry, viewport, selection, setViewport, currentTool, isDragging } = useStore();
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const {
+    geometry,
+    viewport,
+    selection,
+    setViewport,
+    currentTool,
+    isDragging,
+  } = useStore();
 
   // Initialize renderer and interaction
   useEffect(() => {
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
-    
+
     if (!rendererRef.current) {
       rendererRef.current = new CanvasRenderer(canvas);
     }
-    
+
     if (!interactionRef.current) {
       interactionRef.current = new CanvasInteraction(canvas);
     }
@@ -54,17 +64,17 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
       const tempCircleCenter = interactionRef.current.getTempCircleCenter();
       const selectionRect = interactionRef.current.getSelectionRect();
       const linePreview = interactionRef.current.getLinePreview();
-      
+
       rendererRef.current.render(geometry, viewport, selection, {
         tempLineStart,
         tempCircleCenter,
         selectionRect,
-        linePreview
+        linePreview,
       });
     }
   }, [geometry, viewport, selection, isDragging]);
 
-  // Render on state changes  
+  // Render on state changes
   useEffect(() => {
     renderCanvas();
   }, [renderCanvas]);
@@ -73,13 +83,13 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
   useEffect(() => {
     let animationId: number;
     let wasActive = false;
-    
+
     const animate = () => {
       if (interactionRef.current) {
         const selectionRect = interactionRef.current.getSelectionRect();
         const linePreview = interactionRef.current.getLinePreview();
         const isActive = !!selectionRect || !!linePreview;
-        
+
         if (isActive) {
           renderCanvas();
           wasActive = true;
@@ -91,9 +101,9 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
       }
       animationId = requestAnimationFrame(animate);
     };
-    
+
     animationId = requestAnimationFrame(animate);
-    
+
     return () => {
       if (animationId) {
         cancelAnimationFrame(animationId);
@@ -110,18 +120,24 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
     const handleClickOutside = (e: Event) => {
       // Don't close if clicking on the context menu itself
       const target = e.target as Element;
-      if (target && target.closest('[data-context-menu]')) {
+      if (target && target.closest("[data-context-menu]")) {
         return;
       }
       setContextMenu(null);
     };
 
-    window.addEventListener('showConstraintContextMenu', handleContextMenuEvent as EventListener);
-    window.addEventListener('click', handleClickOutside);
-    
+    window.addEventListener(
+      "showConstraintContextMenu",
+      handleContextMenuEvent as EventListener
+    );
+    window.addEventListener("click", handleClickOutside);
+
     return () => {
-      window.removeEventListener('showConstraintContextMenu', handleContextMenuEvent as EventListener);
-      window.removeEventListener('click', handleClickOutside);
+      window.removeEventListener(
+        "showConstraintContextMenu",
+        handleContextMenuEvent as EventListener
+      );
+      window.removeEventListener("click", handleClickOutside);
     };
   }, []);
 
@@ -131,39 +147,48 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 
   // Determine cursor based on current state
   const getCursor = useCallback(() => {
-    if (currentTool !== 'select') {
-      return 'crosshair';
+    if (currentTool !== "select") {
+      return "crosshair";
     }
-    
+
     if (isDragging) {
       // Check if we're dragging radius handles
       if (interactionRef.current) {
         // We would need to expose more state from the interaction handler
         // For now, just use grabbing for all drags
-        return 'grabbing';
+        return "grabbing";
       }
-      return 'grabbing';
+      return "grabbing";
     }
-    
+
     // Check if hovering over a selected entity that can be moved
     if (selection.hoveredId) {
       if (selection.selectedIds.has(selection.hoveredId)) {
-        const canMove = geometry.points.has(selection.hoveredId) || 
-                       geometry.circles.has(selection.hoveredId) || 
-                       geometry.lines.has(selection.hoveredId);
+        const canMove =
+          geometry.points.has(selection.hoveredId) ||
+          geometry.circles.has(selection.hoveredId) ||
+          geometry.lines.has(selection.hoveredId);
         if (canMove) {
-          return 'grab';
+          return "grab";
         }
       }
-      
+
       // Show resize cursor for circle radius handles
       if (geometry.circles.has(selection.hoveredId)) {
-        return 'ew-resize';
+        return "ew-resize";
       }
     }
-    
-    return 'default';
-  }, [currentTool, isDragging, selection.hoveredId, selection.selectedIds, geometry.points, geometry.circles, geometry.lines]);
+
+    return "default";
+  }, [
+    currentTool,
+    isDragging,
+    selection.hoveredId,
+    selection.selectedIds,
+    geometry?.points,
+    geometry?.circles,
+    geometry?.lines,
+  ]);
 
   return (
     <>
@@ -173,14 +198,14 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
         height={height}
         onContextMenu={handleContextMenu}
         style={{
-          display: 'block',
+          display: "block",
           cursor: getCursor(),
-          outline: 'none',
+          outline: "none",
         }}
         tabIndex={0}
       />
       {contextMenu && (
-        <ConstraintContextMenu 
+        <ConstraintContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}

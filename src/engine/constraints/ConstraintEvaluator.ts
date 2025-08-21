@@ -1,5 +1,10 @@
-import { Constraint, Point, GeometryDocument } from '../models/types';
-import { distance, vectorFromPoints, vectorNormalize, vectorDot } from '../../utils/math';
+import {
+  distance,
+  vectorDot,
+  vectorFromPoints,
+  vectorNormalize,
+} from "../../utils/math";
+import { Constraint, Geometry } from "../models/types";
 
 export interface ConstraintViolation {
   constraintId: string;
@@ -8,34 +13,34 @@ export interface ConstraintViolation {
 }
 
 export class ConstraintEvaluator {
-  evaluate(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  evaluate(constraint: Constraint, geometry: Geometry): ConstraintViolation {
     switch (constraint.type) {
-      case 'distance':
-        return this.evaluateDistance(constraint, document);
-      case 'x-distance':
-        return this.evaluateXDistance(constraint, document);
-      case 'y-distance':
-        return this.evaluateYDistance(constraint, document);
-      case 'parallel':
-        return this.evaluateParallel(constraint, document);
-      case 'perpendicular':
-        return this.evaluatePerpendicular(constraint, document);
-      case 'horizontal':
-        return this.evaluateHorizontal(constraint, document);
-      case 'vertical':
-        return this.evaluateVertical(constraint, document);
-      case 'fix-x':
-        return this.evaluateFixX(constraint, document);
-      case 'fix-y':
-        return this.evaluateFixY(constraint, document);
-      case 'same-x':
-        return this.evaluateSameX(constraint, document);
-      case 'same-y':
-        return this.evaluateSameY(constraint, document);
-      case 'angle':
-        return this.evaluateAngle(constraint, document);
-      case 'fix-radius':
-        return this.evaluateFixRadius(constraint, document);
+      case "distance":
+        return this.evaluateDistance(constraint, geometry);
+      case "x-distance":
+        return this.evaluateXDistance(constraint, geometry);
+      case "y-distance":
+        return this.evaluateYDistance(constraint, geometry);
+      case "parallel":
+        return this.evaluateParallel(constraint, geometry);
+      case "perpendicular":
+        return this.evaluatePerpendicular(constraint, geometry);
+      case "horizontal":
+        return this.evaluateHorizontal(constraint, geometry);
+      case "vertical":
+        return this.evaluateVertical(constraint, geometry);
+      case "fix-x":
+        return this.evaluateFixX(constraint, geometry);
+      case "fix-y":
+        return this.evaluateFixY(constraint, geometry);
+      case "same-x":
+        return this.evaluateSameX(constraint, geometry);
+      case "same-y":
+        return this.evaluateSameY(constraint, geometry);
+      case "angle":
+        return this.evaluateAngle(constraint, geometry);
+      case "fix-radius":
+        return this.evaluateFixRadius(constraint, geometry);
       default:
         return {
           constraintId: constraint.id,
@@ -45,13 +50,16 @@ export class ConstraintEvaluator {
     }
   }
 
-  private evaluateDistance(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateDistance(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 2 || constraint.value === undefined) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point1 = document.points.get(constraint.entityIds[0]);
-    const point2 = document.points.get(constraint.entityIds[1]);
+    const point1 = geometry.points.get(constraint.entityIds[0]);
+    const point2 = geometry.points.get(constraint.entityIds[1]);
 
     if (!point1 || !point2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
@@ -63,15 +71,15 @@ export class ConstraintEvaluator {
 
     // Gradient calculation
     const gradient = new Map<string, { x: number; y: number }>();
-    
+
     if (currentDistance > 0) {
-      const factor = 2 * (currentDistance - targetDistance) / currentDistance;
-      
+      const factor = (2 * (currentDistance - targetDistance)) / currentDistance;
+
       gradient.set(point1.id, {
         x: factor * (point1.x - point2.x),
         y: factor * (point1.y - point2.y),
       });
-      
+
       gradient.set(point2.id, {
         x: factor * (point2.x - point1.x),
         y: factor * (point2.y - point1.y),
@@ -81,22 +89,25 @@ export class ConstraintEvaluator {
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateParallel(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateParallel(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const line1 = document.lines.get(constraint.entityIds[0]);
-    const line2 = document.lines.get(constraint.entityIds[1]);
+    const line1 = geometry.lines.get(constraint.entityIds[0]);
+    const line2 = geometry.lines.get(constraint.entityIds[1]);
 
     if (!line1 || !line2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const p1a = document.points.get(line1.point1Id);
-    const p1b = document.points.get(line1.point2Id);
-    const p2a = document.points.get(line2.point1Id);
-    const p2b = document.points.get(line2.point2Id);
+    const p1a = geometry.points.get(line1.point1Id);
+    const p1b = geometry.points.get(line1.point2Id);
+    const p2a = geometry.points.get(line2.point1Id);
+    const p2b = geometry.points.get(line2.point2Id);
 
     if (!p1a || !p1b || !p2a || !p2b) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
@@ -104,7 +115,7 @@ export class ConstraintEvaluator {
 
     const v1 = vectorNormalize(vectorFromPoints(p1a, p1b));
     const v2 = vectorNormalize(vectorFromPoints(p2a, p2b));
-    
+
     // For parallel lines, dot product should be ±1
     const dot = vectorDot(v1, v2);
     const error = (1 - dot * dot) ** 2;
@@ -114,8 +125,7 @@ export class ConstraintEvaluator {
     const epsilon = 1e-6;
 
     // Numerical gradient approximation
-    [p1a, p1b, p2a, p2b].forEach(point => {
-
+    [p1a, p1b, p2a, p2b].forEach((point) => {
       const originalX = point.x;
       const originalY = point.y;
 
@@ -125,16 +135,16 @@ export class ConstraintEvaluator {
       const v2x = vectorNormalize(vectorFromPoints(p2a, p2b));
       const dotX = vectorDot(v1x, v2x);
       const errorX = (1 - dotX * dotX) ** 2;
-      
+
       point.x = originalX;
-      
+
       // Y gradient
       point.y = originalY + epsilon;
       const v1y = vectorNormalize(vectorFromPoints(p1a, p1b));
       const v2y = vectorNormalize(vectorFromPoints(p2a, p2b));
       const dotY = vectorDot(v1y, v2y);
       const errorY = (1 - dotY * dotY) ** 2;
-      
+
       point.y = originalY;
 
       gradient.set(point.id, {
@@ -146,22 +156,25 @@ export class ConstraintEvaluator {
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluatePerpendicular(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluatePerpendicular(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const line1 = document.lines.get(constraint.entityIds[0]);
-    const line2 = document.lines.get(constraint.entityIds[1]);
+    const line1 = geometry.lines.get(constraint.entityIds[0]);
+    const line2 = geometry.lines.get(constraint.entityIds[1]);
 
     if (!line1 || !line2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const p1a = document.points.get(line1.point1Id);
-    const p1b = document.points.get(line1.point2Id);
-    const p2a = document.points.get(line2.point1Id);
-    const p2b = document.points.get(line2.point2Id);
+    const p1a = geometry.points.get(line1.point1Id);
+    const p1b = geometry.points.get(line1.point2Id);
+    const p2a = geometry.points.get(line2.point1Id);
+    const p2b = geometry.points.get(line2.point2Id);
 
     if (!p1a || !p1b || !p2a || !p2b) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
@@ -169,7 +182,7 @@ export class ConstraintEvaluator {
 
     const v1 = vectorNormalize(vectorFromPoints(p1a, p1b));
     const v2 = vectorNormalize(vectorFromPoints(p2a, p2b));
-    
+
     // For perpendicular lines, dot product should be 0
     const dot = vectorDot(v1, v2);
     const error = dot ** 2;
@@ -178,8 +191,7 @@ export class ConstraintEvaluator {
     const gradient = new Map<string, { x: number; y: number }>();
     const epsilon = 1e-6;
 
-    [p1a, p1b, p2a, p2b].forEach(point => {
-
+    [p1a, p1b, p2a, p2b].forEach((point) => {
       const originalX = point.x;
       const originalY = point.y;
 
@@ -189,16 +201,16 @@ export class ConstraintEvaluator {
       const v2x = vectorNormalize(vectorFromPoints(p2a, p2b));
       const dotX = vectorDot(v1x, v2x);
       const errorX = dotX ** 2;
-      
+
       point.x = originalX;
-      
+
       // Y gradient
       point.y = originalY + epsilon;
       const v1y = vectorNormalize(vectorFromPoints(p1a, p1b));
       const v2y = vectorNormalize(vectorFromPoints(p2a, p2b));
       const dotY = vectorDot(v1y, v2y);
       const errorY = dotY ** 2;
-      
+
       point.y = originalY;
 
       gradient.set(point.id, {
@@ -210,18 +222,21 @@ export class ConstraintEvaluator {
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateHorizontal(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateHorizontal(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 1) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const line = document.lines.get(constraint.entityIds[0]);
+    const line = geometry.lines.get(constraint.entityIds[0]);
     if (!line) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const p1 = document.points.get(line.point1Id);
-    const p2 = document.points.get(line.point2Id);
+    const p1 = geometry.points.get(line.point1Id);
+    const p2 = geometry.points.get(line.point2Id);
 
     if (!p1 || !p2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
@@ -231,25 +246,28 @@ export class ConstraintEvaluator {
     const error = dy ** 2;
 
     const gradient = new Map<string, { x: number; y: number }>();
-    
+
     gradient.set(p1.id, { x: 0, y: -2 * dy });
     gradient.set(p2.id, { x: 0, y: 2 * dy });
 
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateVertical(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateVertical(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 1) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const line = document.lines.get(constraint.entityIds[0]);
+    const line = geometry.lines.get(constraint.entityIds[0]);
     if (!line) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const p1 = document.points.get(line.point1Id);
-    const p2 = document.points.get(line.point2Id);
+    const p1 = geometry.points.get(line.point1Id);
+    const p2 = geometry.points.get(line.point2Id);
 
     if (!p1 || !p2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
@@ -259,19 +277,22 @@ export class ConstraintEvaluator {
     const error = dx ** 2;
 
     const gradient = new Map<string, { x: number; y: number }>();
-    
+
     gradient.set(p1.id, { x: -2 * dx, y: 0 });
     gradient.set(p2.id, { x: 2 * dx, y: 0 });
 
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateFixX(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateFixX(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 1 || constraint.value === undefined) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point = document.points.get(constraint.entityIds[0]);
+    const point = geometry.points.get(constraint.entityIds[0]);
     if (!point) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
@@ -289,12 +310,15 @@ export class ConstraintEvaluator {
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateFixY(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateFixY(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 1 || constraint.value === undefined) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point = document.points.get(constraint.entityIds[0]);
+    const point = geometry.points.get(constraint.entityIds[0]);
     if (!point) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
@@ -312,81 +336,74 @@ export class ConstraintEvaluator {
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateSameX(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
-    if (constraint.entityIds.length < 2) {
+  private evaluateSameX(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
+    if (constraint.entityIds.length !== 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    // Get all points involved in the constraint
-    const points = constraint.entityIds
-      .map(id => document.points.get(id))
-      .filter(point => point !== undefined);
-    
-    if (points.length < 2) {
+    const point1 = geometry.points.get(constraint.entityIds[0]);
+    const point2 = geometry.points.get(constraint.entityIds[1]);
+
+    if (!point1 || !point2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    // Use the first point as the reference point
-    const referencePoint = points[0];
-    const targetX = referencePoint.x;
+    // Error is the squared difference between x-coordinates
+    const dx = point1.x - point2.x;
+    const error = dx ** 2;
 
-    let totalError = 0;
     const gradient = new Map<string, { x: number; y: number }>();
 
-    // For each point (including the reference), constrain it to the target X
-    points.forEach(point => {
-      const dx = point.x - targetX;
-      totalError += dx ** 2;
-      
-      // Gradient pushes this point toward the target X coordinate
-      gradient.set(point.id, { x: 2 * dx, y: 0 });
-    });
+    // Gradient: d/dx1 = 2*(x1-x2), d/dx2 = 2*(x2-x1)
+    gradient.set(point1.id, { x: 2 * dx, y: 0 });
+    gradient.set(point2.id, { x: -2 * dx, y: 0 });
 
-    return { constraintId: constraint.id, error: totalError, gradient };
+    return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateSameY(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
-    if (constraint.entityIds.length < 2) {
+  private evaluateSameY(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
+    if (constraint.entityIds.length !== 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    // Get all points involved in the constraint
-    const points = constraint.entityIds
-      .map(id => document.points.get(id))
-      .filter(point => point !== undefined);
-    
-    if (points.length < 2) {
+    const point1 = geometry.points.get(constraint.entityIds[0]);
+    const point2 = geometry.points.get(constraint.entityIds[1]);
+
+    if (!point1 || !point2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    // Use the first point as the reference point
-    const referencePoint = points[0];
-    const targetY = referencePoint.y;
+    // Error is the squared difference between y-coordinates
+    const dy = point1.y - point2.y;
+    const error = dy ** 2;
 
-    let totalError = 0;
     const gradient = new Map<string, { x: number; y: number }>();
 
-    // For each point (including the reference), constrain it to the target Y
-    points.forEach(point => {
-      const dy = point.y - targetY;
-      totalError += dy ** 2;
-      
-      // Gradient pushes this point toward the target Y coordinate
-      gradient.set(point.id, { x: 0, y: 2 * dy });
-    });
+    // Gradient: d/dy1 = 2*(y1-y2), d/dy2 = 2*(y2-y1)
+    gradient.set(point1.id, { x: 0, y: 2 * dy });
+    gradient.set(point2.id, { x: 0, y: -2 * dy });
 
-    return { constraintId: constraint.id, error: totalError, gradient };
+    return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateAngle(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateAngle(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 3 || constraint.value === undefined) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point1 = document.points.get(constraint.entityIds[0]);
-    const point2 = document.points.get(constraint.entityIds[1]); // vertex point
-    const point3 = document.points.get(constraint.entityIds[2]);
-    
+    const point1 = geometry.points.get(constraint.entityIds[0]);
+    const point2 = geometry.points.get(constraint.entityIds[1]); // vertex point
+    const point3 = geometry.points.get(constraint.entityIds[2]);
+
     if (!point1 || !point2 || !point3) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
@@ -409,14 +426,14 @@ export class ConstraintEvaluator {
     // Calculate current angle using dot product
     const dotProduct = v1x * v2x + v1y * v2y;
     const cosCurrentAngle = dotProduct / (mag1 * mag2);
-    
+
     // Clamp to avoid numerical issues with acos
     const clampedCos = Math.max(-1, Math.min(1, cosCurrentAngle));
     const currentAngle = Math.acos(clampedCos);
-    
+
     // Target angle in radians
     const targetAngle = constraint.value * (Math.PI / 180); // Convert degrees to radians
-    
+
     // Error is squared difference in angles
     const angleError = currentAngle - targetAngle;
     const error = angleError ** 2;
@@ -425,18 +442,18 @@ export class ConstraintEvaluator {
     const gradient = new Map<string, { x: number; y: number }>();
     const epsilon = 1e-6;
 
-    [point1, point2, point3].forEach(point => {
+    [point1, point2, point3].forEach((point) => {
       const originalX = point.x;
       const originalY = point.y;
 
       // Gradient with respect to x
       point.x = originalX + epsilon;
-      const errorX = this.calculateAngleError(constraint, document);
+      const errorX = this.calculateAngleError(constraint, geometry);
       point.x = originalX;
 
-      // Gradient with respect to y  
+      // Gradient with respect to y
       point.y = originalY + epsilon;
-      const errorY = this.calculateAngleError(constraint, document);
+      const errorY = this.calculateAngleError(constraint, geometry);
       point.y = originalY;
 
       gradient.set(point.id, {
@@ -448,11 +465,14 @@ export class ConstraintEvaluator {
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private calculateAngleError(constraint: Constraint, document: GeometryDocument): number {
-    const point1 = document.points.get(constraint.entityIds[0]);
-    const point2 = document.points.get(constraint.entityIds[1]); // vertex
-    const point3 = document.points.get(constraint.entityIds[2]);
-    
+  private calculateAngleError(
+    constraint: Constraint,
+    geometry: Geometry
+  ): number {
+    const point1 = geometry.points.get(constraint.entityIds[0]);
+    const point2 = geometry.points.get(constraint.entityIds[1]); // vertex
+    const point3 = geometry.points.get(constraint.entityIds[2]);
+
     if (!point1 || !point2 || !point3 || constraint.value === undefined) {
       return 0;
     }
@@ -470,21 +490,27 @@ export class ConstraintEvaluator {
     }
 
     const dotProduct = v1x * v2x + v1y * v2y;
-    const cosCurrentAngle = Math.max(-1, Math.min(1, dotProduct / (mag1 * mag2)));
+    const cosCurrentAngle = Math.max(
+      -1,
+      Math.min(1, dotProduct / (mag1 * mag2))
+    );
     const currentAngle = Math.acos(cosCurrentAngle);
-    
+
     const targetAngle = constraint.value * (Math.PI / 180);
     const angleError = currentAngle - targetAngle;
-    
+
     return angleError ** 2;
   }
 
-  private evaluateFixRadius(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateFixRadius(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 1 || constraint.value === undefined) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const circle = document.circles.get(constraint.entityIds[0]);
+    const circle = geometry.circles.get(constraint.entityIds[0]);
     if (!circle) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
@@ -496,22 +522,25 @@ export class ConstraintEvaluator {
     // For fix-radius constraints, we don't allow the radius to change
     // The gradient affects the center point to maintain the fixed radius
     const gradient = new Map<string, { x: number; y: number }>();
-    
+
     // For circles, we typically don't apply gradients to constrain radius directly
     // since radius is a property of the circle, not a point position
     // This constraint would be handled by preventing radius changes in the solver
-    
+
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateXDistance(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateXDistance(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 2 || constraint.value === undefined) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point1 = document.points.get(constraint.entityIds[0]);
-    const point2 = document.points.get(constraint.entityIds[1]);
-    
+    const point1 = geometry.points.get(constraint.entityIds[0]);
+    const point2 = geometry.points.get(constraint.entityIds[1]);
+
     if (!point1 || !point2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
@@ -523,7 +552,7 @@ export class ConstraintEvaluator {
 
     const gradient = new Map<string, { x: number; y: number }>();
     const errorDerivative = 2 * (currentXDistance - targetXDistance);
-    
+
     // Gradient: d/dx1 = -errorDerivative, d/dx2 = errorDerivative
     gradient.set(point1.id, { x: -errorDerivative, y: 0 });
     gradient.set(point2.id, { x: errorDerivative, y: 0 });
@@ -531,14 +560,17 @@ export class ConstraintEvaluator {
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private evaluateYDistance(constraint: Constraint, document: GeometryDocument): ConstraintViolation {
+  private evaluateYDistance(
+    constraint: Constraint,
+    geometry: Geometry
+  ): ConstraintViolation {
     if (constraint.entityIds.length !== 2 || constraint.value === undefined) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point1 = document.points.get(constraint.entityIds[0]);
-    const point2 = document.points.get(constraint.entityIds[1]);
-    
+    const point1 = geometry.points.get(constraint.entityIds[0]);
+    const point2 = geometry.points.get(constraint.entityIds[1]);
+
     if (!point1 || !point2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
@@ -550,7 +582,7 @@ export class ConstraintEvaluator {
 
     const gradient = new Map<string, { x: number; y: number }>();
     const errorDerivative = 2 * (currentYDistance - targetYDistance);
-    
+
     // Gradient: d/dy1 = -errorDerivative, d/dy2 = errorDerivative
     gradient.set(point1.id, { x: 0, y: -errorDerivative });
     gradient.set(point2.id, { x: 0, y: errorDerivative });

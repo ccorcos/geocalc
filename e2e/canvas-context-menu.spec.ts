@@ -12,15 +12,14 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
     await helper.canvas.click({ position: { x: 300, y: 300 } });
     await helper.expectPointCount(2);
 
-    // Switch to select tool and select both points
+    // Switch to select tool and select both points using entity panel (more reliable)
     await helper.selectTool('select');
     
-    // Use rectangular selection to select both points
-    await helper.canvas.click({ position: { x: 180, y: 180 } });
-    await helper.canvas.click({ position: { x: 320, y: 320 }, modifiers: ['Shift'] });
+    // Select both points in the entity panel using shift-click
+    await helper.selectPointsInPanel([0, 1], true);
 
-    // Right-click on canvas to show context menu
-    await helper.canvas.click({ button: 'right', position: { x: 250, y: 250 } });
+    // Right-click on the first point to show context menu (preserves selection)
+    await helper.canvas.click({ button: 'right', position: { x: 200, y: 200 } });
     
     // Should show distance constraint options
     await expect(page.locator('text=Fixed Distance')).toBeVisible();
@@ -38,15 +37,14 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
     await helper.canvas.click({ position: { x: 300, y: 300 } });
     await helper.expectPointCount(2);
 
-    // Switch to select tool
+    // Switch to select tool and select both points using entity panel (more reliable)
     await helper.selectTool('select');
     
-    // Select both points by rectangular selection
-    await helper.canvas.click({ position: { x: 180, y: 180 } });
-    await helper.canvas.click({ position: { x: 320, y: 320 }, modifiers: ['Shift'] });
+    // Select both points in the entity panel using shift-click
+    await helper.selectPointsInPanel([0, 1], true);
 
-    // Right-click on canvas and create distance constraint
-    await helper.canvas.click({ button: 'right', position: { x: 250, y: 250 } });
+    // Right-click on the first point and create distance constraint
+    await helper.canvas.click({ button: 'right', position: { x: 200, y: 200 } });
     await page.locator('text=Fixed Distance').click();
     
     // Verify constraint was created

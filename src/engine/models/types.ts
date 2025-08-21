@@ -19,21 +19,21 @@ export interface Circle {
 
 export type GeometryEntity = Point | Line | Circle;
 
-export type ConstraintType = 
-  | 'distance'
-  | 'x-distance'
-  | 'y-distance'
-  | 'parallel' 
-  | 'perpendicular'
-  | 'tangent'
-  | 'angle'
-  | 'horizontal'
-  | 'vertical'
-  | 'fix-x'
-  | 'fix-y'
-  | 'same-x'
-  | 'same-y'
-  | 'fix-radius';
+export type ConstraintType =
+  | "distance"
+  | "x-distance"
+  | "y-distance"
+  | "parallel"
+  | "perpendicular"
+  | "tangent"
+  | "angle"
+  | "horizontal"
+  | "vertical"
+  | "fix-x"
+  | "fix-y"
+  | "same-x"
+  | "same-y"
+  | "fix-radius";
 
 export interface Constraint {
   id: string;
@@ -43,7 +43,7 @@ export interface Constraint {
   priority: number;
 }
 
-export interface GeometryDocument {
+export interface Geometry {
   points: Map<string, Point>;
   lines: Map<string, Line>;
   circles: Map<string, Circle>;
@@ -63,7 +63,7 @@ export interface Viewport {
   height: number;
 }
 
-export type ToolType = 'select' | 'point' | 'line' | 'circle';
+export type ToolType = "select" | "point" | "line" | "circle";
 
 export interface SelectionState {
   selectedIds: Set<string>;

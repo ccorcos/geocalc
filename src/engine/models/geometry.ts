@@ -1,13 +1,13 @@
-import { GeometryDocument, Point, Line, Circle, Constraint } from './types';
-import { generateId } from '../../utils/ids';
+import { generateId } from "../../utils/ids";
+import { Circle, Constraint, Geometry, Line, Point } from "./types";
 
-export const createEmptyDocument = (): GeometryDocument => ({
+export const createEmptyGeometry = (): Geometry => ({
   points: new Map(),
   lines: new Map(),
   circles: new Map(),
   constraints: new Map(),
   metadata: {
-    version: '1.0.0',
+    version: "1.0.0",
     created: new Date(),
     modified: new Date(),
   },
@@ -19,7 +19,11 @@ export const createPoint = (x: number, y: number): Point => ({
   y,
 });
 
-export const createLine = (point1Id: string, point2Id: string, infinite = false): Line => ({
+export const createLine = (
+  point1Id: string,
+  point2Id: string,
+  infinite = false
+): Line => ({
   id: generateId(),
   point1Id,
   point2Id,
@@ -33,7 +37,7 @@ export const createCircle = (centerId: string, radius: number): Circle => ({
 });
 
 export const createConstraint = (
-  type: Constraint['type'],
+  type: Constraint["type"],
   entityIds: string[],
   value?: number,
   priority = 1
@@ -45,57 +49,60 @@ export const createConstraint = (
   priority,
 });
 
-export const addPointToDocument = (document: GeometryDocument, point: Point): GeometryDocument => {
-  const newPoints = new Map(document.points);
+export const addPoint = (geometry: Geometry, point: Point): Geometry => {
+  const newPoints = new Map(geometry.points);
   newPoints.set(point.id, point);
-  
+
   return {
-    ...document,
+    ...geometry,
     points: newPoints,
     metadata: {
-      ...document.metadata,
+      ...geometry.metadata,
       modified: new Date(),
     },
   };
 };
 
-export const addLineToDocument = (document: GeometryDocument, line: Line): GeometryDocument => {
-  const newLines = new Map(document.lines);
+export const addLine = (geometry: Geometry, line: Line): Geometry => {
+  const newLines = new Map(geometry.lines);
   newLines.set(line.id, line);
-  
+
   return {
-    ...document,
+    ...geometry,
     lines: newLines,
     metadata: {
-      ...document.metadata,
+      ...geometry.metadata,
       modified: new Date(),
     },
   };
 };
 
-export const addCircleToDocument = (document: GeometryDocument, circle: Circle): GeometryDocument => {
-  const newCircles = new Map(document.circles);
+export const addCircle = (geometry: Geometry, circle: Circle): Geometry => {
+  const newCircles = new Map(geometry.circles);
   newCircles.set(circle.id, circle);
-  
+
   return {
-    ...document,
+    ...geometry,
     circles: newCircles,
     metadata: {
-      ...document.metadata,
+      ...geometry.metadata,
       modified: new Date(),
     },
   };
 };
 
-export const addConstraintToDocument = (document: GeometryDocument, constraint: Constraint): GeometryDocument => {
-  const newConstraints = new Map(document.constraints);
+export const addConstraint = (
+  geometry: Geometry,
+  constraint: Constraint
+): Geometry => {
+  const newConstraints = new Map(geometry.constraints);
   newConstraints.set(constraint.id, constraint);
-  
+
   return {
-    ...document,
+    ...geometry,
     constraints: newConstraints,
     metadata: {
-      ...document.metadata,
+      ...geometry.metadata,
       modified: new Date(),
     },
   };

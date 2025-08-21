@@ -110,11 +110,9 @@ test.describe('All Constraint Types', () => {
     const pointC = await helper.createPointAt(400, 300);
     await helper.expectPointCount(3);
 
-    // Select all three points
+    // Select all three points using entity panel (more reliable)
     await helper.selectTool('select');
-    await helper.clickPoint(pointA);
-    await helper.shiftClickPoint(pointB);
-    await helper.shiftClickPoint(pointC);
+    await helper.selectPointsInPanel([0, 1, 2], true);
 
     // Create same-x constraint
     await helper.createConstraint('same-x');
@@ -139,11 +137,9 @@ test.describe('All Constraint Types', () => {
     const pointB = await helper.createPointAt(300, 250);
     const pointC = await helper.createPointAt(400, 300);
 
-    // Select all three points
+    // Select all three points using entity panel (more reliable)
     await helper.selectTool('select');
-    await helper.clickPoint(pointA);
-    await helper.shiftClickPoint(pointB);
-    await helper.shiftClickPoint(pointC);
+    await helper.selectPointsInPanel([0, 1, 2], true);
 
     await helper.createConstraint('same-y');
     await helper.expectConstraintExists('same y');
@@ -169,11 +165,9 @@ test.describe('All Constraint Types', () => {
     const pointC = await helper.createPointAt(400, 200); // Right point
     await helper.expectPointCount(3);
 
-    // Select all three points for angle constraint
+    // Select all three points using entity panel (more reliable)
     await helper.selectTool('select');
-    await helper.clickPoint(pointA);
-    await helper.shiftClickPoint(pointB);
-    await helper.shiftClickPoint(pointC);
+    await helper.selectPointsInPanel([0, 1, 2], true);
 
     // Wait for constraint UI
     await helper.waitForConstraintUI(3);

@@ -69,3 +69,5 @@ jspm_packages/
 
 # Vite
 .vite/
+
+playwright-report/

@@ -40,10 +40,17 @@ export class ErrorBoundary extends Component<Props, State> {
     
     for (const line of stackLines) {
       // Look for lines that contain our app code (not node_modules)
-      if (line.includes('.tsx:') || line.includes('.ts:')) {
-        const match = line.match(/(\w+\.tsx?):\d+:\d+/);
+      if ((line.includes('.tsx:') || line.includes('.ts:')) && !line.includes('node_modules')) {
+        // Match patterns like: /path/to/file.tsx:123:45 or file.tsx:123:45
+        const match = line.match(/(\/.*?\/([^\/]+\.tsx?)):(\d+):(\d+)|([^\/\s]+\.tsx?):(\d+):(\d+)/);
         if (match) {
-          fileInfo = ` at ${match[1]}`;
+          if (match[1]) {
+            // Full path match
+            fileInfo = ` at ${match[1]}:${match[3]}:${match[4]}`;
+          } else if (match[5]) {
+            // Filename only match
+            fileInfo = ` at ${match[5]}:${match[6]}:${match[7]}`;
+          }
           break;
         }
       }

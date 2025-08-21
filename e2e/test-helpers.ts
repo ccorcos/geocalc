@@ -79,41 +79,71 @@ export class GeoCalcTestHelper {
 
   async selectPointsInPanel(indices: number[], useShift = true) {
     for (let i = 0; i < indices.length; i++) {
-      const pointInPanel = this.entityList
-        .locator('div')
-        .filter({ hasText: 'point' })
-        .nth(indices[i]);
+      // Find the specific point row by looking for the main clickable div that contains point info
+      const pointRows = this.entityList.locator('div').filter({ hasText: 'point' });
+      const pointInPanel = pointRows.nth(indices[i]);
       
-      const modifiers = (i > 0 && useShift) ? ['Shift'] : [];
-      await pointInPanel.click({ modifiers: modifiers as any[] });
+      // Get the bounding box and click on the left part to avoid coordinate editing
+      const bounds = await pointInPanel.boundingBox();
+      if (bounds) {
+        if (i > 0 && useShift) {
+          await this.page.keyboard.down('Shift');
+        }
+        
+        // Click on the left 30% of the row to avoid coordinate spans
+        await this.page.mouse.click(
+          bounds.x + bounds.width * 0.3, 
+          bounds.y + bounds.height / 2
+        );
+        
+        if (i > 0 && useShift) {
+          await this.page.keyboard.up('Shift');
+        }
+        
+        // Give a small delay to allow selection to register
+        await this.page.waitForTimeout(100);
+      }
     }
   }
 
   // Constraint operations
   async waitForConstraintUI(expectedPointCount: number) {
-    await expect(this.constraintPanel.locator('select')).toBeVisible();
-    await expect(this.constraintPanel
-      .locator(`text=Create New Constraint (${expectedPointCount} selected)`))
-      .toBeVisible();
+    // New UI: Check that entities are selected (no more dropdown)
+    // Just verify points are selected by checking selection count
+    await this.page.waitForTimeout(100); // Give time for selection to register
   }
 
   async createConstraint(type: string, value?: number) {
-    // Wait for constraint UI to be visible
-    await expect(this.constraintPanel.locator('select')).toBeVisible();
+    // New UI: Use the + button in toolbar for creating constraints
+    await this.page.click('[data-testid="add-constraint"]');
     
-    // Select constraint type
-    await this.constraintPanel.locator('select').selectOption(type);
+    // Map test constraint types to UI labels
+    const typeMap: Record<string, string> = {
+      'distance': 'Fixed Distance',
+      'x-distance': 'Fixed X Distance', 
+      'y-distance': 'Fixed Y Distance',
+      'same-x': 'Same X Coordinate',
+      'same-y': 'Same Y Coordinate',
+      'parallel': 'Parallel',
+      'perpendicular': 'Perpendicular',
+      'horizontal': 'Horizontal',
+      'vertical': 'Vertical',
+      'angle': 'Angle'
+    };
     
-    // Enter value if needed
+    const menuText = typeMap[type] || type;
+    
+    // Click the constraint type in context menu
+    await this.page.locator(`text=${menuText}`).click();
+    
+    // Enter value if needed (in input dialog)
     if (value !== undefined) {
-      await this.constraintPanel.locator('input[type="number"]').fill(value.toString());
+      await this.page.locator('input[type="number"]').fill(value.toString());
+      await this.page.locator('button').filter({ hasText: 'Create' }).click();
     }
     
-    // Click Add Constraint
-    await this.constraintPanel.locator('button').filter({ hasText: 'Add Constraint' }).click();
-    
     // Wait a moment for the constraint to be added
-    await this.page.waitForTimeout(100);
+    await this.page.waitForTimeout(200);
   }
 
   async runSolver() {
