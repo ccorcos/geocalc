@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../state/store';
 import { ConstraintType } from '../engine/models/types';
 import { distance } from '../utils/math';
@@ -11,18 +12,25 @@ interface ConstraintContextMenuProps {
 }
 
 export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({ x, y, onClose }) => {
-  const { document, selection, addConstraint } = useStore();
+  const { geometry, selection, addConstraint } = useStore();
+  const [isClosing, setIsClosing] = useState(false);
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    // Ensure we have a valid container for the portal
+    setPortalContainer(document.body);
+  }, []);
 
   const getAvailableConstraints = (): { type: ConstraintType; label: string; needsValue: boolean }[] => {
     const selectedIds = Array.from(selection.selectedIds);
     const selectedEntities = selectedIds.map(id => {
-      const point = document.points.get(id);
+      const point = geometry.points.get(id);
       if (point) return { type: 'point', entity: point };
       
-      const line = document.lines.get(id);
+      const line = geometry.lines.get(id);
       if (line) return { type: 'line', entity: line };
       
-      const circle = document.circles.get(id);
+      const circle = geometry.circles.get(id);
       if (circle) return { type: 'circle', entity: circle };
       
       return null;
@@ -94,27 +102,27 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({ x,
 
     // Calculate default value based on current state
     if (constraintType === 'distance' && selectedIds.length === 2) {
-      const point1 = document.points.get(selectedIds[0]);
-      const point2 = document.points.get(selectedIds[1]);
+      const point1 = geometry.points.get(selectedIds[0]);
+      const point2 = geometry.points.get(selectedIds[1]);
       if (point1 && point2) {
         value = distance(point1, point2);
       }
     } else if (constraintType === 'x-distance' && selectedIds.length === 2) {
-      const point1 = document.points.get(selectedIds[0]);
-      const point2 = document.points.get(selectedIds[1]);
+      const point1 = geometry.points.get(selectedIds[0]);
+      const point2 = geometry.points.get(selectedIds[1]);
       if (point1 && point2) {
         value = point2.x - point1.x; // Preserve direction
       }
     } else if (constraintType === 'y-distance' && selectedIds.length === 2) {
-      const point1 = document.points.get(selectedIds[0]);
-      const point2 = document.points.get(selectedIds[1]);
+      const point1 = geometry.points.get(selectedIds[0]);
+      const point2 = geometry.points.get(selectedIds[1]);
       if (point1 && point2) {
         value = point2.y - point1.y; // Preserve direction
       }
     } else if (constraintType === 'angle' && selectedIds.length === 3) {
-      const point1 = document.points.get(selectedIds[0]);
-      const point2 = document.points.get(selectedIds[1]);
-      const point3 = document.points.get(selectedIds[2]);
+      const point1 = geometry.points.get(selectedIds[0]);
+      const point2 = geometry.points.get(selectedIds[1]);
+      const point3 = geometry.points.get(selectedIds[2]);
       
       if (point1 && point2 && point3) {
         const v1x = point1.x - point2.x;
@@ -138,19 +146,34 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({ x,
     const constraint = createConstraint(constraintType, selectedIds, value);
     addConstraint(constraint);
     
-    // Clear selection and close menu
-    useStore.getState().setSelection({ selectedIds: new Set() });
-    onClose();
+    // Set closing state and delay the actual close to prevent flash
+    setIsClosing(true);
+    setTimeout(() => {
+      useStore.getState().setSelection({ selectedIds: new Set() });
+      onClose();
+    }, 0);
   };
 
   const availableConstraints = getAvailableConstraints();
 
-  return (
+  // Don't render if closing to prevent flash
+  if (isClosing) {
+    return null;
+  }
+
+  // Don't render until we have a portal container
+  if (!portalContainer) {
+    return null;
+  }
+
+  return createPortal(
     <div
+      data-context-menu
       style={{
         position: 'fixed',
         top: y,
         left: x,
+        transform: 'translateX(-50%)',
         background: 'white',
         border: '1px solid #ccc',
         borderRadius: '4px',
@@ -191,6 +214,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({ x,
           No constraints available
         </div>
       )}
-    </div>
+    </div>,
+    portalContainer
   );
 };

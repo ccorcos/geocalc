@@ -2,10 +2,10 @@ import React from 'react';
 import { useStore } from '../../state/store';
 
 export const SolverPanel: React.FC = () => {
-  const { solve, isSolving, document } = useStore();
+  const { solve, isSolving, geometry } = useStore();
 
-  const constraintCount = document.constraints.size;
-  const entityCount = document.points.size + document.lines.size + document.circles.size;
+  const constraintCount = geometry.constraints.size;
+  const entityCount = geometry.points.size + geometry.lines.size + geometry.circles.size;
 
   return (
     <div style={{

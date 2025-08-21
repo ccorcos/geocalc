@@ -5,19 +5,19 @@ import { createConstraint } from '../../engine/models/document';
 import { distance } from '../../utils/math';
 
 export const StatusBar: React.FC = () => {
-  const { selection, document, addConstraint, currentTool } = useStore();
+  const { selection, geometry, addConstraint, currentTool } = useStore();
   const [selectedConstraintType, setSelectedConstraintType] = useState<ConstraintType>('distance');
   const [constraintValue, setConstraintValue] = useState<string>('');
 
   const selectedIds = Array.from(selection.selectedIds);
   const selectedEntities = selectedIds.map(id => {
-    const point = document.points.get(id);
+    const point = geometry.points.get(id);
     if (point) return { type: 'point', entity: point };
     
-    const line = document.lines.get(id);
+    const line = geometry.lines.get(id);
     if (line) return { type: 'line', entity: line };
     
-    const circle = document.circles.get(id);
+    const circle = geometry.circles.get(id);
     if (circle) return { type: 'circle', entity: circle };
     
     return null;
@@ -90,8 +90,8 @@ export const StatusBar: React.FC = () => {
 
     if (constraintDef.needsValue) {
       if (selectedConstraintType === 'distance' && selectedIds.length === 2) {
-        const point1 = document.points.get(selectedIds[0]);
-        const point2 = document.points.get(selectedIds[1]);
+        const point1 = geometry.points.get(selectedIds[0]);
+        const point2 = geometry.points.get(selectedIds[1]);
         
         if (point1 && point2) {
           if (constraintValue.trim() === '') {
@@ -106,9 +106,9 @@ export const StatusBar: React.FC = () => {
           }
         }
       } else if (selectedConstraintType === 'angle' && selectedIds.length === 3) {
-        const point1 = document.points.get(selectedIds[0]);
-        const point2 = document.points.get(selectedIds[1]); // vertex
-        const point3 = document.points.get(selectedIds[2]);
+        const point1 = geometry.points.get(selectedIds[0]);
+        const point2 = geometry.points.get(selectedIds[1]); // vertex
+        const point3 = geometry.points.get(selectedIds[2]);
         
         if (point1 && point2 && point3) {
           if (constraintValue.trim() === '') {

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Canvas } from './components/Canvas/Canvas';
 import { FloatingToolbar } from './components/FloatingToolbar/FloatingToolbar';
 import { EntityPanel } from './components/EntityPanel';
@@ -74,18 +75,19 @@ function App() {
   }, [setCurrentTool, selection.selectedIds, removeEntity]);
 
   return (
-    <div style={{ 
-      fontFamily: 'Arial, sans-serif',
-      margin: 0,
-      padding: 0,
-      height: '100vh',
-      overflow: 'hidden',
-      backgroundColor: '#f8f9fa',
-      display: 'grid',
-      gridTemplateColumns: '280px 1fr 280px',
-      gridTemplateRows: '1fr',
-      gap: 0,
-    }}>
+    <ErrorBoundary>
+      <div style={{ 
+        fontFamily: 'Arial, sans-serif',
+        margin: 0,
+        padding: 0,
+        height: '100vh',
+        overflow: 'hidden',
+        backgroundColor: '#f8f9fa',
+        display: 'grid',
+        gridTemplateColumns: '280px 1fr 280px',
+        gridTemplateRows: '1fr',
+        gap: 0,
+      }}>
       {/* Left Panel - Entities */}
       <div style={{
         backgroundColor: '#f8f9fa',
@@ -129,6 +131,7 @@ function App() {
         <ConstraintPanel />
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
 

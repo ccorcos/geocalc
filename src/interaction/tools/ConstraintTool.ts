@@ -22,8 +22,8 @@ export class ConstraintTool {
     
     // Distance constraint between two points
     if (this.selectedForConstraint.length === 2) {
-      const entity1 = store.document.points.get(this.selectedForConstraint[0]);
-      const entity2 = store.document.points.get(this.selectedForConstraint[1]);
+      const entity1 = store.geometry.points.get(this.selectedForConstraint[0]);
+      const entity2 = store.geometry.points.get(this.selectedForConstraint[1]);
       
       if (entity1 && entity2) {
         const currentDistance = Math.sqrt(
@@ -44,8 +44,8 @@ export class ConstraintTool {
 
     // Parallel constraint between two lines
     if (this.selectedForConstraint.length === 2) {
-      const line1 = store.document.lines.get(this.selectedForConstraint[0]);
-      const line2 = store.document.lines.get(this.selectedForConstraint[1]);
+      const line1 = store.geometry.lines.get(this.selectedForConstraint[0]);
+      const line2 = store.geometry.lines.get(this.selectedForConstraint[1]);
       
       if (line1 && line2) {
         const constraint = createConstraint(
@@ -61,11 +61,11 @@ export class ConstraintTool {
 
     // Horizontal/Vertical constraint for single line
     if (this.selectedForConstraint.length === 1) {
-      const line = store.document.lines.get(this.selectedForConstraint[0]);
+      const line = store.geometry.lines.get(this.selectedForConstraint[0]);
       
       if (line) {
-        const point1 = store.document.points.get(line.point1Id);
-        const point2 = store.document.points.get(line.point2Id);
+        const point1 = store.geometry.points.get(line.point1Id);
+        const point2 = store.geometry.points.get(line.point2Id);
         
         if (point1 && point2) {
           const dx = Math.abs(point2.x - point1.x);

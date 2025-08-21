@@ -9,7 +9,7 @@ interface EntityPanelProps {
 
 export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   const { 
-    document, 
+    geometry, 
     selection, 
     updatePoint, 
     updateCircle,
@@ -52,7 +52,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   };
 
   const handleCoordFixedToggle = (pointId: string, coord: 'x' | 'y') => {
-    const point = document.points.get(pointId);
+    const point = geometry.points.get(pointId);
     if (!point) return;
     
     const currentValue = coord === 'x' ? point.x : point.y;
@@ -100,11 +100,11 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
   };
 
   const handleRadiusFixedToggle = (circleId: string) => {
-    const circle = document.circles.get(circleId);
+    const circle = geometry.circles.get(circleId);
     if (!circle) return;
     
     const constraintId = `fix-radius-${circleId}`;
-    const existingConstraint = document.constraints.get(constraintId);
+    const existingConstraint = geometry.constraints.get(constraintId);
     
     if (existingConstraint) {
       useStore.getState().removeEntity(constraintId);
@@ -241,7 +241,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
           fontWeight: 600,
           color: '#333',
         }}>
-          Entities ({document.points.size + document.lines.size + document.circles.size})
+          Entities ({geometry.points.size + geometry.lines.size + geometry.circles.size})
         </h3>
       </div>
       
@@ -251,7 +251,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
         overflowY: 'auto',
         padding: '8px',
       }}>
-        {Array.from(document.points.entries()).map(([id, point], index) => {
+        {Array.from(geometry.points.entries()).map(([id, point], index) => {
           const name = getHumanName(index);
           const hasFixX = !!getFixXConstraint(id);
           const hasFixY = !!getFixYConstraint(id);
@@ -349,12 +349,12 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
           );
         })}
 
-        {Array.from(document.lines.entries()).map(([id, line], index) => {
-          const name = getHumanName(document.points.size + index);
-          const point1 = document.points.get(line.point1Id);
-          const point2 = document.points.get(line.point2Id);
-          const point1Index = Array.from(document.points.keys()).indexOf(line.point1Id);
-          const point2Index = Array.from(document.points.keys()).indexOf(line.point2Id);
+        {Array.from(geometry.lines.entries()).map(([id, line], index) => {
+          const name = getHumanName(geometry.points.size + index);
+          const point1 = geometry.points.get(line.point1Id);
+          const point2 = geometry.points.get(line.point2Id);
+          const point1Index = Array.from(geometry.points.keys()).indexOf(line.point1Id);
+          const point2Index = Array.from(geometry.points.keys()).indexOf(line.point2Id);
           const point1Name = point1Index >= 0 ? getHumanName(point1Index) : '?';
           const point2Name = point2Index >= 0 ? getHumanName(point2Index) : '?';
           
@@ -392,12 +392,12 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
           );
         })}
 
-        {Array.from(document.circles.entries()).map(([id, circle], index) => {
-          const name = getHumanName(document.points.size + document.lines.size + index);
-          const centerPoint = document.points.get(circle.centerId);
-          const centerIndex = Array.from(document.points.keys()).indexOf(circle.centerId);
+        {Array.from(geometry.circles.entries()).map(([id, circle], index) => {
+          const name = getHumanName(geometry.points.size + geometry.lines.size + index);
+          const centerPoint = geometry.points.get(circle.centerId);
+          const centerIndex = Array.from(geometry.points.keys()).indexOf(circle.centerId);
           const centerName = centerIndex >= 0 ? getHumanName(centerIndex) : '?';
-          const hasFixRadius = !!document.constraints.get(`fix-radius-${id}`);
+          const hasFixRadius = !!geometry.constraints.get(`fix-radius-${id}`);
 
           return (
             <div 
@@ -467,7 +467,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = '' }) => {
         })}
 
         {/* Empty State */}
-        {document.points.size === 0 && document.lines.size === 0 && document.circles.size === 0 && (
+        {geometry.points.size === 0 && geometry.lines.size === 0 && geometry.circles.size === 0 && (
           <div style={{
             padding: '20px',
             textAlign: 'center',

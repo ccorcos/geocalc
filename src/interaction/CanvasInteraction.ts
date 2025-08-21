@@ -54,11 +54,11 @@ export class CanvasInteraction {
 
   private findEntityAt(worldX: number, worldY: number): string | null {
     const store = useStore.getState();
-    const { document } = store;
+    const { geometry } = store;
     const tolerance = 10 / store.viewport.zoom; // Scale tolerance with zoom
 
     // Check points first (highest priority for selection)
-    for (const [id, point] of document.points) {
+    for (const [id, point] of geometry.points) {
       const dist = Math.sqrt((point.x - worldX) ** 2 + (point.y - worldY) ** 2);
       if (dist <= tolerance) {
         return id;
@@ -66,9 +66,9 @@ export class CanvasInteraction {
     }
 
     // Check lines
-    for (const [id, line] of document.lines) {
-      const point1 = document.points.get(line.point1Id);
-      const point2 = document.points.get(line.point2Id);
+    for (const [id, line] of geometry.lines) {
+      const point1 = geometry.points.get(line.point1Id);
+      const point2 = geometry.points.get(line.point2Id);
       if (!point1 || !point2) continue;
 
       const dist = this.distanceToLineSegment(
@@ -83,8 +83,8 @@ export class CanvasInteraction {
     }
 
     // Check circles
-    for (const [id, circle] of document.circles) {
-      const center = document.points.get(circle.centerId);
+    for (const [id, circle] of geometry.circles) {
+      const center = geometry.points.get(circle.centerId);
       if (!center) continue;
 
       const distToCenter = Math.sqrt((center.x - worldX) ** 2 + (center.y - worldY) ** 2);
@@ -100,7 +100,7 @@ export class CanvasInteraction {
 
   private getEntitiesInRect(rect: { startX: number; startY: number; endX: number; endY: number }): Set<string> {
     const store = useStore.getState();
-    const { document } = store;
+    const { geometry } = store;
     const selectedIds = new Set<string>();
     
     // Normalize rectangle coordinates
@@ -110,16 +110,16 @@ export class CanvasInteraction {
     const maxY = Math.max(rect.startY, rect.endY);
     
     // Check points
-    for (const [id, point] of document.points) {
+    for (const [id, point] of geometry.points) {
       if (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY) {
         selectedIds.add(id);
       }
     }
     
     // Check lines (select if both endpoints are in rectangle)
-    for (const [id, line] of document.lines) {
-      const point1 = document.points.get(line.point1Id);
-      const point2 = document.points.get(line.point2Id);
+    for (const [id, line] of geometry.lines) {
+      const point1 = geometry.points.get(line.point1Id);
+      const point2 = geometry.points.get(line.point2Id);
       if (point1 && point2) {
         const p1InRect = point1.x >= minX && point1.x <= maxX && point1.y >= minY && point1.y <= maxY;
         const p2InRect = point2.x >= minX && point2.x <= maxX && point2.y >= minY && point2.y <= maxY;
@@ -130,8 +130,8 @@ export class CanvasInteraction {
     }
     
     // Check circles (select if center is in rectangle)
-    for (const [id, circle] of document.circles) {
-      const center = document.points.get(circle.centerId);
+    for (const [id, circle] of geometry.circles) {
+      const center = geometry.points.get(circle.centerId);
       if (center && center.x >= minX && center.x <= maxX && center.y >= minY && center.y <= maxY) {
         selectedIds.add(id);
       }
@@ -175,11 +175,11 @@ export class CanvasInteraction {
 
   private findCircleRadiusDragTarget(worldX: number, worldY: number): string | null {
     const store = useStore.getState();
-    const { document } = store;
+    const { geometry } = store;
     const tolerance = 15 / store.viewport.zoom; // Slightly larger tolerance for radius drag
 
-    for (const [id, circle] of document.circles) {
-      const center = document.points.get(circle.centerId);
+    for (const [id, circle] of geometry.circles) {
+      const center = geometry.points.get(circle.centerId);
       if (!center) continue;
 
       const distToCenter = Math.sqrt((center.x - worldX) ** 2 + (center.y - worldY) ** 2);
@@ -249,7 +249,7 @@ export class CanvasInteraction {
     if (store.currentTool === 'circle' && this.circleRadiusDrag && this.tempCircleCenter) {
       // If cmd key was held during mousedown, add fix-radius constraint
       if ((this.circleRadiusDrag as any).shouldFixRadius) {
-        const circle = store.document.circles.get(this.circleRadiusDrag.circleId);
+        const circle = store.geometry.circles.get(this.circleRadiusDrag.circleId);
         if (circle) {
           const fixRadiusConstraint = {
             id: `constraint-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -367,11 +367,11 @@ export class CanvasInteraction {
     // Check for circle radius drag first
     const circleRadiusTarget = this.findCircleRadiusDragTarget(worldPos.x, worldPos.y);
     if (circleRadiusTarget && !shiftKey) {
-      const circle = store.document.circles.get(circleRadiusTarget);
+      const circle = store.geometry.circles.get(circleRadiusTarget);
       if (circle) {
         if (cmdKey) {
           // Cmd+click on circle radius to toggle fixed state
-          const existingConstraint = Array.from(store.document.constraints.entries())
+          const existingConstraint = Array.from(store.geometry.constraints.entries())
             .find(([, constraint]) => 
               constraint.type === 'fix-radius' && 
               constraint.entityIds.includes(circleRadiusTarget)
@@ -413,8 +413,8 @@ export class CanvasInteraction {
 
     if (entityId) {
       // Handle Cmd/Ctrl+Click for toggling point fixed state
-      if (cmdKey && store.document.points.has(entityId)) {
-        const point = store.document.points.get(entityId);
+      if (cmdKey && store.geometry.points.has(entityId)) {
+        const point = store.geometry.points.get(entityId);
         if (!point) return;
         
         const hasFixX = store.getFixXConstraint(entityId) !== null;
@@ -453,9 +453,9 @@ export class CanvasInteraction {
       
       // Start dragging if any selected entities can be moved
       const hasMovableEntities = Array.from(selectedIds).some(id => 
-        store.document.points.has(id) || 
-        store.document.circles.has(id) || 
-        store.document.lines.has(id)
+        store.geometry.points.has(id) || 
+        store.geometry.circles.has(id) || 
+        store.geometry.lines.has(id)
       );
       
       if (hasMovableEntities) {
@@ -485,7 +485,7 @@ export class CanvasInteraction {
     
     // Check if clicking on an existing point
     const existingPointId = this.findEntityAt(worldPos.x, worldPos.y);
-    const existingPoint = existingPointId ? store.document.points.get(existingPointId) : null;
+    const existingPoint = existingPointId ? store.geometry.points.get(existingPointId) : null;
     
     if (!this.tempLineStart) {
       // First click - use existing point or create new point
@@ -523,7 +523,7 @@ export class CanvasInteraction {
     
     // Check if clicking on an existing point
     const existingPointId = this.findEntityAt(worldPos.x, worldPos.y);
-    const existingPoint = existingPointId ? store.document.points.get(existingPointId) : null;
+    const existingPoint = existingPointId ? store.geometry.points.get(existingPointId) : null;
     
     if (existingPoint) {
       // Use existing point as center
@@ -566,8 +566,8 @@ export class CanvasInteraction {
     
     // Handle circle radius dragging (both for select tool and circle tool)
     if (this.circleRadiusDrag && (store.currentTool === 'select' || store.currentTool === 'circle')) {
-      const circle = store.document.circles.get(this.circleRadiusDrag.circleId);
-      const center = circle ? store.document.points.get(circle.centerId) : null;
+      const circle = store.geometry.circles.get(this.circleRadiusDrag.circleId);
+      const center = circle ? store.geometry.points.get(circle.centerId) : null;
       
       if (circle && center) {
         // Calculate new radius as distance from center to mouse
@@ -590,7 +590,7 @@ export class CanvasInteraction {
       
       for (const entityId of store.selection.selectedIds) {
         // Move points directly
-        const point = store.document.points.get(entityId);
+        const point = store.geometry.points.get(entityId);
         if (point) {
           store.updatePoint(entityId, {
             x: point.x + dx,
@@ -599,9 +599,9 @@ export class CanvasInteraction {
         }
         
         // Move circles by moving their center points
-        const circle = store.document.circles.get(entityId);
+        const circle = store.geometry.circles.get(entityId);
         if (circle) {
-          const centerPoint = store.document.points.get(circle.centerId);
+          const centerPoint = store.geometry.points.get(circle.centerId);
           if (centerPoint) {
             store.updatePoint(circle.centerId, {
               x: centerPoint.x + dx,
@@ -611,10 +611,10 @@ export class CanvasInteraction {
         }
         
         // Move lines by moving their endpoint points
-        const line = store.document.lines.get(entityId);
+        const line = store.geometry.lines.get(entityId);
         if (line) {
-          const point1 = store.document.points.get(line.point1Id);
-          const point2 = store.document.points.get(line.point2Id);
+          const point1 = store.geometry.points.get(line.point1Id);
+          const point2 = store.geometry.points.get(line.point2Id);
           
           if (point1) {
             store.updatePoint(line.point1Id, {

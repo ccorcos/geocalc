@@ -11,7 +11,7 @@ interface ConstraintPanelProps {
 
 export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = '' }) => {
   const { 
-    document, 
+    geometry, 
     selection, 
     currentTool, 
     addConstraint,
@@ -31,13 +31,13 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
 
   const selectedIds = Array.from(selection.selectedIds);
   const selectedEntities = selectedIds.map(id => {
-    const point = document.points.get(id);
+    const point = geometry.points.get(id);
     if (point) return { type: 'point', entity: point };
     
-    const line = document.lines.get(id);
+    const line = geometry.lines.get(id);
     if (line) return { type: 'line', entity: line };
     
-    const circle = document.circles.get(id);
+    const circle = geometry.circles.get(id);
     if (circle) return { type: 'circle', entity: circle };
     
     return null;
@@ -114,8 +114,8 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
 
     if (constraintDef.needsValue) {
       if ((selectedConstraintType === 'distance' || selectedConstraintType === 'x-distance' || selectedConstraintType === 'y-distance') && selectedIds.length === 2) {
-        const point1 = document.points.get(selectedIds[0]);
-        const point2 = document.points.get(selectedIds[1]);
+        const point1 = geometry.points.get(selectedIds[0]);
+        const point2 = geometry.points.get(selectedIds[1]);
         
         if (point1 && point2) {
           if (constraintValue.trim() === '') {
@@ -141,9 +141,9 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
           }
         }
       } else if (selectedConstraintType === 'angle' && selectedIds.length === 3) {
-        const point1 = document.points.get(selectedIds[0]);
-        const point2 = document.points.get(selectedIds[1]);
-        const point3 = document.points.get(selectedIds[2]);
+        const point1 = geometry.points.get(selectedIds[0]);
+        const point2 = geometry.points.get(selectedIds[1]);
+        const point3 = geometry.points.get(selectedIds[2]);
         
         if (point1 && point2 && point3) {
           if (constraintValue.trim() === '') {
@@ -194,7 +194,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
   const handleConstraintValueSubmit = () => {
     if (!editingConstraint) return;
     
-    const constraint = document.constraints.get(editingConstraint.constraintId);
+    const constraint = geometry.constraints.get(editingConstraint.constraintId);
     const newValue = parseFloat(editingConstraint.value);
     
     if (!isNaN(newValue)) {
@@ -259,7 +259,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
     return name;
   };
 
-  const constraintCount = document.constraints.size;
+  const constraintCount = geometry.constraints.size;
 
   return (
     <div data-testid="constraint-panel" className={`constraint-panel ${className}`} style={{
@@ -317,16 +317,16 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
       }}>
 
         {/* Existing Constraints List */}
-        {Array.from(document.constraints.entries()).map(([id, constraint]) => {
+        {Array.from(geometry.constraints.entries()).map(([id, constraint]) => {
           const entityNames = constraint.entityIds.map(entityId => {
-            const pointIndex = Array.from(document.points.keys()).indexOf(entityId);
+            const pointIndex = Array.from(geometry.points.keys()).indexOf(entityId);
             if (pointIndex >= 0) return getHumanName(pointIndex);
             
-            const lineIndex = Array.from(document.lines.keys()).indexOf(entityId);
-            if (lineIndex >= 0) return getHumanName(document.points.size + lineIndex);
+            const lineIndex = Array.from(geometry.lines.keys()).indexOf(entityId);
+            if (lineIndex >= 0) return getHumanName(geometry.points.size + lineIndex);
             
-            const circleIndex = Array.from(document.circles.keys()).indexOf(entityId);
-            if (circleIndex >= 0) return getHumanName(document.points.size + document.lines.size + circleIndex);
+            const circleIndex = Array.from(geometry.circles.keys()).indexOf(entityId);
+            if (circleIndex >= 0) return getHumanName(geometry.points.size + geometry.lines.size + circleIndex);
             
             return entityId.slice(0, 6);
           });
@@ -454,7 +454,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ className = ''
         })}
 
         {/* Empty State */}
-        {document.constraints.size === 0 && (
+        {geometry.constraints.size === 0 && (
           <div style={{
             padding: '20px',
             textAlign: 'center',

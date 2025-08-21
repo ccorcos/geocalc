@@ -15,7 +15,7 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
   const interactionRef = useRef<CanvasInteraction | null>(null);
   const [contextMenu, setContextMenu] = useState<{x: number; y: number} | null>(null);
   
-  const { document, viewport, selection, setViewport, currentTool, isDragging } = useStore();
+  const { geometry, viewport, selection, setViewport, currentTool, isDragging } = useStore();
 
   // Initialize renderer and interaction
   useEffect(() => {
@@ -55,14 +55,14 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
       const selectionRect = interactionRef.current.getSelectionRect();
       const linePreview = interactionRef.current.getLinePreview();
       
-      rendererRef.current.render(document, viewport, selection, {
+      rendererRef.current.render(geometry, viewport, selection, {
         tempLineStart,
         tempCircleCenter,
         selectionRect,
         linePreview
       });
     }
-  }, [document, viewport, selection, isDragging]);
+  }, [geometry, viewport, selection, isDragging]);
 
   // Render on state changes  
   useEffect(() => {
@@ -148,22 +148,22 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
     // Check if hovering over a selected entity that can be moved
     if (selection.hoveredId) {
       if (selection.selectedIds.has(selection.hoveredId)) {
-        const canMove = document.points.has(selection.hoveredId) || 
-                       document.circles.has(selection.hoveredId) || 
-                       document.lines.has(selection.hoveredId);
+        const canMove = geometry.points.has(selection.hoveredId) || 
+                       geometry.circles.has(selection.hoveredId) || 
+                       geometry.lines.has(selection.hoveredId);
         if (canMove) {
           return 'grab';
         }
       }
       
       // Show resize cursor for circle radius handles
-      if (document.circles.has(selection.hoveredId)) {
+      if (geometry.circles.has(selection.hoveredId)) {
         return 'ew-resize';
       }
     }
     
     return 'default';
-  }, [currentTool, isDragging, selection.hoveredId, selection.selectedIds, document.points, document.circles, document.lines]);
+  }, [currentTool, isDragging, selection.hoveredId, selection.selectedIds, geometry.points, geometry.circles, geometry.lines]);
 
   return (
     <>

@@ -223,7 +223,7 @@ export class GeoCalcTestHelper {
       const points: {[key: string]: {x: number, y: number}} = {};
       
       // Convert Map to object for JSON serialization
-      state.document.points.forEach((point: any, id: string) => {
+      state.geometry.points.forEach((point: any, id: string) => {
         points[id] = { x: point.x, y: point.y };
       });
       
@@ -240,7 +240,7 @@ export class GeoCalcTestHelper {
       const constraints: {[key: string]: any} = {};
       
       // Convert Map to object for JSON serialization
-      state.document.constraints.forEach((constraint: any, id: string) => {
+      state.geometry.constraints.forEach((constraint: any, id: string) => {
         constraints[id] = {
           type: constraint.type,
           entityIds: constraint.entityIds,

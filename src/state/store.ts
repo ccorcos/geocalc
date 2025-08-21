@@ -6,7 +6,7 @@ import { GradientDescentSolver } from '../engine/solver/GradientDescentSolver';
 
 
 interface AppState {
-  document: GeometryDocument;
+  geometry: GeometryDocument;
   currentTool: ToolType;
   viewport: Viewport;
   selection: SelectionState;
@@ -16,7 +16,7 @@ interface AppState {
   isSolving: boolean;
   
   // Actions
-  setDocument: (document: GeometryDocument) => void;
+  setGeometry: (geometry: GeometryDocument) => void;
   setCurrentTool: (tool: ToolType) => void;
   setViewport: (viewport: Partial<Viewport>) => void;
   setSelection: (selection: Partial<SelectionState>) => void;
@@ -54,7 +54,7 @@ const solver = new GradientDescentSolver();
 
 export const useStore = create<AppState>()(
   immer((set, get) => ({
-    document: createEmptyDocument(),
+    geometry: createEmptyDocument(),
     currentTool: 'select',
     viewport: {
       x: 0,
@@ -72,7 +72,7 @@ export const useStore = create<AppState>()(
     dragStartPoint: null,
     isSolving: false,
 
-    setDocument: (document) => set({ document }),
+    setGeometry: (geometry) => set({ geometry }),
     
     setCurrentTool: (tool) => set({ currentTool: tool }),
     
@@ -107,46 +107,46 @@ export const useStore = create<AppState>()(
     }),
 
     addPoint: (point) => set((state) => {
-      state.document.points.set(point.id, point);
-      state.document.metadata.modified = new Date();
+      state.geometry.points.set(point.id, point);
+      state.geometry.metadata.modified = new Date();
     }),
 
     addLine: (line) => set((state) => {
-      state.document.lines.set(line.id, line);
-      state.document.metadata.modified = new Date();
+      state.geometry.lines.set(line.id, line);
+      state.geometry.metadata.modified = new Date();
     }),
 
     addCircle: (circle) => set((state) => {
-      state.document.circles.set(circle.id, circle);
-      state.document.metadata.modified = new Date();
+      state.geometry.circles.set(circle.id, circle);
+      state.geometry.metadata.modified = new Date();
     }),
 
     addConstraint: (constraint) => set((state) => {
-      state.document.constraints.set(constraint.id, constraint);
-      state.document.metadata.modified = new Date();
+      state.geometry.constraints.set(constraint.id, constraint);
+      state.geometry.metadata.modified = new Date();
     }),
 
     updateConstraint: (id, updates) => set((state) => {
-      const constraint = state.document.constraints.get(id);
+      const constraint = state.geometry.constraints.get(id);
       if (constraint) {
         Object.assign(constraint, updates);
-        state.document.metadata.modified = new Date();
+        state.geometry.metadata.modified = new Date();
       }
     }),
 
     updatePoint: (id, updates) => set((state) => {
-      const point = state.document.points.get(id);
+      const point = state.geometry.points.get(id);
       if (point) {
         Object.assign(point, updates);
-        state.document.metadata.modified = new Date();
+        state.geometry.metadata.modified = new Date();
       }
     }),
 
     updateCircle: (id, updates) => set((state) => {
-      const circle = state.document.circles.get(id);
+      const circle = state.geometry.circles.get(id);
       if (circle) {
         Object.assign(circle, updates);
-        state.document.metadata.modified = new Date();
+        state.geometry.metadata.modified = new Date();
       }
     }),
 
@@ -158,8 +158,8 @@ export const useStore = create<AppState>()(
         value,
         priority: 1,
       };
-      state.document.constraints.set(fixXConstraint.id, fixXConstraint);
-      state.document.metadata.modified = new Date();
+      state.geometry.constraints.set(fixXConstraint.id, fixXConstraint);
+      state.geometry.metadata.modified = new Date();
     }),
 
     addFixYConstraint: (pointId, value) => set((state) => {
@@ -170,74 +170,90 @@ export const useStore = create<AppState>()(
         value,
         priority: 1,
       };
-      state.document.constraints.set(fixYConstraint.id, fixYConstraint);
-      state.document.metadata.modified = new Date();
+      state.geometry.constraints.set(fixYConstraint.id, fixYConstraint);
+      state.geometry.metadata.modified = new Date();
     }),
 
     removeFixXConstraint: (pointId) => set((state) => {
       const constraintId = `fix-x-${pointId}`;
-      state.document.constraints.delete(constraintId);
-      state.document.metadata.modified = new Date();
+      state.geometry.constraints.delete(constraintId);
+      state.geometry.metadata.modified = new Date();
     }),
 
     removeFixYConstraint: (pointId) => set((state) => {
       const constraintId = `fix-y-${pointId}`;
-      state.document.constraints.delete(constraintId);
-      state.document.metadata.modified = new Date();
+      state.geometry.constraints.delete(constraintId);
+      state.geometry.metadata.modified = new Date();
     }),
 
     getFixXConstraint: (pointId) => {
       const state = get();
-      return state.document.constraints.get(`fix-x-${pointId}`) || null;
+      return state.geometry.constraints.get(`fix-x-${pointId}`) || null;
     },
 
     getFixYConstraint: (pointId) => {
       const state = get();
-      return state.document.constraints.get(`fix-y-${pointId}`) || null;
+      return state.geometry.constraints.get(`fix-y-${pointId}`) || null;
     },
 
     removeEntity: (id) => set((state) => {
-      // Track which entities need to be deleted
-      const toDelete = new Set([id]);
+      // Check if we're deleting a constraint
+      const isConstraint = state.geometry.constraints.has(id);
       
-      // If deleting a point, find dependent lines and circles
-      if (state.document.points.has(id)) {
-        // Find lines that use this point
-        for (const [lineId, line] of state.document.lines) {
-          if (line.point1Id === id || line.point2Id === id) {
-            toDelete.add(lineId);
+      if (isConstraint) {
+        // For constraints, only delete the constraint itself
+        state.geometry.constraints.delete(id);
+        if (state.selectedConstraintId === id) {
+          state.selectedConstraintId = null;
+        }
+      } else {
+        // For entities, use cascade deletion logic
+        // Track which entities need to be deleted
+        const toDelete = new Set([id]);
+        
+        // If deleting a point, find dependent lines and circles
+        if (state.geometry.points.has(id)) {
+          // Find lines that use this point
+          for (const [lineId, line] of state.geometry.lines) {
+            if (line.point1Id === id || line.point2Id === id) {
+              toDelete.add(lineId);
+            }
+          }
+          
+          // Find circles that use this point as center
+          for (const [circleId, circle] of state.geometry.circles) {
+            if (circle.centerId === id) {
+              toDelete.add(circleId);
+            }
           }
         }
         
-        // Find circles that use this point as center
-        for (const [circleId, circle] of state.document.circles) {
-          if (circle.centerId === id) {
-            toDelete.add(circleId);
+        // Find constraints that depend on any entity being deleted
+        for (const [constraintId, constraint] of state.geometry.constraints) {
+          if (constraint.entityIds.some(entityId => toDelete.has(entityId))) {
+            toDelete.add(constraintId);
+          }
+        }
+        
+        // Delete all entities and constraints
+        for (const entityId of toDelete) {
+          state.geometry.points.delete(entityId);
+          state.geometry.lines.delete(entityId);
+          state.geometry.circles.delete(entityId);
+          state.geometry.constraints.delete(entityId);
+          state.selection.selectedIds.delete(entityId);
+          
+          if (state.selection.hoveredId === entityId) {
+            state.selection.hoveredId = null;
+          }
+          
+          if (state.selectedConstraintId === entityId) {
+            state.selectedConstraintId = null;
           }
         }
       }
       
-      // Find constraints that depend on any entity being deleted
-      for (const [constraintId, constraint] of state.document.constraints) {
-        if (constraint.entityIds.some(entityId => toDelete.has(entityId))) {
-          toDelete.add(constraintId);
-        }
-      }
-      
-      // Delete all entities and constraints
-      for (const entityId of toDelete) {
-        state.document.points.delete(entityId);
-        state.document.lines.delete(entityId);
-        state.document.circles.delete(entityId);
-        state.document.constraints.delete(entityId);
-        state.selection.selectedIds.delete(entityId);
-        
-        if (state.selection.hoveredId === entityId) {
-          state.selection.hoveredId = null;
-        }
-      }
-      
-      state.document.metadata.modified = new Date();
+      state.geometry.metadata.modified = new Date();
     }),
 
     solve: () => {
@@ -247,11 +263,11 @@ export const useStore = create<AppState>()(
       useStore.setState({ isSolving: true });
       
       try {
-        const result = solver.solve(state.document);
+        const result = solver.solve(state.geometry);
         
         if (result.success) {
           // Update the document with solved positions
-          useStore.setState({ document: result.document, isSolving: false });
+          useStore.setState({ geometry: result.geometry, isSolving: false });
         } else {
           console.warn('Solver failed to converge', result);
           useStore.setState({ isSolving: false });
