@@ -132,7 +132,7 @@ export class GeoCalcTestHelper {
       .locator('div')
       .filter({ hasText: displayType })
       .first())
-      .toBeVisible();
+      .toBeVisible({ timeout: 10000 });
   }
 
   async expectConstraintCount(count: number) {
@@ -148,6 +148,28 @@ export class GeoCalcTestHelper {
     expect(foundConstraints).toBeGreaterThanOrEqual(count);
   }
 
+  // Line operations
+  async createLine(startPoint: TestPoint, endPoint: TestPoint) {
+    await this.selectTool('line');
+    await this.canvas.click({ position: { x: startPoint.x, y: startPoint.y } });
+    await this.canvas.click({ position: { x: endPoint.x, y: endPoint.y } });
+  }
+
+  async selectLineInPanel(lineIndex: number = 0) {
+    const lineInPanel = this.entityList
+      .locator('div')
+      .filter({ hasText: 'line' })
+      .nth(lineIndex);
+    await lineInPanel.click();
+  }
+
+  async selectTwoLinesInPanel() {
+    const lines = this.entityList.locator('div').filter({ hasText: 'line' });
+    await lines.nth(0).click();
+    await lines.nth(1).click({ modifiers: ['Shift'] });
+    await this.waitForConstraintUI(2);
+  }
+
   // Complex operations
   async selectTwoPoints(point1: TestPoint, point2: TestPoint) {
     await this.selectTool('select');
@@ -159,7 +181,18 @@ export class GeoCalcTestHelper {
   async anchorPoint(point: TestPoint) {
     await this.selectTool('select');
     await this.clickPoint(point);
-    await this.cmdClickPointInPanel(0); // Assumes it's the first point in the panel
+    
+    // Cmd+click the X and Y coordinates in the entity panel to fix them
+    const pointInPanel = this.entityList
+      .locator('div')
+      .filter({ hasText: 'point' })
+      .nth(0);
+    
+    // Click the x coordinate span with cmd key
+    await pointInPanel.locator('span').filter({ hasText: /x:/ }).click({ modifiers: ['Meta'] });
+    
+    // Click the y coordinate span with cmd key
+    await pointInPanel.locator('span').filter({ hasText: /y:/ }).click({ modifiers: ['Meta'] });
   }
 
   async createDistanceConstraints(xDistance: number, yDistance: number) {
