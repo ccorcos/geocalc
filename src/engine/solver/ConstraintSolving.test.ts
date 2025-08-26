@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { distance } from "../../utils/math";
 import {
   createConstraint,
   createEmptyGeometry,
   createLine,
   createPoint,
-} from "../../engine/models/geometry";
-import { Geometry } from "../../engine/models/types";
-import { GradientDescentSolver } from "../../engine/solver/GradientDescentSolver";
-import { distance } from "../../utils/math";
+} from "../models/geometry";
+import { Geometry } from "../models/types";
+import { GradientDescentSolver } from "./GradientDescentSolver";
 
 describe("Constraint Solving Integration Tests", () => {
   let solver: GradientDescentSolver;

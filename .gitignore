@@ -71,3 +71,4 @@ jspm_packages/
 .vite/
 
 playwright-report/
+test-results/
