@@ -4,6 +4,7 @@ import {
   createEmptyGeometry,
   createLine,
   createPoint,
+  createCircle,
 } from "./geometry";
 import { Geometry } from "./types";
 import { ConstraintEvaluator } from "./ConstraintEvaluator";
@@ -550,6 +551,200 @@ describe("ConstraintEvaluator", () => {
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0); // Should handle gracefully
+      expect(result.gradient.size).toBe(0);
+    });
+  });
+
+  describe("X-Distance Constraints", () => {
+    it("should evaluate x-distance constraint with zero error when satisfied", () => {
+      const p1 = createPoint(2, 5);
+      const p2 = createPoint(7, 10); // x-distance = 7-2 = 5
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("x-distance", [p1.id, p2.id], 5);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.constraintId).toBe(constraint.id);
+      expect(result.error).toBeCloseTo(0, 10);
+    });
+
+    it("should evaluate x-distance constraint with positive error when not satisfied", () => {
+      const p1 = createPoint(2, 5);
+      const p2 = createPoint(7, 10); // actual x-distance = 5, want 8
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("x-distance", [p1.id, p2.id], 8);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.error).toBe(9); // (5-8)² = 9
+    });
+
+    it("should handle negative x-distance values", () => {
+      const p1 = createPoint(7, 5);
+      const p2 = createPoint(2, 10); // x-distance = 2-7 = -5
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("x-distance", [p1.id, p2.id], -5);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.error).toBeCloseTo(0, 10);
+    });
+
+    it("should compute correct gradients for x-distance constraint", () => {
+      const p1 = createPoint(2, 5);
+      const p2 = createPoint(7, 10); // current x-distance = 5, want 3
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("x-distance", [p1.id, p2.id], 3);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.gradient.has(p1.id)).toBe(true);
+      expect(result.gradient.has(p2.id)).toBe(true);
+
+      const grad1 = result.gradient.get(p1.id)!;
+      const grad2 = result.gradient.get(p2.id)!;
+
+      // errorDerivative = 2 * (currentXDistance - targetXDistance) = 2 * (5-3) = 4
+      expect(grad1.x).toBe(-4); // -errorDerivative
+      expect(grad1.y).toBe(0);
+      expect(grad2.x).toBe(4); // errorDerivative
+      expect(grad2.y).toBe(0);
+    });
+  });
+
+  describe("Y-Distance Constraints", () => {
+    it("should evaluate y-distance constraint with zero error when satisfied", () => {
+      const p1 = createPoint(5, 2);
+      const p2 = createPoint(10, 8); // y-distance = 8-2 = 6
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("y-distance", [p1.id, p2.id], 6);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.constraintId).toBe(constraint.id);
+      expect(result.error).toBeCloseTo(0, 10);
+    });
+
+    it("should evaluate y-distance constraint with positive error when not satisfied", () => {
+      const p1 = createPoint(5, 2);
+      const p2 = createPoint(10, 8); // actual y-distance = 6, want 3
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("y-distance", [p1.id, p2.id], 3);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.error).toBe(9); // (6-3)² = 9
+    });
+
+    it("should handle negative y-distance values", () => {
+      const p1 = createPoint(5, 8);
+      const p2 = createPoint(10, 2); // y-distance = 2-8 = -6
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("y-distance", [p1.id, p2.id], -6);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.error).toBeCloseTo(0, 10);
+    });
+
+    it("should compute correct gradients for y-distance constraint", () => {
+      const p1 = createPoint(5, 2);
+      const p2 = createPoint(10, 8); // current y-distance = 6, want 4
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+
+      const constraint = createConstraint("y-distance", [p1.id, p2.id], 4);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.gradient.has(p1.id)).toBe(true);
+      expect(result.gradient.has(p2.id)).toBe(true);
+
+      const grad1 = result.gradient.get(p1.id)!;
+      const grad2 = result.gradient.get(p2.id)!;
+
+      // errorDerivative = 2 * (currentYDistance - targetYDistance) = 2 * (6-4) = 4
+      expect(grad1.x).toBe(0);
+      expect(grad1.y).toBe(-4); // -errorDerivative
+      expect(grad2.x).toBe(0);
+      expect(grad2.y).toBe(4); // errorDerivative
+    });
+  });
+
+  describe("Fix-Radius Constraints", () => {
+    it("should evaluate fix-radius constraint with zero error when satisfied", () => {
+      const center = createPoint(5, 5);
+      const circle = createCircle(center.id, 3.0);
+
+      geometry.points.set(center.id, center);
+      geometry.circles.set(circle.id, circle);
+
+      const constraint = createConstraint("fix-radius", [circle.id], 3.0);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.constraintId).toBe(constraint.id);
+      expect(result.error).toBeCloseTo(0, 10);
+    });
+
+    it("should evaluate fix-radius constraint with positive error when not satisfied", () => {
+      const center = createPoint(5, 5);
+      const circle = createCircle(center.id, 4.0); // actual radius = 4, want 2
+
+      geometry.points.set(center.id, center);
+      geometry.circles.set(circle.id, circle);
+
+      const constraint = createConstraint("fix-radius", [circle.id], 2.0);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.error).toBe(4); // (4-2)² = 4
+    });
+
+    it("should handle zero radius constraint", () => {
+      const center = createPoint(5, 5);
+      const circle = createCircle(center.id, 0.0);
+
+      geometry.points.set(center.id, center);
+      geometry.circles.set(circle.id, circle);
+
+      const constraint = createConstraint("fix-radius", [circle.id], 0.0);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.error).toBe(0);
+    });
+
+    it("should return empty gradient for fix-radius constraint", () => {
+      const center = createPoint(5, 5);
+      const circle = createCircle(center.id, 4.0);
+
+      geometry.points.set(center.id, center);
+      geometry.circles.set(circle.id, circle);
+
+      const constraint = createConstraint("fix-radius", [circle.id], 2.0);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      // fix-radius doesn't provide gradients since radius changes are handled differently
+      expect(result.gradient.size).toBe(0);
+    });
+
+    it("should handle missing circle gracefully", () => {
+      const constraint = createConstraint("fix-radius", ["non-existent-circle"], 5.0);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      expect(result.error).toBe(0);
       expect(result.gradient.size).toBe(0);
     });
   });
