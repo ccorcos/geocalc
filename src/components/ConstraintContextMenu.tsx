@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { createConstraint } from "../engine/models/geometry";
-import { ConstraintType } from "../engine/models/types";
-import { useStore } from "../state/store";
-import { distance } from "../utils/math";
+import { createConstraint } from "../engine/geometry";
+import { ConstraintType } from "../engine/types";
+import { useStore } from "../store";
+import { distance } from "../math";
 
 interface ConstraintContextMenuProps {
   x: number;

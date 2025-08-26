@@ -4,9 +4,9 @@ import {
   createEmptyGeometry,
   createLine,
   createPoint,
-} from "../../models/geometry";
-import { Geometry } from "../../models/types";
-import { ConstraintEvaluator } from "../ConstraintEvaluator";
+} from "./geometry";
+import { Geometry } from "./types";
+import { ConstraintEvaluator } from "./ConstraintEvaluator";
 
 describe("ConstraintEvaluator", () => {
   let evaluator: ConstraintEvaluator;

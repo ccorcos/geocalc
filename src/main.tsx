@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { enableMapSet } from 'immer'
 import App from './App.tsx'
 import './index.css'
-import { useStore } from './state/store'
+import { useStore } from './store'
 
 // Enable Map and Set support in Immer
 enableMapSet()

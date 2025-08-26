@@ -5,7 +5,7 @@ import {
   Point,
   SelectionState,
   Viewport,
-} from "../engine/models/types";
+} from "./engine/types";
 
 export class CanvasRenderer {
   private ctx: CanvasRenderingContext2D;

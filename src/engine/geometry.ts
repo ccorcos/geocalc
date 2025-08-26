@@ -1,4 +1,4 @@
-import { generateId } from "../../utils/ids";
+import { generateId } from "../ids";
 import { Circle, Constraint, Geometry, Line, Point } from "./types";
 
 export const createEmptyGeometry = (): Geometry => ({

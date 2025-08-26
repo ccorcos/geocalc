@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useStore } from '../../state/store';
-import { ToolType } from '../../engine/models/types';
-import { ConstraintContextMenu } from '../ConstraintContextMenu';
+import { useStore } from '../store';
+import { ToolType } from '../engine/types';
+import { ConstraintContextMenu } from './ConstraintContextMenu';
 
 interface ToolButtonProps {
   tool: ToolType;

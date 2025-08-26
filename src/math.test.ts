@@ -6,27 +6,27 @@ import {
   vectorNormalize, 
   vectorFromPoints, 
   clamp 
-} from '../math';
-import { Point } from '../../engine/models/types';
+} from './math';
+import { Point } from './engine/types';
 
 describe('Mathematical Utilities', () => {
   describe('distance', () => {
     it('should calculate distance between two points correctly', () => {
-      const p1: Point = { id: '1', x: 0, y: 0, fixed: false };
-      const p2: Point = { id: '2', x: 3, y: 4, fixed: false };
+      const p1: Point = { id: '1', x: 0, y: 0 };
+      const p2: Point = { id: '2', x: 3, y: 4 };
       
       expect(distance(p1, p2)).toBe(5); // 3-4-5 triangle
     });
 
     it('should return 0 for same point', () => {
-      const p: Point = { id: '1', x: 5, y: 10, fixed: false };
+      const p: Point = { id: '1', x: 5, y: 10 };
       
       expect(distance(p, p)).toBe(0);
     });
 
     it('should handle negative coordinates', () => {
-      const p1: Point = { id: '1', x: -3, y: -4, fixed: false };
-      const p2: Point = { id: '2', x: 0, y: 0, fixed: false };
+      const p1: Point = { id: '1', x: -3, y: -4 };
+      const p2: Point = { id: '2', x: 0, y: 0 };
       
       expect(distance(p1, p2)).toBe(5);
     });
@@ -34,18 +34,18 @@ describe('Mathematical Utilities', () => {
 
   describe('distancePointToLine', () => {
     it('should calculate perpendicular distance to line segment', () => {
-      const point: Point = { id: '1', x: 2, y: 2, fixed: false };
-      const lineStart: Point = { id: '2', x: 0, y: 0, fixed: false };
-      const lineEnd: Point = { id: '3', x: 4, y: 0, fixed: false };
+      const point: Point = { id: '1', x: 2, y: 2 };
+      const lineStart: Point = { id: '2', x: 0, y: 0 };
+      const lineEnd: Point = { id: '3', x: 4, y: 0 };
       
       // Point (2,2) to horizontal line from (0,0) to (4,0) should be 2
       expect(distancePointToLine(point, lineStart, lineEnd)).toBe(2);
     });
 
     it('should return distance to closest endpoint for point beyond segment', () => {
-      const point: Point = { id: '1', x: 6, y: 1, fixed: false };
-      const lineStart: Point = { id: '2', x: 0, y: 0, fixed: false };
-      const lineEnd: Point = { id: '3', x: 4, y: 0, fixed: false };
+      const point: Point = { id: '1', x: 6, y: 1 };
+      const lineStart: Point = { id: '2', x: 0, y: 0 };
+      const lineEnd: Point = { id: '3', x: 4, y: 0 };
       
       // Distance from (6,1) to closest endpoint (4,0)
       const expected = Math.sqrt((6-4)**2 + (1-0)**2);
@@ -53,8 +53,8 @@ describe('Mathematical Utilities', () => {
     });
 
     it('should handle zero-length line (point to point)', () => {
-      const point: Point = { id: '1', x: 3, y: 4, fixed: false };
-      const linePoint: Point = { id: '2', x: 0, y: 0, fixed: false };
+      const point: Point = { id: '1', x: 3, y: 4 };
+      const linePoint: Point = { id: '2', x: 0, y: 0 };
       
       expect(distancePointToLine(point, linePoint, linePoint)).toBe(5);
     });
@@ -116,8 +116,8 @@ describe('Mathematical Utilities', () => {
 
   describe('vectorFromPoints', () => {
     it('should create vector from point1 to point2', () => {
-      const p1: Point = { id: '1', x: 1, y: 2, fixed: false };
-      const p2: Point = { id: '2', x: 4, y: 6, fixed: false };
+      const p1: Point = { id: '1', x: 1, y: 2 };
+      const p2: Point = { id: '2', x: 4, y: 6 };
       
       const vector = vectorFromPoints(p1, p2);
       
@@ -126,8 +126,8 @@ describe('Mathematical Utilities', () => {
     });
 
     it('should handle negative differences', () => {
-      const p1: Point = { id: '1', x: 5, y: 8, fixed: false };
-      const p2: Point = { id: '2', x: 2, y: 3, fixed: false };
+      const p1: Point = { id: '1', x: 5, y: 8 };
+      const p2: Point = { id: '2', x: 2, y: 3 };
       
       const vector = vectorFromPoints(p1, p2);
       

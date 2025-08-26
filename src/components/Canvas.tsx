@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { CanvasInteraction } from "../../interaction/CanvasInteraction";
-import { CanvasRenderer } from "../../rendering/renderer";
-import { useStore } from "../../state/store";
-import { ConstraintContextMenu } from "../ConstraintContextMenu";
+import { CanvasInteraction } from "../interaction/CanvasInteraction";
+import { CanvasRenderer } from "../renderer";
+import { useStore } from "../store";
+import { ConstraintContextMenu } from "./ConstraintContextMenu";
 
 interface CanvasProps {
   width: number;

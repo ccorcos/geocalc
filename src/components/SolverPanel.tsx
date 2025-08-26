@@ -1,5 +1,5 @@
 import React from 'react';
-import { useStore } from '../../state/store';
+import { useStore } from '../store';
 
 export const SolverPanel: React.FC = () => {
   const { solve, isSolving, geometry } = useStore();

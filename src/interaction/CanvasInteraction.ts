@@ -2,10 +2,10 @@ import {
   createCircle,
   createLine,
   createPoint,
-} from "../engine/models/geometry";
-import { Point } from "../engine/models/types";
-import { useStore } from "../state/store";
-import { ConstraintTool } from "./tools/ConstraintTool";
+} from "../engine/geometry";
+import { Point } from "../engine/types";
+import { useStore } from "../store";
+import { ConstraintTool } from "./ConstraintTool";
 
 export class CanvasInteraction {
   private canvas: HTMLCanvasElement;

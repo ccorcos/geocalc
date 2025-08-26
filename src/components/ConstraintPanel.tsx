@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { ConstraintEvaluator } from "../engine/constraints/ConstraintEvaluator";
-import { ConstraintType } from "../engine/models/types";
-import { useStore } from "../state/store";
+import { ConstraintEvaluator } from "../engine/ConstraintEvaluator";
+import { ConstraintType } from "../engine/types";
+import { useStore } from "../store";
 
 interface ConstraintPanelProps {
   className?: string;

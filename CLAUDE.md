@@ -25,6 +25,43 @@ npx vitest run src/path/to/test.test.ts     # Run specific unit test
 npx playwright test --grep "test name"       # Run specific e2e test
 ```
 
+## Directory Structure
+
+The codebase uses a **flat directory structure** to minimize nested folders and make navigation easier:
+
+```
+src/
+├── App.tsx, main.tsx           # Main application files
+├── store.ts                    # Zustand state management
+├── renderer.ts                 # Canvas rendering pipeline
+├── ids.ts, math.ts            # Utility functions
+├── math.test.ts, setup.test.ts # Root-level test files
+├── components/                 # React components (flat structure)
+│   ├── Canvas.tsx
+│   ├── ConstraintContextMenu.tsx
+│   ├── ConstraintPanel.tsx
+│   ├── EntityPanel.tsx
+│   ├── ErrorBoundary.tsx
+│   ├── FloatingToolbar.tsx
+│   ├── SolverPanel.tsx
+│   └── StatusBar.tsx
+├── engine/                     # Core constraint solving (tests co-located)
+│   ├── types.ts               # Type definitions
+│   ├── geometry.ts + geometry.test.ts
+│   ├── ConstraintEvaluator.ts + ConstraintEvaluator.test.ts
+│   ├── GradientDescentSolver.ts + GradientDescentSolver.test.ts
+│   └── ConstraintSolving.test.ts
+└── interaction/                # User input handling
+    ├── CanvasInteraction.ts
+    └── ConstraintTool.ts
+```
+
+**Key Principles:**
+- **Flat over nested**: Files are in the minimum necessary directory depth
+- **Co-located tests**: Test files sit directly next to their source files
+- **Logical grouping**: Related files grouped by function (components, engine, interaction)
+- **Short import paths**: Most imports are 1-2 levels deep maximum
+
 ## Architecture Overview
 
 **GeoCalc** is an interactive 2D geometry application with constraint-based solving. Users draw shapes (points, lines, circles) and apply constraints (distance, parallel, perpendicular), then a numerical gradient descent solver adjusts the geometry to satisfy all constraints simultaneously.
@@ -32,8 +69,8 @@ npx playwright test --grep "test name"       # Run specific e2e test
 ### Core Architecture Layers
 
 1. **UI Layer** (`src/components/`): React components for canvas, toolbars, panels
-2. **State Management** (`src/state/store.ts`): Zustand + Immer for geometry document state
-3. **Rendering** (`src/rendering/`): HTML5 Canvas API with custom drawing pipeline
+2. **State Management** (`src/store.ts`): Zustand + Immer for geometry document state
+3. **Rendering** (`src/renderer.ts`): HTML5 Canvas API with custom drawing pipeline
 4. **Constraint Engine** (`src/engine/`): Numerical solver with gradient descent optimization
 5. **Interaction** (`src/interaction/`): Mouse/keyboard input handling and tool system
 
@@ -56,7 +93,7 @@ interface Geometry {
 
 ### State Management Pattern
 
-- **Store**: `src/state/store.ts` - Zustand store with geometry document, UI state, selection
+- **Store**: `src/store.ts` - Zustand store with geometry document, UI state, selection
 - **Immutable Updates**: Uses Immer for clean state transitions
 - **Actions**: Store provides methods for CRUD operations on geometry entities
 - **Debugging**: Store exposed on `window.__GEOCALC_STORE__` in development
@@ -65,7 +102,7 @@ interface Geometry {
 
 ### Constraint Solving System
 
-**Location**: `src/engine/solver/GradientDescentSolver.ts`
+**Location**: `src/engine/GradientDescentSolver.ts`
 **Algorithm**: Adam optimizer with momentum for numerical constraint satisfaction
 **Key Insight**: Uses gradient descent instead of algebraic solving - easier to implement and extend
 
@@ -77,7 +114,7 @@ interface Geometry {
 
 ### Testing Architecture
 
-**Unit Tests**: Vitest with jsdom environment, focused on engine logic and utilities
+**Unit Tests**: Vitest with jsdom environment, focused on engine logic and utilities. Test files are co-located with source files (e.g., `src/engine/ConstraintEvaluator.test.ts` next to `ConstraintEvaluator.ts`)
 **E2E Tests**: Playwright with comprehensive UI testing, uses `GeoCalcTestHelper` class
 **Test Separation**: Vitest excludes `e2e/` directory to prevent conflicts
 
@@ -91,10 +128,10 @@ interface Geometry {
 ## Development Workflow
 
 ### Adding New Constraint Types
-1. Update `ConstraintType` in `src/engine/models/types.ts`
-2. Implement evaluation logic in `src/engine/constraints/ConstraintEvaluator.ts`
+1. Update `ConstraintType` in `src/engine/types.ts`
+2. Implement evaluation logic in `src/engine/ConstraintEvaluator.ts`
 3. Add UI controls to constraint panels/context menus
-4. Write unit tests for constraint mathematics
+4. Write unit tests for constraint mathematics in `src/engine/ConstraintEvaluator.test.ts`
 5. Add e2e tests for UI workflow
 
 ### Debugging Constraint Issues
@@ -104,7 +141,7 @@ interface Geometry {
 4. Test constraint behavior in isolation with integration tests
 
 ### Canvas Rendering Performance
-- Rendering pipeline in `src/rendering/renderer.ts` handles efficient redraws
+- Rendering pipeline in `src/renderer.ts` handles efficient redraws
 - Transform management for smooth pan/zoom in viewport system
 - Use `requestAnimationFrame` for smooth interactions
 

@@ -1,8 +1,8 @@
 import {
   ConstraintEvaluator,
   ConstraintViolation,
-} from "../constraints/ConstraintEvaluator";
-import { Geometry } from "../models/types";
+} from "./ConstraintEvaluator";
+import { Geometry } from "./types";
 
 interface SolverOptions {
   maxIterations: number;

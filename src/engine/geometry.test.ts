@@ -9,8 +9,8 @@ import {
   createEmptyGeometry,
   createLine,
   createPoint,
-} from "../geometry";
-import { Geometry } from "../types";
+} from "./geometry";
+import { Geometry } from "./types";
 
 describe("Geometry Operations", () => {
   let geometry: Geometry;

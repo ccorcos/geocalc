@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { createConstraint } from "../../engine/models/geometry";
-import { ConstraintType } from "../../engine/models/types";
-import { useStore } from "../../state/store";
-import { distance } from "../../utils/math";
+import { createConstraint } from "../engine/geometry";
+import { ConstraintType } from "../engine/types";
+import { useStore } from "../store";
+import { distance } from "../math";
 
 export const StatusBar: React.FC = () => {
   const { selection, geometry, addConstraint, currentTool } = useStore();

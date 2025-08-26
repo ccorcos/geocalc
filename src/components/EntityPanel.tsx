@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useStore } from "../state/store";
-import { distance } from "../utils/math";
+import { useStore } from "../store";
+import { distance } from "../math";
 import { ConstraintContextMenu } from "./ConstraintContextMenu";
 
 interface EntityPanelProps {

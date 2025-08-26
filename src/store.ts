@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import { createEmptyGeometry } from "../engine/models/geometry";
+import { createEmptyGeometry } from "./engine/geometry";
 import {
   Circle,
   Constraint,
@@ -10,8 +10,8 @@ import {
   SelectionState,
   ToolType,
   Viewport,
-} from "../engine/models/types";
-import { GradientDescentSolver } from "../engine/solver/GradientDescentSolver";
+} from "./engine/types";
+import { GradientDescentSolver } from "./engine/GradientDescentSolver";
 
 interface AppState {
   geometry: Geometry;

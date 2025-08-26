@@ -1,4 +1,4 @@
-import { Point } from '../engine/models/types';
+import { Point } from './engine/types';
 
 export const distance = (p1: Point, p2: Point): number => {
   const dx = p2.x - p1.x;

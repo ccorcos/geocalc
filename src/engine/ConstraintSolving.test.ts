@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { distance } from "../../utils/math";
+import { distance } from "../math";
 import {
   createConstraint,
   createEmptyGeometry,
   createLine,
   createPoint,
-} from "../models/geometry";
-import { Geometry } from "../models/types";
+} from "./geometry";
+import { Geometry } from "./types";
 import { GradientDescentSolver } from "./GradientDescentSolver";
 
 describe("Constraint Solving Integration Tests", () => {

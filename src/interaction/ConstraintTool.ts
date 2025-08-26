@@ -1,6 +1,6 @@
-import { createConstraint } from "../../engine/models/geometry";
-import { ConstraintType } from "../../engine/models/types";
-import { useStore } from "../../state/store";
+import { createConstraint } from "../engine/geometry";
+import { ConstraintType } from "../engine/types";
+import { useStore } from "../store";
 
 export class ConstraintTool {
   private selectedForConstraint: string[] = [];

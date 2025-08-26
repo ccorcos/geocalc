@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Canvas } from "./components/Canvas/Canvas";
+import { Canvas } from "./components/Canvas";
 import { ConstraintPanel } from "./components/ConstraintPanel";
 import { EntityPanel } from "./components/EntityPanel";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { FloatingToolbar } from "./components/FloatingToolbar/FloatingToolbar";
-import { useStore } from "./state/store";
+import { FloatingToolbar } from "./components/FloatingToolbar";
+import { useStore } from "./store";
 
 function App() {
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });

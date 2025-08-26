@@ -3,8 +3,8 @@ import {
   vectorDot,
   vectorFromPoints,
   vectorNormalize,
-} from "../../utils/math";
-import { Constraint, Geometry } from "../models/types";
+} from "../math";
+import { Constraint, Geometry } from "./types";
 
 export interface ConstraintViolation {
   constraintId: string;
