@@ -9,14 +9,39 @@ Strategies:
 
 ---
 
+I want to display constraints and dimensions visually in the canvas in a style consistent with physics or engineering drawings like dimension lines.
+- For a point, lets display (x: ?) if there's an x constraint and (x: ?, y: ?) if there's an x and y constraint. Don't display the current coordinated but the desired coordinates for the constraint.
+- For distance, if its just two points then draw a dimension line with the distance constraint value labeled. If its a distance but there's a line already drawn there then you don't need a dimension line, just draw the number label next to the line.
 
-set length of a line in panel on the left
-cmd+click a line or the length number to create a line-length constraint.
 
+
+  | "distance"
+  | "x-distance"
+  | "y-distance"
+  | "parallel"
+  | "perpendicular"
+  | "tangent"
+  | "angle"
+  | "horizontal"
+  | "vertical"
+  | "x"
+  | "y"
+  | "same-x"
+  | "same-y"
+  | "radius";
+
+
+
+
+
+
+in the constraint panel, swap the position of the target number with the list of entities.
 
 
 e2e
 constraints
+
+
 
 lets alter the type system to ensure that any constraints we define but also be implemented.
 Lets focus on unit tests. Make a minimal unit test for each constraint type.
@@ -26,7 +51,7 @@ Let write a simple ui test for ever kind of constraint. Create the minimal numbe
 
 Create a measurement tool. The tool is disabled until you have a valid selection. If you select a point, then measure gives will display the coordinates in the canvas. If I click two points, it measures the distance between between them and displays it on the canvas. These measurements are entities themselves and can be re-arranges on the canvas. If I click on three points, it measures the angle between them and also shows an angle indicator.
 
-
+e2e interactions for cmd-click.
 
 ---
 

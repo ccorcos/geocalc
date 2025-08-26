@@ -131,7 +131,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
     const circle = geometry.circles.get(circleId);
     if (!circle) return;
 
-    const constraintId = `fix-radius-${circleId}`;
+    const constraintId = `radius-${circleId}`;
     const existingConstraint = geometry.constraints.get(constraintId);
 
     if (existingConstraint) {
@@ -139,7 +139,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
     } else {
       const fixRadiusConstraint = {
         id: constraintId,
-        type: "fix-radius" as const,
+        type: "radius" as const,
         entityIds: [circleId],
         value: circle.radius,
         priority: 1,
@@ -645,7 +645,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
             );
             const centerName =
               centerIndex >= 0 ? getHumanName(centerIndex) : "?";
-            const hasFixRadius = !!geometry.constraints.get(`fix-radius-${id}`);
+            const hasFixRadius = !!geometry.constraints.get(`radius-${id}`);
 
             return (
               <div

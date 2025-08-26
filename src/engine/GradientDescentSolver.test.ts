@@ -28,8 +28,8 @@ describe("GradientDescentSolver", () => {
       geometry.points.set(p2.id, p2);
 
       // Fix p1 at origin
-      const fixXConstraint = createConstraint("fix-x", [p1.id], 0);
-      const fixYConstraint = createConstraint("fix-y", [p1.id], 0);
+      const fixXConstraint = createConstraint("x", [p1.id], 0);
+      const fixYConstraint = createConstraint("y", [p1.id], 0);
       geometry.constraints.set(fixXConstraint.id, fixXConstraint);
       geometry.constraints.set(fixYConstraint.id, fixYConstraint);
 
@@ -179,8 +179,8 @@ describe("GradientDescentSolver", () => {
       geometry.points.set(p4.id, p4);
 
       // Fix only p1 to provide a minimal anchor point
-      const fixP1X = createConstraint("fix-x", [p1.id], 0);
-      const fixP1Y = createConstraint("fix-y", [p1.id], 0);
+      const fixP1X = createConstraint("x", [p1.id], 0);
+      const fixP1Y = createConstraint("y", [p1.id], 0);
       geometry.constraints.set(fixP1X.id, fixP1X);
       geometry.constraints.set(fixP1Y.id, fixP1Y);
 
@@ -223,13 +223,13 @@ describe("GradientDescentSolver", () => {
       geometry.points.set(p4.id, p4);
 
       // Fix line1 to provide anchor points
-      const fixP1X = createConstraint("fix-x", [p1.id], 0);
-      const fixP1Y = createConstraint("fix-y", [p1.id], 0);
-      const fixP2X = createConstraint("fix-x", [p2.id], 2);
-      const fixP2Y = createConstraint("fix-y", [p2.id], 0);
+      const fixP1X = createConstraint("x", [p1.id], 0);
+      const fixP1Y = createConstraint("y", [p1.id], 0);
+      const fixP2X = createConstraint("x", [p2.id], 2);
+      const fixP2Y = createConstraint("y", [p2.id], 0);
       // Fix one endpoint of line2 to prevent drift
-      const fixP3X = createConstraint("fix-x", [p3.id], 1);
-      const fixP3Y = createConstraint("fix-y", [p3.id], 1);
+      const fixP3X = createConstraint("x", [p3.id], 1);
+      const fixP3Y = createConstraint("y", [p3.id], 1);
       geometry.constraints.set(fixP1X.id, fixP1X);
       geometry.constraints.set(fixP1Y.id, fixP1Y);
       geometry.constraints.set(fixP2X.id, fixP2X);
@@ -278,8 +278,8 @@ describe("GradientDescentSolver", () => {
       geometry.points.set(p3.id, p3);
 
       // Fix p1 at origin to provide anchor point
-      const fixP1X = createConstraint("fix-x", [p1.id], 0);
-      const fixP1Y = createConstraint("fix-y", [p1.id], 0);
+      const fixP1X = createConstraint("x", [p1.id], 0);
+      const fixP1Y = createConstraint("y", [p1.id], 0);
       geometry.constraints.set(fixP1X.id, fixP1X);
       geometry.constraints.set(fixP1Y.id, fixP1Y);
 
@@ -336,8 +336,8 @@ describe("GradientDescentSolver", () => {
       geometry.points.set(p2.id, p2);
 
       // Fix p1 to provide anchor
-      const fixP1X = createConstraint("fix-x", [p1.id], 2);
-      const fixP1Y = createConstraint("fix-y", [p1.id], 5);
+      const fixP1X = createConstraint("x", [p1.id], 2);
+      const fixP1Y = createConstraint("y", [p1.id], 5);
       geometry.constraints.set(fixP1X.id, fixP1X);
       geometry.constraints.set(fixP1Y.id, fixP1Y);
 
@@ -367,8 +367,8 @@ describe("GradientDescentSolver", () => {
       geometry.points.set(p2.id, p2);
 
       // Fix p1 to provide anchor
-      const fixP1X = createConstraint("fix-x", [p1.id], 5);
-      const fixP1Y = createConstraint("fix-y", [p1.id], 3);
+      const fixP1X = createConstraint("x", [p1.id], 5);
+      const fixP1Y = createConstraint("y", [p1.id], 3);
       geometry.constraints.set(fixP1X.id, fixP1X);
       geometry.constraints.set(fixP1Y.id, fixP1Y);
 
@@ -401,10 +401,10 @@ describe("GradientDescentSolver", () => {
       geometry.points.set(p3.id, p3);
 
       // Fix vertex and one arm to provide stability
-      const fixP2X = createConstraint("fix-x", [p2.id], 0);
-      const fixP2Y = createConstraint("fix-y", [p2.id], 0);
-      const fixP3X = createConstraint("fix-x", [p3.id], 2);
-      const fixP3Y = createConstraint("fix-y", [p3.id], 0);
+      const fixP2X = createConstraint("x", [p2.id], 0);
+      const fixP2Y = createConstraint("y", [p2.id], 0);
+      const fixP3X = createConstraint("x", [p3.id], 2);
+      const fixP3Y = createConstraint("y", [p3.id], 0);
       geometry.constraints.set(fixP2X.id, fixP2X);
       geometry.constraints.set(fixP2Y.id, fixP2Y);
       geometry.constraints.set(fixP3X.id, fixP3X);
@@ -518,8 +518,8 @@ describe("GradientDescentSolver", () => {
       geometry.points.set(p2.id, p2);
 
       // Fix p1 to provide anchor point
-      const fixP1X = createConstraint("fix-x", [p1.id], 5);
-      const fixP1Y = createConstraint("fix-y", [p1.id], 5);
+      const fixP1X = createConstraint("x", [p1.id], 5);
+      const fixP1Y = createConstraint("y", [p1.id], 5);
       geometry.constraints.set(fixP1X.id, fixP1X);
       geometry.constraints.set(fixP1Y.id, fixP1Y);
 

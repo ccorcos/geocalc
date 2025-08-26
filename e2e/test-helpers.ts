@@ -119,9 +119,9 @@ export class GeoCalcTestHelper {
     
     // Map test constraint types to UI labels
     const typeMap: Record<string, string> = {
-      'distance': 'Fixed Distance',
-      'x-distance': 'Fixed X Distance', 
-      'y-distance': 'Fixed Y Distance',
+      'distance': 'Distance',
+      'x-distance': 'X Distance', 
+      'y-distance': 'Y Distance',
       'same-x': 'Same X Coordinate',
       'same-y': 'Same Y Coordinate',
       'parallel': 'Parallel',

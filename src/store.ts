@@ -257,8 +257,8 @@ export const useStore = create<AppState>()(
     addFixXConstraint: (pointId, value) =>
       set((state) => {
         const fixXConstraint = {
-          id: `fix-x-${pointId}`,
-          type: "fix-x" as const,
+          id: `x-${pointId}`,
+          type: "x" as const,
           entityIds: [pointId],
           value,
           priority: 1,
@@ -271,8 +271,8 @@ export const useStore = create<AppState>()(
     addFixYConstraint: (pointId, value) =>
       set((state) => {
         const fixYConstraint = {
-          id: `fix-y-${pointId}`,
-          type: "fix-y" as const,
+          id: `y-${pointId}`,
+          type: "y" as const,
           entityIds: [pointId],
           value,
           priority: 1,
@@ -284,7 +284,7 @@ export const useStore = create<AppState>()(
 
     removeFixXConstraint: (pointId) =>
       set((state) => {
-        const constraintId = `fix-x-${pointId}`;
+        const constraintId = `x-${pointId}`;
         state.geometry.constraints.delete(constraintId);
         state.geometry.metadata.modified = new Date();
         saveGeometry(state.geometry);
@@ -292,7 +292,7 @@ export const useStore = create<AppState>()(
 
     removeFixYConstraint: (pointId) =>
       set((state) => {
-        const constraintId = `fix-y-${pointId}`;
+        const constraintId = `y-${pointId}`;
         state.geometry.constraints.delete(constraintId);
         state.geometry.metadata.modified = new Date();
         saveGeometry(state.geometry);
@@ -300,12 +300,12 @@ export const useStore = create<AppState>()(
 
     getFixXConstraint: (pointId) => {
       const state = get();
-      return state.geometry.constraints.get(`fix-x-${pointId}`) || null;
+      return state.geometry.constraints.get(`x-${pointId}`) || null;
     },
 
     getFixYConstraint: (pointId) => {
       const state = get();
-      return state.geometry.constraints.get(`fix-y-${pointId}`) || null;
+      return state.geometry.constraints.get(`y-${pointId}`) || null;
     },
 
     getLineLengthConstraint: (lineId) => {

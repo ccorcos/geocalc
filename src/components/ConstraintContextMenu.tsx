@@ -76,9 +76,9 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
         // Add distance constraints only for exactly 2 points
         if (selectedIds.length === 2) {
           constraints.unshift(
-            { type: "distance", label: "Fixed Distance", needsValue: true },
-            { type: "x-distance", label: "Fixed X Distance", needsValue: true },
-            { type: "y-distance", label: "Fixed Y Distance", needsValue: true }
+            { type: "distance", label: "Distance", needsValue: true },
+            { type: "x-distance", label: "X Distance", needsValue: true },
+            { type: "y-distance", label: "Y Distance", needsValue: true }
           );
         }
 

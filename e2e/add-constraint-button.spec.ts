@@ -22,7 +22,7 @@ test.describe('Add Constraint Button', () => {
     await addConstraintButton.click();
 
     // Should show distance constraint options
-    await expect(page.locator('text=Fixed Distance')).toBeVisible();
+    await expect(page.locator('text=Distance')).toBeVisible();
     await expect(page.locator('text=Fixed X Distance')).toBeVisible();
     await expect(page.locator('text=Fixed Y Distance')).toBeVisible();
   });
@@ -63,7 +63,7 @@ test.describe('Add Constraint Button', () => {
     // Click the + button and create a distance constraint
     const addConstraintButton = page.locator('[data-testid="add-constraint"]');
     await addConstraintButton.click();
-    await page.locator('text=Fixed Distance').click();
+    await page.locator('text=Distance').click();
 
     // Verify constraint was created
     await helper.expectConstraintCount(1);

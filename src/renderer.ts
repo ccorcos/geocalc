@@ -285,7 +285,7 @@ export class CanvasRenderer {
     // Check if radius is fixed
     const hasFixRadius = Array.from(geometry.constraints.entries()).some(
       ([, constraint]) =>
-        constraint.type === "fix-radius" &&
+        constraint.type === "radius" &&
         constraint.entityIds.includes(circle.id)
     );
 
@@ -470,12 +470,12 @@ export class CanvasRenderer {
   }
 
   private hasFixXConstraint(pointId: string, geometry: Geometry): boolean {
-    const constraintId = `fix-x-${pointId}`;
+    const constraintId = `x-${pointId}`;
     return geometry.constraints.has(constraintId);
   }
 
   private hasFixYConstraint(pointId: string, geometry: Geometry): boolean {
-    const constraintId = `fix-y-${pointId}`;
+    const constraintId = `y-${pointId}`;
     return geometry.constraints.has(constraintId);
   }
 }

@@ -29,11 +29,11 @@ export type ConstraintType =
   | "angle"
   | "horizontal"
   | "vertical"
-  | "fix-x"
-  | "fix-y"
+  | "x"
+  | "y"
   | "same-x"
   | "same-y"
-  | "fix-radius";
+  | "radius";
 
 export interface Constraint {
   id: string;

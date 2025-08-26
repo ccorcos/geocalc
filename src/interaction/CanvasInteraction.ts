@@ -295,7 +295,7 @@ export class CanvasInteraction {
       this.circleRadiusDrag &&
       this.tempCircleCenter
     ) {
-      // If cmd key was held during mousedown, add fix-radius constraint
+      // If cmd key was held during mousedown, add radius constraint
       if ((this.circleRadiusDrag as any).shouldFixRadius) {
         const circle = store.geometry.circles.get(
           this.circleRadiusDrag.circleId
@@ -305,7 +305,7 @@ export class CanvasInteraction {
             id: `constraint-${Date.now()}-${Math.random()
               .toString(36)
               .substr(2, 9)}`,
-            type: "fix-radius" as const,
+            type: "radius" as const,
             entityIds: [circle.id],
             value: circle.radius,
             priority: 1,
@@ -434,7 +434,7 @@ export class CanvasInteraction {
             store.geometry.constraints.entries()
           ).find(
             ([, constraint]) =>
-              constraint.type === "fix-radius" &&
+              constraint.type === "radius" &&
               constraint.entityIds.includes(circleRadiusTarget)
           );
 
@@ -442,12 +442,12 @@ export class CanvasInteraction {
             // Remove the constraint
             store.removeEntity(existingConstraint[0]);
           } else {
-            // Add a fix-radius constraint
+            // Add a radius constraint
             const fixRadiusConstraint = {
               id: `constraint-${Date.now()}-${Math.random()
                 .toString(36)
                 .substr(2, 9)}`,
-              type: "fix-radius" as const,
+              type: "radius" as const,
               entityIds: [circleRadiusTarget],
               value: circle.radius,
               priority: 1,

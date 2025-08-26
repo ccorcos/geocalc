@@ -213,8 +213,8 @@ describe("Geometry Engine Integration Tests", () => {
         createConstraint("distance", [corner3.id, corner4.id], 5), // width
 
         // Fix one corner as anchor
-        createConstraint("fix-x", [corner1.id], 0),
-        createConstraint("fix-y", [corner1.id], 0),
+        createConstraint("x", [corner1.id], 0),
+        createConstraint("y", [corner1.id], 0),
       ];
 
       constraints.forEach((c) => geometry.constraints.set(c.id, c));
@@ -249,8 +249,8 @@ describe("Geometry Engine Integration Tests", () => {
 
       const constraints = [
         // Fix p1 as anchor
-        createConstraint("fix-x", [p1.id], 0),
-        createConstraint("fix-y", [p1.id], 0),
+        createConstraint("x", [p1.id], 0),
+        createConstraint("y", [p1.id], 0),
 
         // Make line1 horizontal and set distance
         createConstraint("horizontal", [line1.id]),
@@ -288,8 +288,8 @@ describe("Geometry Engine Integration Tests", () => {
 
       const constraints = [
         // Fix origin
-        createConstraint("fix-x", [origin.id], 0),
-        createConstraint("fix-y", [origin.id], 0),
+        createConstraint("x", [origin.id], 0),
+        createConstraint("y", [origin.id], 0),
 
         // Create coordinate axes using same-x and same-y constraints
         createConstraint("same-y", [origin.id, xAxis.id]), // x-axis is horizontal
@@ -361,8 +361,8 @@ describe("Geometry Engine Integration Tests", () => {
         [line1, line2, line3, line4].forEach(l => geometry.lines.set(l.id, l));
 
         const constraints = [
-          createConstraint("fix-x", [p1.id], 0), // anchor corner
-          createConstraint("fix-y", [p1.id], 0),
+          createConstraint("x", [p1.id], 0), // anchor corner
+          createConstraint("y", [p1.id], 0),
           createConstraint("distance", [p1.id, p2.id], 5), // side length
           createConstraint("distance", [p2.id, p3.id], 5),
           createConstraint("distance", [p3.id, p4.id], 5), 
@@ -386,8 +386,8 @@ describe("Geometry Engine Integration Tests", () => {
         [p1, p2, p3, p4].forEach(p => geometry.points.set(p.id, p));
 
         const constraints = [
-          createConstraint("fix-x", [p1.id], 0), // anchor
-          createConstraint("fix-y", [p1.id], 0),
+          createConstraint("x", [p1.id], 0), // anchor
+          createConstraint("y", [p1.id], 0),
           createConstraint("x-distance", [p1.id, p2.id], 4), // horizontal side
           createConstraint("y-distance", [p1.id, p4.id], 4), // vertical side
           createConstraint("x-distance", [p2.id, p3.id], 0), // vertical alignment 
@@ -411,8 +411,8 @@ describe("Geometry Engine Integration Tests", () => {
         [p1, p2, p3, p4].forEach(p => geometry.points.set(p.id, p));
 
         const constraints = [
-          createConstraint("fix-x", [p1.id], 0), // anchor
-          createConstraint("fix-y", [p1.id], 0),
+          createConstraint("x", [p1.id], 0), // anchor
+          createConstraint("y", [p1.id], 0),
           createConstraint("same-y", [p1.id, p2.id]), // horizontal alignment
           createConstraint("same-x", [p2.id, p3.id]), // vertical alignment  
           createConstraint("same-y", [p3.id, p4.id]), // horizontal alignment
@@ -453,8 +453,8 @@ describe("Geometry Engine Integration Tests", () => {
 
       const constraints = [
         // Fix foundation corner
-        createConstraint("fix-x", [foundation.id], 0),
-        createConstraint("fix-y", [foundation.id], 0),
+        createConstraint("x", [foundation.id], 0),
+        createConstraint("y", [foundation.id], 0),
 
         // Room 1: 12x8 feet
         createConstraint("x-distance", [foundation.id, room1Corner.id], 12),
@@ -515,11 +515,11 @@ describe("Geometry Engine Integration Tests", () => {
 
       const constraints = [
         // Fix cam center
-        createConstraint("fix-x", [center.id], 5),
-        createConstraint("fix-y", [center.id], 5),
+        createConstraint("x", [center.id], 5),
+        createConstraint("y", [center.id], 5),
         
         // Fix cam radius
-        createConstraint("fix-radius", [cam.id], camRadius),
+        createConstraint("radius", [cam.id], camRadius),
 
         // Follower maintains contact with cam (distance = radius)
         createConstraint("distance", [center.id, follower.id], camRadius),
@@ -566,8 +566,8 @@ describe("Geometry Engine Integration Tests", () => {
 
       // Fix first point to prevent drift
       const fixConstraints = [
-        createConstraint("fix-x", [points[0].id], 0),
-        createConstraint("fix-y", [points[0].id], 0),
+        createConstraint("x", [points[0].id], 0),
+        createConstraint("y", [points[0].id], 0),
       ];
       fixConstraints.forEach(c => geometry.constraints.set(c.id, c));
 

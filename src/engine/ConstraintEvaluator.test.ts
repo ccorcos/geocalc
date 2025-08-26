@@ -80,7 +80,7 @@ describe("ConstraintEvaluator", () => {
       const point = createPoint(5, 10);
       geometry.points.set(point.id, point);
 
-      const constraint = createConstraint("fix-x", [point.id], 5);
+      const constraint = createConstraint("x", [point.id], 5);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
@@ -91,7 +91,7 @@ describe("ConstraintEvaluator", () => {
       const point = createPoint(8, 10); // x should be 5
       geometry.points.set(point.id, point);
 
-      const constraint = createConstraint("fix-x", [point.id], 5);
+      const constraint = createConstraint("x", [point.id], 5);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(9); // (8-5)² = 9
@@ -101,7 +101,7 @@ describe("ConstraintEvaluator", () => {
       const point = createPoint(8, 10);
       geometry.points.set(point.id, point);
 
-      const constraint = createConstraint("fix-x", [point.id], 5);
+      const constraint = createConstraint("x", [point.id], 5);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.gradient.has(point.id)).toBe(true);
@@ -116,7 +116,7 @@ describe("ConstraintEvaluator", () => {
       const point = createPoint(5, 10);
       geometry.points.set(point.id, point);
 
-      const constraint = createConstraint("fix-y", [point.id], 10);
+      const constraint = createConstraint("y", [point.id], 10);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
@@ -127,7 +127,7 @@ describe("ConstraintEvaluator", () => {
       const point = createPoint(5, 13); // y should be 10
       geometry.points.set(point.id, point);
 
-      const constraint = createConstraint("fix-y", [point.id], 10);
+      const constraint = createConstraint("y", [point.id], 10);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(9); // (13-10)² = 9
@@ -137,7 +137,7 @@ describe("ConstraintEvaluator", () => {
       const point = createPoint(5, 13);
       geometry.points.set(point.id, point);
 
-      const constraint = createConstraint("fix-y", [point.id], 10);
+      const constraint = createConstraint("y", [point.id], 10);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.gradient.has(point.id)).toBe(true);
@@ -693,7 +693,7 @@ describe("ConstraintEvaluator", () => {
       geometry.points.set(center.id, center);
       geometry.circles.set(circle.id, circle);
 
-      const constraint = createConstraint("fix-radius", [circle.id], 3.0);
+      const constraint = createConstraint("radius", [circle.id], 3.0);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.constraintId).toBe(constraint.id);
@@ -707,7 +707,7 @@ describe("ConstraintEvaluator", () => {
       geometry.points.set(center.id, center);
       geometry.circles.set(circle.id, circle);
 
-      const constraint = createConstraint("fix-radius", [circle.id], 2.0);
+      const constraint = createConstraint("radius", [circle.id], 2.0);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(4); // (4-2)² = 4
@@ -720,7 +720,7 @@ describe("ConstraintEvaluator", () => {
       geometry.points.set(center.id, center);
       geometry.circles.set(circle.id, circle);
 
-      const constraint = createConstraint("fix-radius", [circle.id], 0.0);
+      const constraint = createConstraint("radius", [circle.id], 0.0);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0);
@@ -733,7 +733,7 @@ describe("ConstraintEvaluator", () => {
       geometry.points.set(center.id, center);
       geometry.circles.set(circle.id, circle);
 
-      const constraint = createConstraint("fix-radius", [circle.id], 2.0);
+      const constraint = createConstraint("radius", [circle.id], 2.0);
       const result = evaluator.evaluate(constraint, geometry);
 
       // fix-radius doesn't provide gradients since radius changes are handled differently
@@ -741,7 +741,7 @@ describe("ConstraintEvaluator", () => {
     });
 
     it("should handle missing circle gracefully", () => {
-      const constraint = createConstraint("fix-radius", ["non-existent-circle"], 5.0);
+      const constraint = createConstraint("radius", ["non-existent-circle"], 5.0);
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0);

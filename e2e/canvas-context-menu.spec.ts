@@ -22,7 +22,7 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
     await helper.canvas.click({ button: 'right', position: { x: 200, y: 200 } });
     
     // Should show distance constraint options
-    await expect(page.locator('text=Fixed Distance')).toBeVisible();
+    await expect(page.locator('text=Distance')).toBeVisible();
     await expect(page.locator('text=Fixed X Distance')).toBeVisible();
     await expect(page.locator('text=Fixed Y Distance')).toBeVisible();
   });
@@ -45,7 +45,7 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
 
     // Right-click on the first point and create distance constraint
     await helper.canvas.click({ button: 'right', position: { x: 200, y: 200 } });
-    await page.locator('text=Fixed Distance').click();
+    await page.locator('text=Distance').click();
     
     // Verify constraint was created
     await helper.expectConstraintCount(1);

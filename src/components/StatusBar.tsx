@@ -54,7 +54,7 @@ export const StatusBar: React.FC = () => {
         if (selectedIds.length === 2) {
           constraints.unshift({
             type: "distance",
-            label: "Fixed Distance",
+            label: "Distance",
             needsValue: true,
           });
         }

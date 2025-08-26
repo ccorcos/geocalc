@@ -29,9 +29,9 @@ export class ConstraintEvaluator {
         return this.evaluateHorizontal(constraint, geometry);
       case "vertical":
         return this.evaluateVertical(constraint, geometry);
-      case "fix-x":
+      case "x":
         return this.evaluateFixX(constraint, geometry);
-      case "fix-y":
+      case "y":
         return this.evaluateFixY(constraint, geometry);
       case "same-x":
         return this.evaluateSameX(constraint, geometry);
@@ -39,7 +39,7 @@ export class ConstraintEvaluator {
         return this.evaluateSameY(constraint, geometry);
       case "angle":
         return this.evaluateAngle(constraint, geometry);
-      case "fix-radius":
+      case "radius":
         return this.evaluateFixRadius(constraint, geometry);
       default:
         return {
@@ -519,7 +519,7 @@ export class ConstraintEvaluator {
     const currentRadius = circle.radius;
     const error = (currentRadius - targetRadius) ** 2;
 
-    // For fix-radius constraints, we don't allow the radius to change
+    // For radius constraints, we don't allow the radius to change
     // The gradient affects the center point to maintain the fixed radius
     const gradient = new Map<string, { x: number; y: number }>();
 
