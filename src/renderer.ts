@@ -163,13 +163,13 @@ export class CanvasRenderer {
       if (!isFullyFixed) {
         this.ctx.beginPath();
         if (hasFixX && !hasFixY) {
-          // Show horizontal line for X-fixed
-          this.ctx.moveTo(point.x - radius, point.y);
-          this.ctx.lineTo(point.x + radius, point.y);
-        } else if (!hasFixX && hasFixY) {
-          // Show vertical line for Y-fixed
+          // Show horizontal line for Y-fixed
           this.ctx.moveTo(point.x, point.y - radius);
           this.ctx.lineTo(point.x, point.y + radius);
+        } else if (!hasFixX && hasFixY) {
+          // Show vertical line for X-fixed
+          this.ctx.moveTo(point.x - radius, point.y);
+          this.ctx.lineTo(point.x + radius, point.y);
         }
         this.ctx.strokeStyle = "#ffffff";
         this.ctx.lineWidth = 2;
@@ -213,13 +213,25 @@ export class CanvasRenderer {
 
     const isSelected = selection.selectedIds.has(line.id);
     const isHovered = selection.hoveredId === line.id;
+    const hasLengthConstraint = geometry.constraints.has(`line-length-${line.id}`);
 
     this.ctx.save();
-    this.ctx.strokeStyle = isSelected
-      ? "#4dabf7"
-      : isHovered
-      ? "#74c0fc"
-      : "#6c757d";
+    
+    if (hasLengthConstraint) {
+      // Constrained lines use red color scheme (like fixed points)
+      this.ctx.strokeStyle = isSelected
+        ? "#ff4757"  // Bright red when selected
+        : isHovered
+        ? "#ff6b81"  // Light red when hovered
+        : "#dc3545"; // Red when constrained
+    } else {
+      // Normal lines use blue/gray color scheme
+      this.ctx.strokeStyle = isSelected
+        ? "#4dabf7"  // Blue when selected
+        : isHovered
+        ? "#74c0fc"  // Light blue when hovered
+        : "#6c757d"; // Gray default
+    }
     this.ctx.lineWidth = isSelected ? 3 : isHovered ? 2 : 1;
 
     this.ctx.beginPath();

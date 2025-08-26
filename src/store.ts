@@ -117,6 +117,9 @@ interface AppState {
   removeFixYConstraint: (pointId: string) => void;
   getFixXConstraint: (pointId: string) => Constraint | null;
   getFixYConstraint: (pointId: string) => Constraint | null;
+  getLineLengthConstraint: (lineId: string) => Constraint | null;
+  addLineLengthConstraint: (lineId: string, length: number) => void;
+  removeLineLengthConstraint: (lineId: string) => void;
   removeEntity: (id: string) => void;
 
   // Solver actions
@@ -304,6 +307,36 @@ export const useStore = create<AppState>()(
       const state = get();
       return state.geometry.constraints.get(`fix-y-${pointId}`) || null;
     },
+
+    getLineLengthConstraint: (lineId) => {
+      const state = get();
+      return state.geometry.constraints.get(`line-length-${lineId}`) || null;
+    },
+
+    addLineLengthConstraint: (lineId, length) =>
+      set((state) => {
+        const line = state.geometry.lines.get(lineId);
+        if (line) {
+          const lengthConstraint = {
+            id: `line-length-${lineId}`,
+            type: "distance" as const,
+            entityIds: [line.point1Id, line.point2Id],
+            value: length,
+            priority: 1,
+          };
+          state.geometry.constraints.set(lengthConstraint.id, lengthConstraint);
+          state.geometry.metadata.modified = new Date();
+          saveGeometry(state.geometry);
+        }
+      }),
+
+    removeLineLengthConstraint: (lineId) =>
+      set((state) => {
+        const constraintId = `line-length-${lineId}`;
+        state.geometry.constraints.delete(constraintId);
+        state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
+      }),
 
     removeEntity: (id) =>
       set((state) => {

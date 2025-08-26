@@ -20,6 +20,9 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
     removeFixYConstraint,
     getFixXConstraint,
     getFixYConstraint,
+    getLineLengthConstraint,
+    addLineLengthConstraint,
+    removeLineLengthConstraint,
   } = useStore();
 
   const [editingCoord, setEditingCoord] = useState<{
@@ -29,6 +32,10 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
   } | null>(null);
   const [editingRadius, setEditingRadius] = useState<{
     circleId: string;
+    value: string;
+  } | null>(null);
+  const [editingLength, setEditingLength] = useState<{
+    lineId: string;
     value: string;
   } | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -141,6 +148,77 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
     }
   };
 
+  // Handle length editing
+  const handleLengthClick = (
+    lineId: string,
+    currentLength: number,
+    cmdKey: boolean = false
+  ) => {
+    if (cmdKey) {
+      handleLengthFixedToggle(lineId);
+    } else {
+      setEditingLength({
+        lineId,
+        value: formatNumber(currentLength),
+      });
+    }
+  };
+
+  const handleLengthSubmit = () => {
+    if (!editingLength || !geometry) return;
+
+    const newLength = parseFloat(editingLength.value);
+    if (!isNaN(newLength) && newLength > 0) {
+      const line = geometry.lines.get(editingLength.lineId);
+      if (!line) return;
+
+      const point1 = geometry.points.get(line.point1Id);
+      const point2 = geometry.points.get(line.point2Id);
+      if (!point1 || !point2) return;
+
+      // Calculate direction vector from point1 to point2
+      const currentLength = distance(point1, point2);
+      if (currentLength === 0) return; // Avoid division by zero
+
+      const directionX = (point2.x - point1.x) / currentLength;
+      const directionY = (point2.y - point1.y) / currentLength;
+
+      // Move point2 to achieve new length
+      const newX = point1.x + directionX * newLength;
+      const newY = point1.y + directionY * newLength;
+
+      updatePoint(line.point2Id, { x: newX, y: newY });
+
+      // If there's an existing length constraint, update its value too
+      const existingConstraint = getLineLengthConstraint(editingLength.lineId);
+      if (existingConstraint) {
+        useStore.getState().updateConstraint(existingConstraint.id, {
+          value: newLength,
+        });
+      }
+    }
+    setEditingLength(null);
+  };
+
+  const handleLengthFixedToggle = (lineId: string) => {
+    if (!geometry) return;
+    const line = geometry.lines.get(lineId);
+    if (!line) return;
+
+    const point1 = geometry.points.get(line.point1Id);
+    const point2 = geometry.points.get(line.point2Id);
+    if (!point1 || !point2) return;
+
+    const currentLength = distance(point1, point2);
+    const existingConstraint = getLineLengthConstraint(lineId);
+
+    if (existingConstraint) {
+      removeLineLengthConstraint(lineId);
+    } else {
+      addLineLengthConstraint(lineId, currentLength);
+    }
+  };
+
   const handleEntityClick = (
     entityId: string,
     shiftKey: boolean = false,
@@ -206,10 +284,13 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
           handleCoordSubmit();
         } else if (editingRadius) {
           handleRadiusSubmit();
+        } else if (editingLength) {
+          handleLengthSubmit();
         }
       } else if (e.key === "Escape") {
         setEditingCoord(null);
         setEditingRadius(null);
+        setEditingLength(null);
       }
     };
 
@@ -217,7 +298,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [editingCoord, editingRadius]);
+  }, [editingCoord, editingRadius, editingLength]);
 
   // Format number to 3 decimal places
   const formatNumber = (num: number | undefined | null): string => {
@@ -449,6 +530,8 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
             if (point1 && point2) {
               length = distance(point1, point2);
             }
+            
+            const hasFixedLength = !!getLineLengthConstraint(id);
 
             return (
               <div
@@ -487,12 +570,61 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
                 <span style={{ margin: "0 8px", color: "#666" }}>line</span>
                 <div
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
                     marginLeft: "auto",
-                    color: "#666",
-                    fontSize: "10px",
                   }}
                 >
-                  len: {formatNumber(length)}, {point1Name}→{point2Name}
+                  {editingLength?.lineId === id ? (
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0.001"
+                      value={editingLength.value}
+                      onChange={(e) =>
+                        setEditingLength({
+                          ...editingLength,
+                          value: e.target.value,
+                        })
+                      }
+                      onBlur={handleLengthSubmit}
+                      style={{
+                        width: "50px",
+                        padding: "1px 4px",
+                        border: "1px solid #ccc",
+                        borderRadius: "2px",
+                        fontSize: "10px",
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      style={{
+                        color: hasFixedLength ? "#dc3545" : "#666",
+                        cursor: "pointer",
+                        padding: "1px 3px",
+                        borderRadius: "2px",
+                        backgroundColor: hasFixedLength
+                          ? "#ffebee"
+                          : "transparent",
+                        fontSize: "10px",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLengthClick(
+                          id,
+                          length,
+                          e.metaKey || e.ctrlKey
+                        );
+                      }}
+                    >
+                      len: {formatNumber(length)}
+                    </span>
+                  )}
+                  <span style={{ color: "#666", fontSize: "10px" }}>
+                    {point1Name}→{point2Name}
+                  </span>
                   {line.infinite && (
                     <span style={{ marginLeft: "4px", color: "#007bff" }}>
                       ∞

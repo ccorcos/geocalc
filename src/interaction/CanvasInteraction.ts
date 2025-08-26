@@ -495,6 +495,33 @@ export class CanvasInteraction {
         return; // Don't change selection when toggling fixed state
       }
 
+      // Handle Cmd/Ctrl+Click for toggling line length fixed state
+      if (cmdKey && store.geometry.lines.has(entityId)) {
+        const line = store.geometry.lines.get(entityId);
+        if (!line) return;
+
+        const point1 = store.geometry.points.get(line.point1Id);
+        const point2 = store.geometry.points.get(line.point2Id);
+        if (!point1 || !point2) return;
+
+        const existingConstraint = store.getLineLengthConstraint(entityId);
+        
+        if (existingConstraint) {
+          // Remove existing length constraint
+          store.removeLineLengthConstraint(entityId);
+        } else {
+          // Add length constraint with current length
+          const currentLength = Math.sqrt(
+            Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2)
+          );
+          store.addLineLengthConstraint(entityId, currentLength);
+        }
+
+        // Select the line
+        store.setSelection({ selectedIds: new Set([entityId]) });
+        return; // Don't proceed with normal click handling
+      }
+
       const selectedIds = new Set(store.selection.selectedIds);
 
       if (shiftKey) {
