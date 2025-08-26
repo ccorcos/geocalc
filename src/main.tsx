@@ -1,7 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { enableMapSet } from 'immer'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.tsx'
+import Reset from './Reset.tsx'
 import './index.css'
 import { useStore } from './store'
 
@@ -15,6 +17,11 @@ if (typeof window !== 'undefined') {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/reset" element={<Reset />} />
+      </Routes>
+    </BrowserRouter>
   </React.StrictMode>,
 )

@@ -13,6 +13,75 @@ import {
 } from "./engine/types";
 import { GradientDescentSolver } from "./engine/GradientDescentSolver";
 
+// localStorage persistence functions
+const STORAGE_KEY = "geocalc-geometry";
+
+const serializeGeometry = (geometry: Geometry): string => {
+  const serializable = {
+    points: Array.from(geometry.points.entries()),
+    lines: Array.from(geometry.lines.entries()),
+    circles: Array.from(geometry.circles.entries()),
+    constraints: Array.from(geometry.constraints.entries()),
+    metadata: {
+      version: geometry.metadata.version,
+      created: geometry.metadata.created.toISOString(),
+      modified: geometry.metadata.modified.toISOString(),
+    },
+  };
+  return JSON.stringify(serializable);
+};
+
+const deserializeGeometry = (data: string): Geometry => {
+  try {
+    const parsed = JSON.parse(data);
+    return {
+      points: new Map(parsed.points || []),
+      lines: new Map(parsed.lines || []),
+      circles: new Map(parsed.circles || []),
+      constraints: new Map(parsed.constraints || []),
+      metadata: {
+        version: parsed.metadata?.version || "1.0.0",
+        created: new Date(parsed.metadata?.created || Date.now()),
+        modified: new Date(parsed.metadata?.modified || Date.now()),
+      },
+    };
+  } catch (error) {
+    console.warn("Failed to deserialize geometry from localStorage:", error);
+    return createEmptyGeometry();
+  }
+};
+
+const saveGeometry = (geometry: Geometry) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, serializeGeometry(geometry));
+  } catch (error) {
+    console.warn("Failed to save geometry to localStorage:", error);
+  }
+};
+
+const loadGeometry = (): Geometry => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? deserializeGeometry(data) : createEmptyGeometry();
+  } catch (error) {
+    console.warn("Failed to load geometry from localStorage:", error);
+    return createEmptyGeometry();
+  }
+};
+
+export const clearPersistedGeometry = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn("Failed to clear geometry from localStorage:", error);
+  }
+};
+
+export const resetGeometry = () => {
+  const emptyGeometry = createEmptyGeometry();
+  useStore.getState().setGeometry(emptyGeometry);
+};
+
 interface AppState {
   geometry: Geometry;
   currentTool: ToolType;
@@ -64,7 +133,7 @@ const solver = new GradientDescentSolver();
 
 export const useStore = create<AppState>()(
   immer((set, get) => ({
-    geometry: createEmptyGeometry(),
+    geometry: loadGeometry(),
     currentTool: "select",
     viewport: {
       x: 0,
@@ -82,7 +151,11 @@ export const useStore = create<AppState>()(
     dragStartPoint: null,
     isSolving: false,
 
-    setGeometry: (geometry) => set({ geometry }),
+    setGeometry: (geometry) =>
+      set((state) => {
+        state.geometry = geometry;
+        saveGeometry(geometry);
+      }),
 
     setCurrentTool: (tool) => set({ currentTool: tool }),
 
@@ -124,24 +197,28 @@ export const useStore = create<AppState>()(
       set((state) => {
         state.geometry.points.set(point.id, point);
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     addLine: (line) =>
       set((state) => {
         state.geometry.lines.set(line.id, line);
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     addCircle: (circle) =>
       set((state) => {
         state.geometry.circles.set(circle.id, circle);
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     addConstraint: (constraint) =>
       set((state) => {
         state.geometry.constraints.set(constraint.id, constraint);
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     updateConstraint: (id, updates) =>
@@ -150,6 +227,7 @@ export const useStore = create<AppState>()(
         if (constraint) {
           Object.assign(constraint, updates);
           state.geometry.metadata.modified = new Date();
+          saveGeometry(state.geometry);
         }
       }),
 
@@ -159,6 +237,7 @@ export const useStore = create<AppState>()(
         if (point) {
           Object.assign(point, updates);
           state.geometry.metadata.modified = new Date();
+          saveGeometry(state.geometry);
         }
       }),
 
@@ -168,6 +247,7 @@ export const useStore = create<AppState>()(
         if (circle) {
           Object.assign(circle, updates);
           state.geometry.metadata.modified = new Date();
+          saveGeometry(state.geometry);
         }
       }),
 
@@ -182,6 +262,7 @@ export const useStore = create<AppState>()(
         };
         state.geometry.constraints.set(fixXConstraint.id, fixXConstraint);
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     addFixYConstraint: (pointId, value) =>
@@ -195,6 +276,7 @@ export const useStore = create<AppState>()(
         };
         state.geometry.constraints.set(fixYConstraint.id, fixYConstraint);
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     removeFixXConstraint: (pointId) =>
@@ -202,6 +284,7 @@ export const useStore = create<AppState>()(
         const constraintId = `fix-x-${pointId}`;
         state.geometry.constraints.delete(constraintId);
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     removeFixYConstraint: (pointId) =>
@@ -209,6 +292,7 @@ export const useStore = create<AppState>()(
         const constraintId = `fix-y-${pointId}`;
         state.geometry.constraints.delete(constraintId);
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     getFixXConstraint: (pointId) => {
@@ -282,6 +366,7 @@ export const useStore = create<AppState>()(
         }
 
         state.geometry.metadata.modified = new Date();
+        saveGeometry(state.geometry);
       }),
 
     solve: () => {
@@ -295,6 +380,7 @@ export const useStore = create<AppState>()(
 
         if (result.success) {
           // Update the document with solved positions
+          saveGeometry(result.geometry);
           useStore.setState({ geometry: result.geometry, isSolving: false });
         } else {
           console.warn("Solver failed to converge", result);
