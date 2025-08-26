@@ -42,7 +42,7 @@ export class CanvasRenderer {
     this.renderLines(geometry, selection);
     this.renderCircles(geometry, selection);
     this.renderPoints(geometry, selection);
-    this.renderConstraints(geometry);
+    this.renderConstraints();
 
     // Render interaction states
     if (interactionStates) {
@@ -301,7 +301,7 @@ export class CanvasRenderer {
     this.ctx.restore();
   }
 
-  private renderConstraints(geometry: Geometry): void {
+  private renderConstraints(): void {
     // TODO: Render constraint indicators (small icons, dimension lines, etc.)
     // For now, we'll skip this and add it later
   }

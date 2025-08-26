@@ -177,7 +177,6 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
     }
 
     // Show context menu at mouse position
-    const rect = event.currentTarget.getBoundingClientRect();
     setContextMenu({
       x: event.clientX,
       y: event.clientY,
@@ -509,7 +508,6 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
             const name = getHumanName(
               geometry.points.size + geometry.lines.size + index
             );
-            const centerPoint = geometry.points.get(circle.centerId);
             const centerIndex = Array.from(geometry.points.keys()).indexOf(
               circle.centerId
             );

@@ -5,17 +5,13 @@ import {
 } from "../engine/geometry";
 import { Point } from "../engine/types";
 import { useStore } from "../store";
-import { ConstraintTool } from "./ConstraintTool";
 
 export class CanvasInteraction {
   private canvas: HTMLCanvasElement;
   private isMouseDown = false;
-  private lastMousePos = { x: 0, y: 0 };
   private currentMousePos = { x: 0, y: 0 };
-  private dragStartPos = { x: 0, y: 0 };
   private tempLineStart: Point | null = null;
   private tempCircleCenter: Point | null = null;
-  private constraintTool = new ConstraintTool();
   private circleRadiusDrag: { circleId: string; initialRadius: number } | null =
     null;
   private selectionRect: {
@@ -24,7 +20,6 @@ export class CanvasInteraction {
     endX: number;
     endY: number;
   } | null = null;
-  private selectionRectShiftHeld = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -86,8 +81,8 @@ export class CanvasInteraction {
 
       const dist = this.distanceToLineSegment(
         { x: worldX, y: worldY },
-        point1,
-        point2
+        { x: point1.x, y: point1.y },
+        { x: point2.x, y: point2.y }
       );
 
       if (dist <= tolerance) {
@@ -180,9 +175,9 @@ export class CanvasInteraction {
   }
 
   private distanceToLineSegment(
-    point: Point,
-    lineStart: Point,
-    lineEnd: Point
+    point: { x: number; y: number },
+    lineStart: { x: number; y: number },
+    lineEnd: { x: number; y: number }
   ): number {
     const A = point.x - lineStart.x;
     const B = point.y - lineStart.y;
@@ -248,8 +243,6 @@ export class CanvasInteraction {
     const store = useStore.getState();
 
     this.isMouseDown = true;
-    this.lastMousePos = mousePos;
-    this.dragStartPos = mousePos;
 
     switch (store.currentTool) {
       case "select":
@@ -286,11 +279,10 @@ export class CanvasInteraction {
       this.handleMouseDrag(mousePos, worldPos);
     }
 
-    this.lastMousePos = mousePos;
     this.currentMousePos = worldPos;
   };
 
-  private handleMouseUp = (e: MouseEvent): void => {
+  private handleMouseUp = (): void => {
     if (!this.isMouseDown) return;
 
     this.isMouseDown = false;
@@ -536,7 +528,6 @@ export class CanvasInteraction {
     } else {
       // Start rectangular selection
       // Track whether shift was held for later use
-      this.selectionRectShiftHeld = shiftKey;
 
       // If shift is not held, clear existing selection
       if (!shiftKey) {
@@ -646,7 +637,7 @@ export class CanvasInteraction {
   }
 
   private handleMouseDrag(
-    mousePos: { x: number; y: number },
+    _mousePos: { x: number; y: number },
     worldPos: { x: number; y: number }
   ): void {
     const store = useStore.getState();

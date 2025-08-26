@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { ConstraintEvaluator } from "../engine/ConstraintEvaluator";
-import { ConstraintType } from "../engine/types";
 import { useStore } from "../store";
 
 interface ConstraintPanelProps {
@@ -13,7 +12,6 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({
   const {
     geometry,
     selection,
-    addConstraint,
     updateConstraint,
     removeEntity,
     solve,
@@ -23,8 +21,6 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({
   } = useStore();
 
   const evaluator = new ConstraintEvaluator();
-  const [selectedConstraintType] = useState<ConstraintType>("distance");
-  const [constraintValue, setConstraintValue] = useState<string>("");
   const [editingConstraint, setEditingConstraint] = useState<{
     constraintId: string;
     value: string;
@@ -32,7 +28,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({
   // selectedConstraintId now comes from global store
 
   const selectedIds = Array.from(selection.selectedIds);
-  const selectedEntities = selectedIds
+  selectedIds
     .map((id) => {
       if (!geometry) return null;
 

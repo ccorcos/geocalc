@@ -6,7 +6,6 @@ export class ConstraintTool {
   private selectedForConstraint: string[] = [];
 
   handleSelection(entityId: string): void {
-    const store = useStore.getState();
 
     // Add to constraint selection
     if (!this.selectedForConstraint.includes(entityId)) {

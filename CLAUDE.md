@@ -9,14 +9,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev          # Start development server (localhost:5173)
 npm run build        # TypeScript compilation + production build
 npm run lint         # ESLint with strict TypeScript rules
+npm run typecheck    # TypeScript type checking
 ```
 
 ### Testing
 ```bash
-npm test             # Run unit tests (Vitest, excludes e2e)
-npm run test:run     # Run tests once without watch mode
+npm test             # Full test suite: typecheck + unit tests + e2e tests
+npm run test:unit    # Run unit tests (Vitest)
+npm run test:unit:ui # Run unit tests with Vitest UI
+npm run test:unit:coverage # Run unit tests with coverage report
 npm run test:e2e     # Run Playwright end-to-end tests
-npm run test:e2e:debug  # Debug e2e tests with Playwright inspector
+npm run test:e2e:ui  # Run e2e tests with Playwright UI
+npm run test:e2e:debug # Debug e2e tests with Playwright inspector
 ```
 
 ### Single Test Execution
