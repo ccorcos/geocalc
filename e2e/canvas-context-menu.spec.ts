@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { GeoCalcTestHelper } from './test-helpers';
+import { TestHarness } from './test-helpers';
 
 test.describe('Canvas Context Menu Constraint Creation', () => {
   test('right-click on canvas with selected points shows constraint options', async ({ page }) => {
-    const helper = new GeoCalcTestHelper(page);
+    const helper = new TestHarness(page);
     await helper.goto();
 
     // Create two points on canvas
@@ -28,7 +28,7 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
   });
 
   test('create distance constraint from canvas context menu', async ({ page }) => {
-    const helper = new GeoCalcTestHelper(page);
+    const helper = new TestHarness(page);
     await helper.goto();
 
     // Create two points on canvas
@@ -56,7 +56,7 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
   });
 
   test('right-click directly on point shows context menu', async ({ page }) => {
-    const helper = new GeoCalcTestHelper(page);
+    const helper = new TestHarness(page);
     await helper.goto();
 
     // Create a single point

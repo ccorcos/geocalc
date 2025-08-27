@@ -9,10 +9,22 @@ Strategies:
 
 ---
 
+fix e2e tests.
+
+
+write a tool claude hook that runs prettier on files after writing to them. Add a npm run prettier command that runs for the whole repo. And add a prettierrc file that specifies tabs and no semis.
+
+
+add to claude.md that says we always need to write a minimal unit tests for new constraint types.
+
+
+lets make a plan for e2e tests. similar to unit tests, I want a minimal tests for each constraint type, using the ui to draw, select, constrain, and solve.
+
+
+
 I want to display constraints and dimensions visually in the canvas in a style consistent with physics or engineering drawings like dimension lines.
 - For a point, lets display (x: ?) if there's an x constraint and (x: ?, y: ?) if there's an x and y constraint. Don't display the current coordinated but the desired coordinates for the constraint.
 - For distance, if its just two points then draw a dimension line with the distance constraint value labeled. If its a distance but there's a line already drawn there then you don't need a dimension line, just draw the number label next to the line.
-
 
 
   | "distance"

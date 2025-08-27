@@ -90,10 +90,12 @@ interface Geometry {
 }
 ```
 
-**Constraint Types** - 13+ constraint types including:
-- Geometric: `distance`, `parallel`, `perpendicular`, `horizontal`, `vertical`
-- Positional: `fix-x`, `fix-y`, `same-x`, `same-y`
-- Angular: `angle`
+**Constraint Types** - Centralized type system in `src/engine/constraint-types.ts`:
+- Geometric: `'distance'`, `'parallel'`, `'perpendicular'`, `'horizontal'`, `'vertical'`
+- Positional: `'x'`, `'y'`, `'same-x'`, `'same-y'` 
+- Angular: `'angle'`
+- Distance: `'x-distance'`, `'y-distance'`
+- Circle: `'radius'`
 
 ### State Management Pattern
 
@@ -101,6 +103,7 @@ interface Geometry {
 - **Immutable Updates**: Uses Immer for clean state transitions
 - **Actions**: Store provides methods for CRUD operations on geometry entities
 - **Debugging**: Store exposed on `window.__GEOCALC_STORE__` in development
+- **Diagnostics**: E2E diagnostics available via `window.__GEOCALC_DIAGNOSTICS__` for test debugging
 
 ## Important Implementation Details
 
@@ -119,30 +122,78 @@ interface Geometry {
 ### Testing Architecture
 
 **Unit Tests**: Vitest with jsdom environment, focused on engine logic and utilities. Test files are co-located with source files (e.g., `src/engine/ConstraintEvaluator.test.ts` next to `ConstraintEvaluator.ts`)
-**E2E Tests**: Playwright with comprehensive UI testing, uses `GeoCalcTestHelper` class
+
+**E2E Tests**: Playwright with comprehensive UI testing following these principles:
+- **Philosophy**: "Inspect, Don't Bypass" - tests must use real user interactions, never shortcuts around UI
+- **TestHarness Class**: `e2e/test-helpers.ts` provides business-logic abstractions (use `const h = new TestHarness(page)`)
+- **Diagnostics**: `window.__GEOCALC_DIAGNOSTICS__` provides state inspection without bypassing UI
+- **Entity Selection**: Use entity panel selection (`selectPointsInPanel`) over canvas clicks for reliability
+- **State Verification**: Use diagnostics to verify constraint satisfaction rather than manual calculations
+
 **Test Separation**: Vitest excludes `e2e/` directory to prevent conflicts
 
 ### Common Gotchas
 
 1. **Document vs Geometry**: Store property is `geometry` (not `document`) - avoid variable shadowing with `window.document`
 2. **Null Safety**: Always check `geometry?.entities` - components must handle null geometry state
-3. **Constraint Gradients**: Same-x/same-y constraints use pairwise evaluation, not multi-point reference
-4. **Portal Rendering**: Context menus use React Portal to `document.getElementById('root')` for proper positioning
+3. **Constraint Types**: Use string literals (`'x'`, `'y'`) not old names (`'fix-x'`, `'fix-y'`). Import types from `constraint-types.ts`
+4. **Constraint Gradients**: Same-x/same-y constraints use pairwise evaluation, not multi-point reference
+5. **Portal Rendering**: Context menus use React Portal to `document.getElementById('root')` for proper positioning
 
 ## Development Workflow
 
 ### Adding New Constraint Types
-1. Update `ConstraintType` in `src/engine/types.ts`
-2. Implement evaluation logic in `src/engine/ConstraintEvaluator.ts`
-3. Add UI controls to constraint panels/context menus
-4. Write unit tests for constraint mathematics in `src/engine/ConstraintEvaluator.test.ts`
-5. Add e2e tests for UI workflow
+1. Add string literal to `ConstraintType` union in `src/engine/constraint-types.ts`
+2. Add display names to `CONSTRAINT_DISPLAY_NAMES` and `CONSTRAINT_MENU_NAMES` 
+3. Add to `ALL_CONSTRAINT_TYPES` array for test iteration
+4. Implement evaluation logic in `src/engine/ConstraintEvaluator.ts`
+5. Add UI controls to constraint panels/context menus
+6. Write unit tests for constraint mathematics in `src/engine/ConstraintEvaluator.test.ts`
+7. Add e2e tests for UI workflow using TestHarness
 
 ### Debugging Constraint Issues
 1. Check solver convergence in `SolverPanel` - watch iteration count and final error
 2. Use browser devtools to inspect `__GEOCALC_STORE__.geometry.constraints`
-3. Verify gradient calculations in `ConstraintEvaluator.test.ts`
-4. Test constraint behavior in isolation with integration tests
+3. In e2e tests, use `h.debugConstraints()` to see actual constraint state vs expected
+4. Use diagnostics: `window.__GEOCALC_DIAGNOSTICS__.debug.logConstraints()` in browser
+5. Verify gradient calculations in `ConstraintEvaluator.test.ts`
+6. Test constraint behavior in isolation with integration tests
+
+### E2E Testing Best Practices
+
+**Philosophy**: Tests should validate exactly what users do - no shortcuts or UI bypassing.
+
+**Writing Tests**:
+```typescript
+// ✅ Good: Use TestHarness with 'h' abbreviation
+const h = new TestHarness(page);
+await h.goto();
+await h.createPointAt(200, 200);
+await h.expectPointCount(1);
+
+// ✅ Good: Use diagnostics for verification
+const constraints = await h.debugConstraints();
+const isFixed = await h.verifyPointIsFixed();
+
+// ✅ Good: Entity panel selection over canvas clicks
+await h.selectPointsInPanel([0, 1], true);
+
+// ❌ Bad: Bypassing UI or hardcoding expectations
+await page.evaluate(() => window.store.addPoint(...)); // Don't bypass UI
+expect(actualDistance - 150).toBeLessThan(0.01);       // Use verification helpers instead
+```
+
+**Test Structure**:
+- Create entities using UI interactions (`h.createPointAt`, `h.createLine`)
+- Select entities using reliable methods (`h.selectPointsInPanel` over canvas clicks)
+- Verify results using diagnostics (`h.debugConstraints`, `h.verifyPointIsFixed`)
+- Use centralized constraint types from `constraint-types.ts`
+
+**Debugging Failing Tests**:
+- Add `await h.debugConstraints()` to see actual vs expected constraint state
+- Use `await h.logPointPositions()` and `await h.logConstraints()` for debugging
+- Check browser console for diagnostics output
+- Use Playwright UI mode (`npm run test:e2e:ui`) for visual debugging
 
 ### Canvas Rendering Performance
 - Rendering pipeline in `src/renderer.ts` handles efficient redraws
@@ -158,3 +209,7 @@ interface Geometry {
 **Zustand vs Redux**: Zustand + Immer provides simpler state management with immutable updates, less boilerplate than Redux.
 
 **Component Architecture**: Functional React components with hooks, minimal prop drilling through centralized store, clear separation between UI and business logic.
+
+**Constraint Type System**: Centralized constraint types using string literals (`'distance'`, `'x'`, `'y'`) instead of constants object. Provides type safety while avoiding unnecessary complexity. Display names managed in `constraint-types.ts` for UI consistency.
+
+**E2E Testing Philosophy**: "Inspect, Don't Bypass" - tests use real user interactions with diagnostics for verification rather than shortcuts around UI. TestHarness provides business-logic abstractions while maintaining true user behavior testing.

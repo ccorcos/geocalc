@@ -19,21 +19,9 @@ export interface Circle {
 
 export type GeometryEntity = Point | Line | Circle;
 
-export type ConstraintType =
-  | "distance"
-  | "x-distance"
-  | "y-distance"
-  | "parallel"
-  | "perpendicular"
-  | "tangent"
-  | "angle"
-  | "horizontal"
-  | "vertical"
-  | "x"
-  | "y"
-  | "same-x"
-  | "same-y"
-  | "radius";
+// Import centralized constraint types
+import type { ConstraintType } from './constraint-types';
+export type { ConstraintType } from './constraint-types';
 
 export interface Constraint {
   id: string;

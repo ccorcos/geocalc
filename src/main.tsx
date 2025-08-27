@@ -6,13 +6,15 @@ import App from './App.tsx'
 import Reset from './Reset.tsx'
 import './index.css'
 import { useStore } from './store'
+import { createDiagnostics } from './diagnostics'
 
 // Enable Map and Set support in Immer
 enableMapSet()
 
-// Expose store to window for testing
+// Expose store and diagnostics to window for testing
 if (typeof window !== 'undefined') {
   (window as any).__GEOCALC_STORE__ = useStore;
+  (window as any).__GEOCALC_DIAGNOSTICS__ = createDiagnostics();
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

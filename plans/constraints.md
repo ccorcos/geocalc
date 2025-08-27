@@ -13,12 +13,12 @@ Based on analysis of the codebase, here's the complete constraint landscape:
 5. **`perpendicular`** - Two lines are perpendicular
 6. **`horizontal`** - Line is horizontal
 7. **`vertical`** - Line is vertical
-8. **`fix-x`** - Fix point's X coordinate
-9. **`fix-y`** - Fix point's Y coordinate
+8. **`x`** - Fix point's X coordinate
+9. **`y`** - Fix point's Y coordinate
 10. **`same-x`** - Two points have same X coordinate
 11. **`same-y`** - Two points have same Y coordinate
 12. **`angle`** - Angle between three points (vertex in middle)
-13. **`fix-radius`** - Fix circle radius
+13. **`radius`** - Fix circle radius
 
 ## Missing Implementation ❌
 

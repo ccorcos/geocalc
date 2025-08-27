@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { ConstraintEvaluator } from "./ConstraintEvaluator";
 import {
+  createCircle,
   createConstraint,
   createEmptyGeometry,
   createLine,
   createPoint,
-  createCircle,
 } from "./geometry";
 import { Geometry } from "./types";
-import { ConstraintEvaluator } from "./ConstraintEvaluator";
 
 describe("ConstraintEvaluator", () => {
   let evaluator: ConstraintEvaluator;
@@ -76,7 +76,7 @@ describe("ConstraintEvaluator", () => {
   });
 
   describe("Fix Constraints", () => {
-    it("should evaluate fix-x constraint with zero error when satisfied", () => {
+    it("should evaluate x constraint with zero error when satisfied", () => {
       const point = createPoint(5, 10);
       geometry.points.set(point.id, point);
 
@@ -87,7 +87,7 @@ describe("ConstraintEvaluator", () => {
       expect(result.error).toBeCloseTo(0, 10);
     });
 
-    it("should evaluate fix-x constraint with positive error when not satisfied", () => {
+    it("should evaluate x constraint with positive error when not satisfied", () => {
       const point = createPoint(8, 10); // x should be 5
       geometry.points.set(point.id, point);
 
@@ -97,7 +97,7 @@ describe("ConstraintEvaluator", () => {
       expect(result.error).toBe(9); // (8-5)² = 9
     });
 
-    it("should compute correct gradients for fix-x constraint", () => {
+    it("should compute correct gradients for x constraint", () => {
       const point = createPoint(8, 10);
       geometry.points.set(point.id, point);
 
@@ -112,7 +112,7 @@ describe("ConstraintEvaluator", () => {
       expect(grad.y).toBe(0);
     });
 
-    it("should evaluate fix-y constraint with zero error when satisfied", () => {
+    it("should evaluate y constraint with zero error when satisfied", () => {
       const point = createPoint(5, 10);
       geometry.points.set(point.id, point);
 
@@ -123,7 +123,7 @@ describe("ConstraintEvaluator", () => {
       expect(result.error).toBeCloseTo(0, 10);
     });
 
-    it("should evaluate fix-y constraint with positive error when not satisfied", () => {
+    it("should evaluate y constraint with positive error when not satisfied", () => {
       const point = createPoint(5, 13); // y should be 10
       geometry.points.set(point.id, point);
 
@@ -133,7 +133,7 @@ describe("ConstraintEvaluator", () => {
       expect(result.error).toBe(9); // (13-10)² = 9
     });
 
-    it("should compute correct gradients for fix-y constraint", () => {
+    it("should compute correct gradients for y constraint", () => {
       const point = createPoint(5, 13);
       geometry.points.set(point.id, point);
 
@@ -685,8 +685,8 @@ describe("ConstraintEvaluator", () => {
     });
   });
 
-  describe("Fix-Radius Constraints", () => {
-    it("should evaluate fix-radius constraint with zero error when satisfied", () => {
+  describe("Radius Constraints", () => {
+    it("should evaluate radius constraint with zero error when satisfied", () => {
       const center = createPoint(5, 5);
       const circle = createCircle(center.id, 3.0);
 
@@ -700,7 +700,7 @@ describe("ConstraintEvaluator", () => {
       expect(result.error).toBeCloseTo(0, 10);
     });
 
-    it("should evaluate fix-radius constraint with positive error when not satisfied", () => {
+    it("should evaluate radius constraint with positive error when not satisfied", () => {
       const center = createPoint(5, 5);
       const circle = createCircle(center.id, 4.0); // actual radius = 4, want 2
 
@@ -726,7 +726,7 @@ describe("ConstraintEvaluator", () => {
       expect(result.error).toBe(0);
     });
 
-    it("should return empty gradient for fix-radius constraint", () => {
+    it("should return empty gradient for radius constraint", () => {
       const center = createPoint(5, 5);
       const circle = createCircle(center.id, 4.0);
 
@@ -736,12 +736,16 @@ describe("ConstraintEvaluator", () => {
       const constraint = createConstraint("radius", [circle.id], 2.0);
       const result = evaluator.evaluate(constraint, geometry);
 
-      // fix-radius doesn't provide gradients since radius changes are handled differently
+      // radius doesn't provide gradients since radius changes are handled differently
       expect(result.gradient.size).toBe(0);
     });
 
     it("should handle missing circle gracefully", () => {
-      const constraint = createConstraint("radius", ["non-existent-circle"], 5.0);
+      const constraint = createConstraint(
+        "radius",
+        ["non-existent-circle"],
+        5.0
+      );
       const result = evaluator.evaluate(constraint, geometry);
 
       expect(result.error).toBe(0);
