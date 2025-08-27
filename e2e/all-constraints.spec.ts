@@ -178,18 +178,7 @@ test.describe("All Constraint Types", () => {
     // Wait for constraint UI
     await helper.waitForConstraintUI(3);
 
-    // Check if angle constraint is available in dropdown
-    const constraintSelect = helper.constraintPanel.locator("select");
-    const hasAngleOption = await constraintSelect
-      .locator('option[value="angle"]')
-      .count();
-
-    // The angle constraint SHOULD be available for 3-point selection
-    expect(
-      hasAngleOption,
-      "Angle constraint should be available when 3 points are selected"
-    ).toBeGreaterThan(0);
-
+    // Try to create angle constraint - this will fail if the constraint is not available
     await helper.createConstraint("angle", 90);
     await helper.expectConstraintExists("angle");
     await helper.runSolver();

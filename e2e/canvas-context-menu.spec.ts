@@ -22,9 +22,9 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
     await helper.canvas.click({ button: 'right', position: { x: 200, y: 200 } });
     
     // Should show distance constraint options
-    await expect(page.locator('text=Distance')).toBeVisible();
-    await expect(page.locator('text=Fixed X Distance')).toBeVisible();
-    await expect(page.locator('text=Fixed Y Distance')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Distance', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'X Distance', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Y Distance', exact: true })).toBeVisible();
   });
 
   test('create distance constraint from canvas context menu', async ({ page }) => {
@@ -45,14 +45,14 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
 
     // Right-click on the first point and create distance constraint
     await helper.canvas.click({ button: 'right', position: { x: 200, y: 200 } });
-    await page.locator('text=Distance').click();
+    await page.getByRole('button', { name: 'Distance', exact: true }).click();
     
     // Verify constraint was created
     await helper.expectConstraintCount(1);
     
     // Check constraint panel shows the constraint
     const constraintPanel = page.locator('[data-testid="constraint-panel"]');
-    await expect(constraintPanel.locator('text=distance')).toBeVisible();
+    await expect(constraintPanel.locator('text=Distance')).toBeVisible();
   });
 
   test('right-click directly on point shows context menu', async ({ page }) => {

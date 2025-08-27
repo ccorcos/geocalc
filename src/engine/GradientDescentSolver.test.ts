@@ -571,4 +571,68 @@ describe("GradientDescentSolver", () => {
       expect(finalDistance).toBeCloseTo(5, 3);
     });
   });
+
+  describe("Multi-Point Same-X/Same-Y Constraints", () => {
+    it("should converge 3-point same-x constraint", () => {
+      // Test scenario from E2E failure: 3 points at different X coordinates
+      const p1 = createPoint(200, 200);
+      const p2 = createPoint(300, 250);
+      const p3 = createPoint(400, 300);
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+
+      // Add anchor constraint to prevent under-constrained system
+      const anchorY = createConstraint("y", [p1.id], 200);
+      geometry.constraints.set(anchorY.id, anchorY);
+
+      const constraint = createConstraint("same-x", [p1.id, p2.id, p3.id]);
+      geometry.constraints.set(constraint.id, constraint);
+
+      const result = solver.solve(geometry);
+
+      expect(result.success).toBe(true);
+      
+      const finalP1 = result.geometry.points.get(p1.id)!;
+      const finalP2 = result.geometry.points.get(p2.id)!;
+      const finalP3 = result.geometry.points.get(p3.id)!;
+
+      // All points should have same X coordinate (within tolerance)
+      expect(Math.abs(finalP1.x - finalP2.x)).toBeLessThan(0.01);
+      expect(Math.abs(finalP2.x - finalP3.x)).toBeLessThan(0.01);
+      expect(Math.abs(finalP1.x - finalP3.x)).toBeLessThan(0.01);
+    });
+
+    it("should converge 3-point same-y constraint", () => {
+      // Test scenario from E2E failure: 3 points at different Y coordinates
+      const p1 = createPoint(200, 200);
+      const p2 = createPoint(250, 300);
+      const p3 = createPoint(300, 400);
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+
+      // Add anchor constraint to prevent under-constrained system
+      const anchorX = createConstraint("x", [p1.id], 200);
+      geometry.constraints.set(anchorX.id, anchorX);
+
+      const constraint = createConstraint("same-y", [p1.id, p2.id, p3.id]);
+      geometry.constraints.set(constraint.id, constraint);
+
+      const result = solver.solve(geometry);
+
+      expect(result.success).toBe(true);
+      
+      const finalP1 = result.geometry.points.get(p1.id)!;
+      const finalP2 = result.geometry.points.get(p2.id)!;
+      const finalP3 = result.geometry.points.get(p3.id)!;
+
+      // All points should have same Y coordinate (within tolerance)
+      expect(Math.abs(finalP1.y - finalP2.y)).toBeLessThan(0.01);
+      expect(Math.abs(finalP2.y - finalP3.y)).toBeLessThan(0.01);
+      expect(Math.abs(finalP1.y - finalP3.y)).toBeLessThan(0.01);
+    });
+  });
 });

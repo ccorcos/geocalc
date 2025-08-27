@@ -54,6 +54,24 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
       })
       .filter(Boolean);
 
+    // Check specific cases first (3 points for angle) before general multi-point logic
+    if (selectedIds.length === 3) {
+      const [entity1, entity2, entity3] = selectedEntities;
+
+      // Three points -> offer both angle constraint AND same-x/same-y constraints
+      if (
+        entity1?.type === "point" &&
+        entity2?.type === "point" &&
+        entity3?.type === "point"
+      ) {
+        return [
+          { type: "angle", label: "Fixed Angle (degrees)", needsValue: true },
+          { type: "same-x", label: "Same X Coordinate", needsValue: false },
+          { type: "same-y", label: "Same Y Coordinate", needsValue: false },
+        ];
+      }
+    }
+
     // Multiple points (2+) -> same-x, same-y constraints
     if (selectedIds.length >= 2) {
       const allPoints = selectedEntities.every(
@@ -94,21 +112,6 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
         return [
           { type: "parallel", label: "Parallel", needsValue: false },
           { type: "perpendicular", label: "Perpendicular", needsValue: false },
-        ];
-      }
-    }
-
-    if (selectedIds.length === 3) {
-      const [entity1, entity2, entity3] = selectedEntities;
-
-      // Three points -> angle constraint
-      if (
-        entity1?.type === "point" &&
-        entity2?.type === "point" &&
-        entity3?.type === "point"
-      ) {
-        return [
-          { type: "angle", label: "Fixed Angle (degrees)", needsValue: true },
         ];
       }
     }

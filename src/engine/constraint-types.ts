@@ -63,7 +63,7 @@ export const CONSTRAINT_MENU_NAMES: Record<ConstraintType, string> = {
   'y': 'Fix Y Coordinate',
   'same-x': 'Same X Coordinate',
   'same-y': 'Same Y Coordinate',
-  'angle': 'Angle',
+  'angle': 'Fixed Angle (degrees)',
   'radius': 'Radius'
 };
 

@@ -340,56 +340,94 @@ export class ConstraintEvaluator {
     constraint: Constraint,
     geometry: Geometry
   ): ConstraintViolation {
-    if (constraint.entityIds.length !== 2) {
+    if (constraint.entityIds.length < 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point1 = geometry.points.get(constraint.entityIds[0]);
-    const point2 = geometry.points.get(constraint.entityIds[1]);
+    // Get all points, filtering out any that don't exist
+    const points = constraint.entityIds
+      .map(id => ({ id, point: geometry.points.get(id) }))
+      .filter(({ point }) => point !== undefined) as Array<{ id: string; point: NonNullable<ReturnType<typeof geometry.points.get>> }>;
 
-    if (!point1 || !point2) {
+    if (points.length < 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    // Error is the squared difference between x-coordinates
-    const dx = point1.x - point2.x;
-    const error = dx ** 2;
+    // Handle N-point constraints with pairwise evaluation
+    let totalError = 0;
+    const totalGradient = new Map<string, { x: number; y: number }>();
 
-    const gradient = new Map<string, { x: number; y: number }>();
+    // Initialize gradients for all points
+    for (const { id } of points) {
+      totalGradient.set(id, { x: 0, y: 0 });
+    }
 
-    // Gradient: d/dx1 = 2*(x1-x2), d/dx2 = 2*(x2-x1)
-    gradient.set(point1.id, { x: 2 * dx, y: 0 });
-    gradient.set(point2.id, { x: -2 * dx, y: 0 });
+    // Evaluate pairwise constraints between consecutive points
+    for (let i = 0; i < points.length - 1; i++) {
+      const point1 = points[i];
+      const point2 = points[i + 1];
 
-    return { constraintId: constraint.id, error, gradient };
+      // Error is the squared difference between x-coordinates
+      const dx = point1.point.x - point2.point.x;
+      const pairError = dx ** 2;
+      totalError += pairError;
+
+      // Accumulate gradients: d/dx1 = 2*(x1-x2), d/dx2 = 2*(x2-x1)
+      const grad1 = totalGradient.get(point1.id)!;
+      const grad2 = totalGradient.get(point2.id)!;
+      
+      grad1.x += 2 * dx;
+      grad2.x += -2 * dx;
+    }
+
+    return { constraintId: constraint.id, error: totalError, gradient: totalGradient };
   }
 
   private evaluateSameY(
     constraint: Constraint,
     geometry: Geometry
   ): ConstraintViolation {
-    if (constraint.entityIds.length !== 2) {
+    if (constraint.entityIds.length < 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    const point1 = geometry.points.get(constraint.entityIds[0]);
-    const point2 = geometry.points.get(constraint.entityIds[1]);
+    // Get all points, filtering out any that don't exist
+    const points = constraint.entityIds
+      .map(id => ({ id, point: geometry.points.get(id) }))
+      .filter(({ point }) => point !== undefined) as Array<{ id: string; point: NonNullable<ReturnType<typeof geometry.points.get>> }>;
 
-    if (!point1 || !point2) {
+    if (points.length < 2) {
       return { constraintId: constraint.id, error: 0, gradient: new Map() };
     }
 
-    // Error is the squared difference between y-coordinates
-    const dy = point1.y - point2.y;
-    const error = dy ** 2;
+    // Handle N-point constraints with pairwise evaluation
+    let totalError = 0;
+    const totalGradient = new Map<string, { x: number; y: number }>();
 
-    const gradient = new Map<string, { x: number; y: number }>();
+    // Initialize gradients for all points
+    for (const { id } of points) {
+      totalGradient.set(id, { x: 0, y: 0 });
+    }
 
-    // Gradient: d/dy1 = 2*(y1-y2), d/dy2 = 2*(y2-y1)
-    gradient.set(point1.id, { x: 0, y: 2 * dy });
-    gradient.set(point2.id, { x: 0, y: -2 * dy });
+    // Evaluate pairwise constraints between consecutive points
+    for (let i = 0; i < points.length - 1; i++) {
+      const point1 = points[i];
+      const point2 = points[i + 1];
 
-    return { constraintId: constraint.id, error, gradient };
+      // Error is the squared difference between y-coordinates
+      const dy = point1.point.y - point2.point.y;
+      const pairError = dy ** 2;
+      totalError += pairError;
+
+      // Accumulate gradients: d/dy1 = 2*(y1-y2), d/dy2 = 2*(y2-y1)
+      const grad1 = totalGradient.get(point1.id)!;
+      const grad2 = totalGradient.get(point2.id)!;
+      
+      grad1.y += 2 * dy;
+      grad2.y += -2 * dy;
+    }
+
+    return { constraintId: constraint.id, error: totalError, gradient: totalGradient };
   }
 
   private evaluateAngle(

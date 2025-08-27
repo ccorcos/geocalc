@@ -405,6 +405,29 @@ describe("ConstraintEvaluator", () => {
       expect(grad2.x).toBe(6); // 2 * (8-5) = 6
       expect(grad2.y).toBe(0);
     });
+
+    it("should handle 3-point same-x constraint", () => {
+      // Test from E2E failure: 3 points with same-x constraint
+      const p1 = createPoint(200, 200);
+      const p2 = createPoint(300, 250);
+      const p3 = createPoint(400, 300);
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+
+      const constraint = createConstraint("same-x", [p1.id, p2.id, p3.id]);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      // Current evaluator expects exactly 2 points - this test reveals the problem
+      // If error is 0, constraint evaluator is ignoring 3-point constraints
+      // If error > 0 and gradient exists, constraint evaluator handles 3-point constraints
+      console.log(`3-point same-x constraint - error: ${result.error}, gradient size: ${result.gradient.size}`);
+      
+      // This will likely fail, revealing the core issue
+      expect(result.error).toBeGreaterThan(0); // Points have different X coordinates
+      expect(result.gradient.size).toBe(3); // Should have gradients for all 3 points
+    });
   });
 
   describe("Same-Y Constraints", () => {
@@ -456,6 +479,27 @@ describe("ConstraintEvaluator", () => {
       expect(grad1.y).toBe(-8); // 2 * (5-9) = -8
       expect(grad2.x).toBe(0);
       expect(grad2.y).toBe(8); // 2 * (9-5) = 8
+    });
+
+    it("should handle 3-point same-y constraint", () => {
+      // Test from E2E failure: 3 points with same-y constraint
+      const p1 = createPoint(200, 200);
+      const p2 = createPoint(250, 300);
+      const p3 = createPoint(300, 400);
+
+      geometry.points.set(p1.id, p1);
+      geometry.points.set(p2.id, p2);
+      geometry.points.set(p3.id, p3);
+
+      const constraint = createConstraint("same-y", [p1.id, p2.id, p3.id]);
+      const result = evaluator.evaluate(constraint, geometry);
+
+      // Current evaluator expects exactly 2 points - this test reveals the problem
+      console.log(`3-point same-y constraint - error: ${result.error}, gradient size: ${result.gradient.size}`);
+      
+      // This will likely fail, revealing the core issue
+      expect(result.error).toBeGreaterThan(0); // Points have different Y coordinates
+      expect(result.gradient.size).toBe(3); // Should have gradients for all 3 points
     });
   });
 

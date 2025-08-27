@@ -159,6 +159,59 @@ interface Geometry {
 5. Verify gradient calculations in `ConstraintEvaluator.test.ts`
 6. Test constraint behavior in isolation with integration tests
 
+### Testing Strategy: Unit Tests vs E2E Tests
+
+**Core Principle**: Always prefer unit tests for core functionality, use E2E tests for UI interactions.
+
+**When to Write Unit Tests**:
+- **Core engine logic**: Constraint solving, geometry calculations, mathematical operations
+- **Algorithm testing**: Gradient descent convergence, constraint evaluation accuracy
+- **Edge cases**: Complex constraint combinations, numerical stability issues
+- **Performance testing**: Solver iteration counts, convergence speed
+- **Debugging unknown issues**: When E2E tests fail, write unit tests to isolate the problem
+
+**When to Write E2E Tests**:
+- **UI workflows**: User interactions, tool switching, selection behavior
+- **Integration testing**: UI → Store → Engine data flow
+- **Visual feedback**: Canvas rendering, constraint visualization
+- **User experience**: Tooltip behavior, error messages, accessibility
+
+**Problem Isolation Strategy**:
+When E2E tests fail, follow this process:
+1. **Identify the failure domain**: Is this a UI problem or core functionality problem?
+2. **Write unit tests first**: Create focused unit tests for the suspected core functionality
+3. **If unit tests pass**: Problem is in UI layer (selection, constraint creation, state management)
+4. **If unit tests fail**: Problem is in engine layer (constraint evaluation, solver logic)
+5. **Fix the core issue first**: Solve unit test failures before E2E test failures
+6. **Verify E2E tests pass**: Ensure UI integration works after core fix
+
+**Example: Same-X Constraint for 3 Points Fails**
+```typescript
+// ❌ Wrong approach: Debug in E2E test
+test('same-x constraint for 3 points', async ({ page }) => {
+  // Create 3 points, apply constraint, debug why it doesn't work
+  // This mixes UI testing with constraint solver testing
+});
+
+// ✅ Correct approach: Write unit test first
+test('constraint evaluator handles 3-point same-x', () => {
+  const p1 = createPoint(100, 200);
+  const p2 = createPoint(200, 300); 
+  const p3 = createPoint(300, 400);
+  const constraint = createConstraint("same-x", [p1.id, p2.id, p3.id]);
+  
+  // Test if constraint evaluator can handle 3 points
+  const result = evaluator.evaluate(constraint, geometry);
+  // This isolates the core problem from UI complexity
+});
+
+// ✅ Then fix the E2E test to match correct behavior
+test('UI creates correct constraints for 3 points', async ({ page }) => {
+  // Focus on UI behavior: does selection work, does constraint creation work
+  // Assume constraint solver is correct (proven by unit tests)
+});
+```
+
 ### E2E Testing Best Practices
 
 **Philosophy**: Tests should validate exactly what users do - no shortcuts or UI bypassing.
@@ -190,6 +243,8 @@ expect(actualDistance - 150).toBeLessThan(0.01);       // Use verification helpe
 - Use centralized constraint types from `constraint-types.ts`
 
 **Debugging Failing Tests**:
+- **NEVER use `npm run test:e2e:debug`** - it opens an inactive browser and leads to debugging dead ends
+- **Edit tests to add console.log statements** - this is the most effective debugging approach
 - Add `await h.debugConstraints()` to see actual vs expected constraint state
 - Use `await h.logPointPositions()` and `await h.logConstraints()` for debugging
 - Check browser console for diagnostics output
