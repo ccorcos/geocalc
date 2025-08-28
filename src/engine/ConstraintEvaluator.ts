@@ -476,69 +476,76 @@ export class ConstraintEvaluator {
     const angleError = currentAngle - targetAngle;
     const error = angleError ** 2;
 
-    // Use numerical gradient approximation for simplicity
+    // Calculate analytical gradients (much more accurate than numerical approximation)
     const gradient = new Map<string, { x: number; y: number }>();
-    const epsilon = 1e-6;
-
-    [point1, point2, point3].forEach((point) => {
-      const originalX = point.x;
-      const originalY = point.y;
-
-      // Gradient with respect to x
-      point.x = originalX + epsilon;
-      const errorX = this.calculateAngleError(constraint, geometry);
-      point.x = originalX;
-
-      // Gradient with respect to y
-      point.y = originalY + epsilon;
-      const errorY = this.calculateAngleError(constraint, geometry);
-      point.y = originalY;
-
-      gradient.set(point.id, {
-        x: (errorX - error) / epsilon,
-        y: (errorY - error) / epsilon,
-      });
-    });
+    
+    // For angle constraint error = (θ - θ_target)²
+    // We need ∂error/∂x and ∂error/∂y for each point
+    // ∂error/∂x = 2(θ - θ_target) * ∂θ/∂x
+    
+    const errorFactor = 2 * angleError; // 2(θ - θ_target)
+    
+    // Increase threshold to prevent near-satisfied constraints from interfering
+    // Use angle-based threshold: if angle error < 0.1 degrees, zero out gradients
+    const angleErrorThreshold = 0.1 * (Math.PI / 180); // 0.1 degrees in radians
+    if (Math.abs(angleError) < angleErrorThreshold) {
+      // If angle error is essentially zero, gradients should be zero
+      gradient.set(point1.id, { x: 0, y: 0 });
+      gradient.set(point2.id, { x: 0, y: 0 });
+      gradient.set(point3.id, { x: 0, y: 0 });
+    } else {
+      // Calculate ∂θ/∂x and ∂θ/∂y for each point
+      // Using the chain rule: ∂θ/∂x = (∂θ/∂cos) * (∂cos/∂x)
+      // where ∂θ/∂cos = -1/sin(θ) = -1/√(1-cos²(θ))
+      
+      const sinCurrentAngle = Math.sqrt(Math.max(0, 1 - cosCurrentAngle * cosCurrentAngle));
+      if (sinCurrentAngle < 1e-6) {
+        // Degenerate case: angle is very close to 0° or 180°
+        // Use a small perturbation to avoid division by zero
+        gradient.set(point1.id, { x: 0, y: 0 });
+        gradient.set(point2.id, { x: 0, y: 0 });
+        gradient.set(point3.id, { x: 0, y: 0 });
+      } else {
+        const dThetaDCos = -1 / sinCurrentAngle;
+        
+        // Calculate ∂cos/∂x and ∂cos/∂y for each point
+        // cos = (v1·v2)/(|v1||v2|)
+        const mag1Mag2 = mag1 * mag2;
+        const invMag1 = 1 / mag1;
+        const invMag2 = 1 / mag2;
+        
+        // For point1 (affects v1 = point1 - point2)
+        const dCosDx1 = (v2x * mag2 - dotProduct * v1x * invMag1) / (mag1Mag2);
+        const dCosDy1 = (v2y * mag2 - dotProduct * v1y * invMag1) / (mag1Mag2);
+        
+        // For point3 (affects v2 = point3 - point2)  
+        const dCosDx3 = (v1x * mag1 - dotProduct * v2x * invMag2) / (mag1Mag2);
+        const dCosDy3 = (v1y * mag1 - dotProduct * v2y * invMag2) / (mag1Mag2);
+        
+        // For point2 (vertex, affects both v1 and v2)
+        const dCosDx2 = -(dCosDx1 + dCosDx3);
+        const dCosDy2 = -(dCosDy1 + dCosDy3);
+        
+        gradient.set(point1.id, {
+          x: errorFactor * dThetaDCos * dCosDx1,
+          y: errorFactor * dThetaDCos * dCosDy1,
+        });
+        
+        gradient.set(point2.id, {
+          x: errorFactor * dThetaDCos * dCosDx2,
+          y: errorFactor * dThetaDCos * dCosDy2,
+        });
+        
+        gradient.set(point3.id, {
+          x: errorFactor * dThetaDCos * dCosDx3,
+          y: errorFactor * dThetaDCos * dCosDy3,
+        });
+      }
+    }
 
     return { constraintId: constraint.id, error, gradient };
   }
 
-  private calculateAngleError(
-    constraint: Constraint,
-    geometry: Geometry
-  ): number {
-    const point1 = geometry.points.get(constraint.entityIds[0]);
-    const point2 = geometry.points.get(constraint.entityIds[1]); // vertex
-    const point3 = geometry.points.get(constraint.entityIds[2]);
-
-    if (!point1 || !point2 || !point3 || constraint.value === undefined) {
-      return 0;
-    }
-
-    const v1x = point1.x - point2.x;
-    const v1y = point1.y - point2.y;
-    const v2x = point3.x - point2.x;
-    const v2y = point3.y - point2.y;
-
-    const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
-    const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
-
-    if (mag1 < 1e-10 || mag2 < 1e-10) {
-      return 0;
-    }
-
-    const dotProduct = v1x * v2x + v1y * v2y;
-    const cosCurrentAngle = Math.max(
-      -1,
-      Math.min(1, dotProduct / (mag1 * mag2))
-    );
-    const currentAngle = Math.acos(cosCurrentAngle);
-
-    const targetAngle = constraint.value * (Math.PI / 180);
-    const angleError = currentAngle - targetAngle;
-
-    return angleError ** 2;
-  }
 
   private evaluateFixRadius(
     constraint: Constraint,

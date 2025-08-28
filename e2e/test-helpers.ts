@@ -1,5 +1,11 @@
 import { Page, expect } from "@playwright/test";
-import { CONSTRAINT_MENU_NAMES, CONSTRAINT_DISPLAY_NAMES, ALL_CONSTRAINT_TYPES, ConstraintType } from "../src/engine/constraint-types";
+import type { Diagnostics } from "../src/diagnostics";
+import {
+  ALL_CONSTRAINT_TYPES,
+  CONSTRAINT_DISPLAY_NAMES,
+  CONSTRAINT_MENU_NAMES,
+  ConstraintType,
+} from "../src/engine/constraint-types";
 
 export interface TestPoint {
   x: number;
@@ -125,7 +131,9 @@ export class TestHarness {
     const menuText = CONSTRAINT_MENU_NAMES[constraintType] || type;
 
     // Click the constraint type in context menu using more precise locator
-    await this.page.getByRole('button', { name: menuText, exact: true }).click();
+    await this.page
+      .getByRole("button", { name: menuText, exact: true })
+      .click();
 
     // Enter value if needed (in input dialog)
     if (value !== undefined) {
@@ -304,11 +312,6 @@ export class TestHarness {
     const actualDistance = Math.sqrt(
       Math.pow(pointB.x - pointA.x, 2) + Math.pow(pointB.y - pointA.y, 2)
     );
-    console.log(
-      `Distance constraint: expected=${expectedDistance}, actual=${actualDistance.toFixed(
-        3
-      )}`
-    );
 
     return Math.abs(actualDistance - expectedDistance) <= tolerance;
   }
@@ -325,11 +328,6 @@ export class TestHarness {
     const pointB = points[pointIds[1]];
 
     const actualXDistance = pointB.x - pointA.x;
-    console.log(
-      `X-Distance constraint: expected=${expectedXDistance}, actual=${actualXDistance.toFixed(
-        3
-      )}`
-    );
 
     return Math.abs(actualXDistance - expectedXDistance) <= tolerance;
   }
@@ -346,11 +344,6 @@ export class TestHarness {
     const pointB = points[pointIds[1]];
 
     const actualYDistance = pointB.y - pointA.y;
-    console.log(
-      `Y-Distance constraint: expected=${expectedYDistance}, actual=${actualYDistance.toFixed(
-        3
-      )}`
-    );
 
     return Math.abs(actualYDistance - expectedYDistance) <= tolerance;
   }
@@ -359,10 +352,9 @@ export class TestHarness {
     const constraints = await this.getConstraints();
     // Check for fix constraints using string literals
     const fixConstraints = Object.values(constraints).filter(
-      (c: any) => c.type === 'x' || c.type === 'y'
+      (c: any) => c.type === "x" || c.type === "y"
     );
 
-    console.log(`Fix constraints found: ${fixConstraints.length}`);
     return fixConstraints.length > 0;
   }
 
@@ -377,7 +369,9 @@ export class TestHarness {
 
     // Also use diagnostics if available
     await this.page.evaluate(() => {
-      const diagnostics = (window as any).__GEOCALC_DIAGNOSTICS__;
+      const diagnostics = (window as any).__GEOCALC_DIAGNOSTICS__ as
+        | Diagnostics
+        | undefined;
       if (diagnostics) {
         diagnostics.debug.logConstraints();
       }
@@ -387,7 +381,9 @@ export class TestHarness {
   // Debug helper to see what constraints actually exist
   async debugConstraints() {
     return await this.page.evaluate(() => {
-      const diagnostics = (window as any).__GEOCALC_DIAGNOSTICS__;
+      const diagnostics = (window as any).__GEOCALC_DIAGNOSTICS__ as
+        | Diagnostics
+        | undefined;
       if (diagnostics) {
         return diagnostics.inspect.geometry.getAllConstraints();
       }

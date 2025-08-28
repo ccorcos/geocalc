@@ -47,6 +47,13 @@ test.describe('Canvas Context Menu Constraint Creation', () => {
     await helper.canvas.click({ button: 'right', position: { x: 200, y: 200 } });
     await page.getByRole('button', { name: 'Distance', exact: true }).click();
     
+    // Handle value input dialog for distance constraint
+    const numberInput = page.locator('input[type="number"]');
+    if (await numberInput.isVisible()) {
+      await numberInput.fill('100');
+      await page.locator('button').filter({ hasText: 'Create' }).click();
+    }
+    
     // Verify constraint was created
     await helper.expectConstraintCount(1);
     

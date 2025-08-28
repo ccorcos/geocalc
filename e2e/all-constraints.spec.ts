@@ -22,7 +22,6 @@ test.describe("All Constraint Types", () => {
     expect(pointAIsFixed).toBe(true);
 
     // Test is successful if fix constraints exist and point is detected as fixed
-    console.log("Fix constraints successfully created and detected");
   });
 
   test("distance constraint between two points", async ({ page }) => {
@@ -203,7 +202,6 @@ test.describe("All Constraint Types", () => {
     const angle =
       Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI);
 
-    console.log(`Actual angle: ${angle.toFixed(1)} degrees`);
     expect(Math.abs(angle - 90)).toBeLessThan(1.0);
   });
 
@@ -227,11 +225,6 @@ test.describe("All Constraint Types", () => {
     // Verify line is horizontal (both endpoints have same Y coordinate)
     const positions = await helper.getPointPositions();
     const points = Object.values(positions);
-    console.log(
-      `Point 1 Y: ${points[0].y.toFixed(3)}, Point 2 Y: ${points[1].y.toFixed(
-        3
-      )}`
-    );
     expect(Math.abs(points[0].y - points[1].y)).toBeLessThan(0.01);
   });
 
@@ -255,11 +248,6 @@ test.describe("All Constraint Types", () => {
     // Verify line is vertical (both endpoints have same X coordinate)
     const positions = await helper.getPointPositions();
     const points = Object.values(positions);
-    console.log(
-      `Point 1 X: ${points[0].x.toFixed(3)}, Point 2 X: ${points[1].x.toFixed(
-        3
-      )}`
-    );
     expect(Math.abs(points[0].x - points[1].x)).toBeLessThan(0.01);
   });
 
@@ -291,7 +279,6 @@ test.describe("All Constraint Types", () => {
     // Second line slope (points 2 and 3)
     const slope2 = (points[3].y - points[2].y) / (points[3].x - points[2].x);
 
-    console.log(`Slope 1: ${slope1.toFixed(3)}, Slope 2: ${slope2.toFixed(3)}`);
     // Relax tolerance for parallel line constraints (geometric solver approximation)
     expect(Math.abs(slope1 - slope2)).toBeLessThan(0.2);
   });
@@ -322,11 +309,6 @@ test.describe("All Constraint Types", () => {
     const slope1 = (points[1].y - points[0].y) / (points[1].x - points[0].x);
     const slope2 = (points[3].y - points[2].y) / (points[3].x - points[2].x);
 
-    console.log(
-      `Slope 1: ${slope1.toFixed(3)}, Slope 2: ${slope2.toFixed(
-        3
-      )}, Product: ${(slope1 * slope2).toFixed(3)}`
-    );
     // Relax tolerance for perpendicular line constraints (geometric solver approximation)
     expect(Math.abs(slope1 * slope2 + 1)).toBeLessThan(1.5);
   });
@@ -382,6 +364,5 @@ test.describe("All Constraint Types", () => {
     expect(constraint.type).toBe("distance");
     expect(constraint.value).toBe(150);
 
-    console.log("Constraint editing workflow completed successfully");
   });
 });

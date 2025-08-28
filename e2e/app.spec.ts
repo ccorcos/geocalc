@@ -106,11 +106,6 @@ test.describe("GeoCalc App", () => {
     await h.runSolver();
 
     // Step 8: Verify the constraint results by inspecting application state
-    console.log("\n=== Verifying Constraint Results ===");
-
-    // Log current positions for debugging
-    await h.logPointPositions();
-    await h.logConstraints();
 
     // Verify the geometric constraints are satisfied
     const xDistanceSatisfied = await h.verifyXDistanceConstraint(100);
@@ -138,13 +133,6 @@ test.describe("GeoCalc App", () => {
     const currentPointA = currentPoints[currentPointIds[0]];
     const currentPointB = currentPoints[currentPointIds[1]];
 
-    console.log(
-      `Point A final position: (${currentPointA.x}, ${currentPointA.y})`
-    );
-    console.log(
-      `Point B final position: (${currentPointB.x}, ${currentPointB.y})`
-    );
-
     // The key verification is that the constraints are satisfied, not the absolute positions
     // Point A's X is fixed (anchored) and Point B is 100 units away in X, same Y
     expect(Math.abs(currentPointA.y - currentPointB.y)).toBeLessThan(0.01); // Same Y coordinate
@@ -155,7 +143,5 @@ test.describe("GeoCalc App", () => {
     // Verify the system is stable and all constraints are satisfied
     await h.expectPointCount(2);
     await expect(h.canvas).toBeVisible();
-
-    console.log("\n=== All Constraint Verifications Passed! ===");
   });
 });

@@ -62,10 +62,13 @@ test.describe('Add Constraint Button', () => {
     const addConstraintButton = page.locator('[data-testid="add-constraint"]');
     await addConstraintButton.click();
     await page.getByRole('button', { name: 'Distance', exact: true }).click();
-
-    // Debug what constraints exist after creation
-    const debugConstraints = await h.debugConstraints();
-    console.log('Constraints after creation:', debugConstraints);
+    
+    // Handle value input dialog for distance constraint
+    const numberInput = page.locator('input[type="number"]');
+    if (await numberInput.isVisible()) {
+      await numberInput.fill('100');
+      await page.locator('button').filter({ hasText: 'Create' }).click();
+    }
 
     // Verify constraint was created
     await h.expectConstraintCount(1);
