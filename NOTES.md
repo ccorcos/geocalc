@@ -9,6 +9,10 @@ Strategies:
 
 ---
 
+working on getting angle constraints to work and compound constraints like angle with an anchored point.
+
+
+
 fix e2e tests.
 
 

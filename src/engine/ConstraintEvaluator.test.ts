@@ -921,12 +921,7 @@ describe("ConstraintEvaluator", () => {
       expect(initialTotalError).toBeGreaterThan(0);
 
       // Run solver
-      const result = solver.solve(geometry, {
-        maxIterations: 500,
-        tolerance: 1e-6,
-        learningRate: 0.01,
-        momentum: 0.9,
-      });
+      const result = solver.solve(geometry);
 
       if (result.success) {
         // Check final point positions
@@ -976,12 +971,7 @@ describe("ConstraintEvaluator", () => {
 
       constraints.forEach(c => geometry.constraints.set(c.id, c));
 
-      const result = solver.solve(geometry, {
-        maxIterations: 300,
-        tolerance: 1e-6,
-        learningRate: 0.02, // More conservative learning rate
-        momentum: 0.95,
-      });
+      const result = solver.solve(geometry);
 
       if (result.success) {
         const finalP1 = result.geometry.points.get(p1.id)!;

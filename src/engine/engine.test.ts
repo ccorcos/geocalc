@@ -63,12 +63,7 @@ describe("Geometry Engine Integration Tests", () => {
         geometry.constraints.set(constraint.id, constraint);
       });
 
-      const result = solver.solve(geometry, {
-        maxIterations: 500,
-        tolerance: 1e-6,
-        learningRate: 0.005,
-        momentum: 0.9,
-      });
+      const result = solver.solve(geometry);
 
       expect(result.success).toBe(true);
       expect(result.finalError).toBeLessThan(1e-4);
@@ -95,7 +90,7 @@ describe("Geometry Engine Integration Tests", () => {
       const diagonal2 = distance(points[1], points[3]);
       const expectedDiagonal = sideLength * Math.sqrt(2);
 
-      expect(diagonal1).toBeCloseTo(expectedDiagonal, 2);
+      expect(diagonal1).toBeCloseTo(expectedDiagonal, 2); // Back to strict precision
       expect(diagonal2).toBeCloseTo(expectedDiagonal, 2);
     });
 
@@ -117,12 +112,7 @@ describe("Geometry Engine Integration Tests", () => {
 
       constraints.forEach((c) => geometry.constraints.set(c.id, c));
 
-      const result = solver.solve(geometry, {
-        maxIterations: 300,
-        tolerance: 1e-8,
-        learningRate: 0.01,
-        momentum: 0.9,
-      });
+      const result = solver.solve(geometry);
 
       expect(result.success).toBe(true);
 
@@ -172,12 +162,7 @@ describe("Geometry Engine Integration Tests", () => {
 
       constraints.forEach((c) => geometry.constraints.set(c.id, c));
 
-      const result = solver.solve(geometry, {
-        maxIterations: 400,
-        tolerance: 1e-7,
-        learningRate: 0.008,
-        momentum: 0.9,
-      });
+      const result = solver.solve(geometry);
 
       expect(result.success).toBe(true);
       expect(result.finalError).toBeLessThan(1e-5);
@@ -187,9 +172,9 @@ describe("Geometry Engine Integration Tests", () => {
         (id) => result.geometry.points.get(id)!
       );
 
-      expect(distance(points[0], points[2])).toBeCloseTo(5, 3); // crank length
+      expect(distance(points[0], points[2])).toBeCloseTo(5, 3); // crank length - back to strict precision  
       expect(distance(points[2], points[3])).toBeCloseTo(8, 2); // coupler length
-      expect(distance(points[3], points[1])).toBeCloseTo(4, 3); // rocker length
+      expect(distance(points[3], points[1])).toBeCloseTo(4, 3); // rocker length - back to strict precision
     });
 
     it("should construct a simple rectangle with specific dimensions", () => {
@@ -269,8 +254,8 @@ describe("Geometry Engine Integration Tests", () => {
       const solved = [p1, p2, p3].map((p) => result.geometry.points.get(p.id)!);
 
       // Verify constraints are satisfied
-      expect(distance(solved[0], solved[1])).toBeCloseTo(4, 2); // p1-p2 distance
-      expect(distance(solved[0], solved[2])).toBeCloseTo(3, 2); // p1-p3 distance
+      expect(distance(solved[0], solved[1])).toBeCloseTo(4, 2); // p1-p2 distance - back to strict precision
+      expect(distance(solved[0], solved[2])).toBeCloseTo(3, 2); // p1-p3 distance - back to strict precision
       expect(Math.abs(solved[0].y - solved[1].y)).toBeLessThan(0.1); // horizontal line
       expect(Math.abs(solved[0].x - solved[2].x)).toBeLessThan(0.1); // vertical line
     });
@@ -326,7 +311,7 @@ describe("Geometry Engine Integration Tests", () => {
       expect(distance(solved[0], solved[2])).toBeCloseTo(3, 2);
 
       // Verify angle constraint and distance
-      expect(distance(solved[0], solved[3])).toBeCloseTo(2, 2);
+      expect(distance(solved[0], solved[3])).toBeCloseTo(2, 2); // Back to strict precision
 
       // Calculate angle between y-axis and diagonal
       const v1x = solved[2].x - solved[0].x; // y-axis vector
@@ -572,12 +557,7 @@ describe("Geometry Engine Integration Tests", () => {
       fixConstraints.forEach(c => geometry.constraints.set(c.id, c));
 
       const startTime = performance.now();
-      const result = solver.solve(geometry, {
-        maxIterations: 200,
-        tolerance: 1e-5,
-        learningRate: 0.01,
-        momentum: 0.9,
-      });
+      const result = solver.solve(geometry);
       const endTime = performance.now();
 
       expect(result.success).toBe(true);

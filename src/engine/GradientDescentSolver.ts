@@ -4,13 +4,6 @@ import {
 } from "./ConstraintEvaluator";
 import { Geometry } from "./types";
 
-interface SolverOptions {
-  maxIterations: number;
-  tolerance: number;
-  learningRate: number;
-  momentum: number;
-}
-
 interface SolverResult {
   success: boolean;
   iterations: number;
@@ -22,20 +15,18 @@ export class GradientDescentSolver {
   private evaluator = new ConstraintEvaluator();
   private velocity = new Map<string, { x: number; y: number }>();
 
-  solve(
-    geometry: Geometry,
-    options: SolverOptions = {
-      maxIterations: 200,
-      tolerance: 1e-8,
-      learningRate: 0.1,
-      momentum: 0.8,
-    }
-  ): SolverResult {
+  // Hardcoded solver parameters optimized for precision
+  private readonly maxIterations = 10000;
+  private readonly tolerance = 1e-10;
+  private readonly learningRate = 0.01;
+  private readonly momentum = 0.95;
+
+  solve(geometry: Geometry): SolverResult {
     let currentGeometry = this.cloneGeometry(geometry);
     this.currentGeometry = currentGeometry; // Track for constraint priorities
     let totalError = this.calculateTotalError(currentGeometry);
 
-    for (let iteration = 0; iteration < options.maxIterations; iteration++) {
+    for (let iteration = 0; iteration < this.maxIterations; iteration++) {
       // Calculate all constraint violations and gradients
       const violations = this.evaluateAllConstraints(currentGeometry);
 
@@ -66,9 +57,9 @@ export class GradientDescentSolver {
 
         // Update velocity with momentum
         velocity.x =
-          options.momentum * velocity.x - options.learningRate * gradient.x;
+          this.momentum * velocity.x - this.learningRate * gradient.x;
         velocity.y =
-          options.momentum * velocity.y - options.learningRate * gradient.y;
+          this.momentum * velocity.y - this.learningRate * gradient.y;
 
         // Update position
         const newX = point.x + velocity.x;
@@ -76,8 +67,8 @@ export class GradientDescentSolver {
 
         // Check if there's actual movement
         if (
-          Math.abs(newX - point.x) > options.tolerance ||
-          Math.abs(newY - point.y) > options.tolerance
+          Math.abs(newX - point.x) > this.tolerance ||
+          Math.abs(newY - point.y) > this.tolerance
         ) {
           hasMovement = true;
         }
@@ -92,11 +83,11 @@ export class GradientDescentSolver {
       // Check for convergence
       if (
         !hasMovement ||
-        Math.abs(totalError - newTotalError) < options.tolerance
+        Math.abs(totalError - newTotalError) < this.tolerance
       ) {
         this.currentGeometry = null; // Cleanup
         return {
-          success: newTotalError < 0.5, // Success if error is reasonable for complex systems
+          success: newTotalError < 1e-2, // Realistic precision for gradient descent
           iterations: iteration + 1,
           finalError: newTotalError,
           geometry: currentGeometry,
@@ -110,8 +101,8 @@ export class GradientDescentSolver {
     this.currentGeometry = null;
 
     return {
-      success: false,
-      iterations: options.maxIterations,
+      success: totalError < 1e-2, // Realistic precision for gradient descent even at max iterations
+      iterations: this.maxIterations,
       finalError: totalError,
       geometry: currentGeometry,
     };
@@ -130,7 +121,10 @@ export class GradientDescentSolver {
     return violations;
   }
 
-  private getConstraintPriority(constraintId: string, geometry: Geometry): number {
+  private getConstraintPriority(
+    constraintId: string,
+    geometry: Geometry
+  ): number {
     const constraint = geometry.constraints.get(constraintId);
     if (!constraint) return 1.0;
 
@@ -186,7 +180,9 @@ export class GradientDescentSolver {
     const violationData = violations.map((violation) => {
       let maxGradMagnitude = 0;
       violation.gradient.forEach((gradient) => {
-        const magnitude = Math.sqrt(gradient.x * gradient.x + gradient.y * gradient.y);
+        const magnitude = Math.sqrt(
+          gradient.x * gradient.x + gradient.y * gradient.y
+        );
         maxGradMagnitude = Math.max(maxGradMagnitude, magnitude);
       });
 
@@ -198,8 +194,12 @@ export class GradientDescentSolver {
     });
 
     // Check if there's a significant magnitude difference (>50x)
-    const maxGradMag = Math.max(...violationData.map(v => v.maxGradMagnitude));
-    const minGradMag = Math.min(...violationData.map(v => v.maxGradMagnitude));
+    const maxGradMag = Math.max(
+      ...violationData.map((v) => v.maxGradMagnitude)
+    );
+    const minGradMag = Math.min(
+      ...violationData.map((v) => v.maxGradMagnitude)
+    );
     const needsNormalization = maxGradMag / minGradMag > 50;
 
     if (!needsNormalization) {
@@ -218,18 +218,23 @@ export class GradientDescentSolver {
     }
 
     // Apply smart normalization only when needed
-    const maxErrorMagnitude = Math.max(...violationData.map(v => v.errorMagnitude), 1);
+    const maxErrorMagnitude = Math.max(
+      ...violationData.map((v) => v.errorMagnitude),
+      1
+    );
 
     violations.forEach((violation, index) => {
       const { maxGradMagnitude, errorMagnitude } = violationData[index];
-      
+
       // Get constraint priority for gradient conflicts
       const geometry = this.getCurrentGeometry();
-      const priority = geometry ? this.getConstraintPriority(violation.constraintId, geometry) : 1.0;
-      
+      const priority = geometry
+        ? this.getConstraintPriority(violation.constraintId, geometry)
+        : 1.0;
+
       // Conservative normalization: only scale down very large gradients
-      const normalizationFactor = maxGradMagnitude > 100 ? 
-        Math.min(1.0, 50.0 / maxGradMagnitude) : 1.0;
+      const normalizationFactor =
+        maxGradMagnitude > 100 ? Math.min(1.0, 50.0 / maxGradMagnitude) : 1.0;
       const errorWeight = Math.min(1.0, errorMagnitude / maxErrorMagnitude);
       const priorityWeight = priority;
       const finalScale = normalizationFactor * errorWeight * priorityWeight;
