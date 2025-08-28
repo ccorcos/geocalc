@@ -1,14 +1,16 @@
-import { useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import { clearPersistedGeometry, resetGeometry } from './store';
+import { useEffect } from "react"
+
+import { Navigate } from "react-router-dom"
+
+import { clearPersistedGeometry, resetGeometry } from "./store"
 
 function Reset() {
-  useEffect(() => {
-    clearPersistedGeometry();
-    resetGeometry();
-  }, []);
+	useEffect(() => {
+		clearPersistedGeometry()
+		resetGeometry()
+	}, [])
 
-  return <Navigate to="/" replace />;
+	return <Navigate to="/" replace />
 }
 
-export default Reset;
+export default Reset

@@ -1,5 +1,5 @@
 Notes
-- shift+tab to auto-accept.
+- shift+tab to auto-accept, and plan mode.
 - @file will incluude the file without haveing to read them.
 - claude --resume
 - `#` will add to memory will in Claude.md

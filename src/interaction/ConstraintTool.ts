@@ -1,94 +1,93 @@
-import { createConstraint } from "../engine/geometry";
-import { ConstraintType } from "../engine/types";
-import { useStore } from "../store";
+import { createConstraint } from "../engine/geometry"
+import { ConstraintType } from "../engine/types"
+import { useStore } from "../store"
 
 export class ConstraintTool {
-  private selectedForConstraint: string[] = [];
+	private selectedForConstraint: string[] = []
 
-  handleSelection(entityId: string): void {
+	handleSelection(entityId: string): void {
+		// Add to constraint selection
+		if (!this.selectedForConstraint.includes(entityId)) {
+			this.selectedForConstraint.push(entityId)
+		}
 
-    // Add to constraint selection
-    if (!this.selectedForConstraint.includes(entityId)) {
-      this.selectedForConstraint.push(entityId);
-    }
+		// Auto-create constraints based on selection
+		this.tryCreateConstraint()
+	}
 
-    // Auto-create constraints based on selection
-    this.tryCreateConstraint();
-  }
+	private tryCreateConstraint(): void {
+		const store = useStore.getState()
 
-  private tryCreateConstraint(): void {
-    const store = useStore.getState();
+		// Distance constraint between two points
+		if (this.selectedForConstraint.length === 2) {
+			const entity1 = store.geometry.points.get(this.selectedForConstraint[0])
+			const entity2 = store.geometry.points.get(this.selectedForConstraint[1])
 
-    // Distance constraint between two points
-    if (this.selectedForConstraint.length === 2) {
-      const entity1 = store.geometry.points.get(this.selectedForConstraint[0]);
-      const entity2 = store.geometry.points.get(this.selectedForConstraint[1]);
+			if (entity1 && entity2) {
+				const currentDistance = Math.sqrt(
+					(entity2.x - entity1.x) ** 2 + (entity2.y - entity1.y) ** 2
+				)
 
-      if (entity1 && entity2) {
-        const currentDistance = Math.sqrt(
-          (entity2.x - entity1.x) ** 2 + (entity2.y - entity1.y) ** 2
-        );
+				const constraint = createConstraint(
+					"distance",
+					[...this.selectedForConstraint],
+					currentDistance
+				)
 
-        const constraint = createConstraint(
-          "distance",
-          [...this.selectedForConstraint],
-          currentDistance
-        );
+				store.addConstraint(constraint)
+				this.reset()
+				return
+			}
+		}
 
-        store.addConstraint(constraint);
-        this.reset();
-        return;
-      }
-    }
+		// Parallel constraint between two lines
+		if (this.selectedForConstraint.length === 2) {
+			const line1 = store.geometry.lines.get(this.selectedForConstraint[0])
+			const line2 = store.geometry.lines.get(this.selectedForConstraint[1])
 
-    // Parallel constraint between two lines
-    if (this.selectedForConstraint.length === 2) {
-      const line1 = store.geometry.lines.get(this.selectedForConstraint[0]);
-      const line2 = store.geometry.lines.get(this.selectedForConstraint[1]);
+			if (line1 && line2) {
+				const constraint = createConstraint("parallel", [
+					...this.selectedForConstraint,
+				])
 
-      if (line1 && line2) {
-        const constraint = createConstraint("parallel", [
-          ...this.selectedForConstraint,
-        ]);
+				store.addConstraint(constraint)
+				this.reset()
+				return
+			}
+		}
 
-        store.addConstraint(constraint);
-        this.reset();
-        return;
-      }
-    }
+		// Horizontal/Vertical constraint for single line
+		if (this.selectedForConstraint.length === 1) {
+			const line = store.geometry.lines.get(this.selectedForConstraint[0])
 
-    // Horizontal/Vertical constraint for single line
-    if (this.selectedForConstraint.length === 1) {
-      const line = store.geometry.lines.get(this.selectedForConstraint[0]);
+			if (line) {
+				const point1 = store.geometry.points.get(line.point1Id)
+				const point2 = store.geometry.points.get(line.point2Id)
 
-      if (line) {
-        const point1 = store.geometry.points.get(line.point1Id);
-        const point2 = store.geometry.points.get(line.point2Id);
+				if (point1 && point2) {
+					const dx = Math.abs(point2.x - point1.x)
+					const dy = Math.abs(point2.y - point1.y)
 
-        if (point1 && point2) {
-          const dx = Math.abs(point2.x - point1.x);
-          const dy = Math.abs(point2.y - point1.y);
+					// Choose horizontal or vertical based on current orientation
+					const constraintType: ConstraintType =
+						dx > dy ? "horizontal" : "vertical"
 
-          // Choose horizontal or vertical based on current orientation
-          const constraintType: ConstraintType =
-            dx > dy ? "horizontal" : "vertical";
+					const constraint = createConstraint(constraintType, [
+						...this.selectedForConstraint,
+					])
 
-          const constraint = createConstraint(constraintType, [
-            ...this.selectedForConstraint,
-          ]);
+					store.addConstraint(constraint)
+					this.reset()
+				}
+			}
+		}
+	}
 
-          store.addConstraint(constraint);
-          this.reset();
-        }
-      }
-    }
-  }
+	reset(): void {
+		this.selectedForConstraint = []
+	}
 
-  reset(): void {
-    this.selectedForConstraint = [];
-  }
-
-  getSelectedForConstraint(): string[] {
-    return [...this.selectedForConstraint];
-  }
+	getSelectedForConstraint(): string[] {
+		return [...this.selectedForConstraint]
+	}
 }

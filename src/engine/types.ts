@@ -1,59 +1,60 @@
+// Import centralized constraint types
+import type { ConstraintType } from "./constraint-types"
+
 export interface Point {
-  id: string;
-  x: number;
-  y: number;
+	id: string
+	x: number
+	y: number
 }
 
 export interface Line {
-  id: string;
-  point1Id: string;
-  point2Id: string;
-  infinite: boolean;
+	id: string
+	point1Id: string
+	point2Id: string
+	infinite: boolean
 }
 
 export interface Circle {
-  id: string;
-  centerId: string;
-  radius: number;
+	id: string
+	centerId: string
+	radius: number
 }
 
-export type GeometryEntity = Point | Line | Circle;
+export type GeometryEntity = Point | Line | Circle
 
-// Import centralized constraint types
-import type { ConstraintType } from './constraint-types';
-export type { ConstraintType } from './constraint-types';
+export type { ConstraintType } from "./constraint-types"
 
 export interface Constraint {
-  id: string;
-  type: ConstraintType;
-  entityIds: string[];
-  value?: number;
-  priority: number;
+	id: string
+	type: ConstraintType
+	entityIds: string[]
+	value?: number
+	priority: number
 }
 
 export interface Geometry {
-  points: Map<string, Point>;
-  lines: Map<string, Line>;
-  circles: Map<string, Circle>;
-  constraints: Map<string, Constraint>;
-  metadata: {
-    version: string;
-    created: Date;
-    modified: Date;
-  };
+	points: Map<string, Point>
+	lines: Map<string, Line>
+	circles: Map<string, Circle>
+	constraints: Map<string, Constraint>
+	metadata: {
+		version: string
+		created: Date
+		modified: Date
+	}
 }
 
 export interface Viewport {
-  x: number;
-  y: number;
-  zoom: number;
-  width: number;
-  height: number;
+	x: number
+	y: number
+	zoom: number
+	width: number
+	height: number
 }
 
-export type ToolType = "select" | "point" | "line" | "circle";
+export type ToolType = "select" | "point" | "line" | "circle"
 
 export interface SelectionState {
-  selectedIds: Set<string>;
-  hoveredId: string | null;
+	selectedIds: Set<string>
+	hoveredId: string | null
 }
