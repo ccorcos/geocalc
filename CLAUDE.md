@@ -2,332 +2,178 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Essential Commands
+## Quick Reference
 
-### Development
+### Development Commands
 ```bash
 npm run dev          # Start development server (localhost:5173)
-npm run build        # TypeScript compilation + production build
-npm run lint         # ESLint with strict TypeScript rules
-npm run typecheck    # TypeScript type checking
+npm run build        # Build for production
+npm run lint         # Check code style
+npm run typecheck    # TypeScript validation
 ```
 
-### Testing
+### Testing Commands
 ```bash
-npm test             # Full test suite: typecheck + unit tests + e2e tests
-npm run test:unit    # Run unit tests (Vitest)
-npm run test:unit:ui # Run unit tests with Vitest UI
-npm run test:unit:coverage # Run unit tests with coverage report
-npm run test:e2e     # Run Playwright end-to-end tests
-npm run test:e2e:ui  # Run e2e tests with Playwright UI
-npm run test:e2e:debug # Debug e2e tests with Playwright inspector
+npm test                                     # Full test suite
+npm run test:unit                           # Unit tests only
+npm run test:e2e                           # E2E tests only
+npx vitest run src/path/to/test.test.ts    # Run specific unit test
+npx playwright test --grep "test name"      # Run specific e2e test
 ```
 
-### Single Test Execution
-```bash
-npx vitest run src/path/to/test.test.ts     # Run specific unit test
-npx playwright test --grep "test name"       # Run specific e2e test
-```
+## Project Structure
 
-## Directory Structure
-
-The codebase uses a **flat directory structure** to minimize nested folders and make navigation easier:
+**GeoCalc** is an interactive 2D geometry application with constraint-based solving. The codebase uses a flat directory structure with tests co-located next to source files.
 
 ```
 src/
-├── App.tsx, main.tsx           # Main application files
-├── store.ts                    # Zustand state management
-├── renderer.ts                 # Canvas rendering pipeline
-├── ids.ts, math.ts            # Utility functions
-├── math.test.ts, setup.test.ts # Root-level test files
-├── components/                 # React components (flat structure)
-│   ├── Canvas.tsx
-│   ├── ConstraintContextMenu.tsx
-│   ├── ConstraintPanel.tsx
-│   ├── EntityPanel.tsx
-│   ├── ErrorBoundary.tsx
-│   ├── FloatingToolbar.tsx
-│   ├── SolverPanel.tsx
-│   └── StatusBar.tsx
-├── engine/                     # Core constraint solving (tests co-located)
-│   ├── types.ts               # Type definitions
-│   ├── geometry.ts + geometry.test.ts
-│   ├── ConstraintEvaluator.ts + ConstraintEvaluator.test.ts
-│   ├── GradientDescentSolver.ts + GradientDescentSolver.test.ts
-│   └── ConstraintSolving.test.ts
-└── interaction/                # User input handling
-    ├── CanvasInteraction.ts
-    └── ConstraintTool.ts
+├── App.tsx, main.tsx, store.ts         # Main app, state management
+├── renderer.ts, math.ts, ids.ts        # Core utilities
+├── components/                          # UI components (flat)
+├── engine/                              # Constraint solving + tests
+└── interaction/                         # Input handling
 ```
 
-**Key Principles:**
-- **Flat over nested**: Files are in the minimum necessary directory depth
-- **Co-located tests**: Test files sit directly next to their source files
-- **Logical grouping**: Related files grouped by function (components, engine, interaction)
-- **Short import paths**: Most imports are 1-2 levels deep maximum
+### Architecture Layers
+1. **UI** (`components/`): React components for canvas, panels, toolbars
+2. **State** (`store.ts`): Zustand + Immer for geometry document state
+3. **Engine** (`engine/`): Gradient descent constraint solver
+4. **Interaction** (`interaction/`): Mouse/keyboard input handling
+5. **Rendering** (`renderer.ts`): HTML5 Canvas drawing pipeline
 
-## Architecture Overview
+### Key Data Types
 
-**GeoCalc** is an interactive 2D geometry application with constraint-based solving. Users draw shapes (points, lines, circles) and apply constraints (distance, parallel, perpendicular), then a numerical gradient descent solver adjusts the geometry to satisfy all constraints simultaneously.
-
-### Core Architecture Layers
-
-1. **UI Layer** (`src/components/`): React components for canvas, toolbars, panels
-2. **State Management** (`src/store.ts`): Zustand + Immer for geometry document state
-3. **Rendering** (`src/renderer.ts`): HTML5 Canvas API with custom drawing pipeline
-4. **Constraint Engine** (`src/engine/`): Numerical solver with gradient descent optimization
-5. **Interaction** (`src/interaction/`): Mouse/keyboard input handling and tool system
-
-### Key Data Structures
-
-**Geometry Document** - Core data structure containing:
+**Geometry Document:**
 ```typescript
 interface Geometry {
-  points: Map<string, Point>;        // All points with x,y coordinates
-  lines: Map<string, Line>;          // Line segments with point references
-  circles: Map<string, Circle>;      // Circles with center + radius
-  constraints: Map<string, Constraint>; // Applied constraints
+  points: Map<string, Point>;
+  lines: Map<string, Line>;
+  circles: Map<string, Circle>;
+  constraints: Map<string, Constraint>;
 }
 ```
 
-**Constraint Types** - Centralized type system in `src/engine/constraint-types.ts`:
-- Geometric: `'distance'`, `'parallel'`, `'perpendicular'`, `'horizontal'`, `'vertical'`
-- Positional: `'x'`, `'y'`, `'same-x'`, `'same-y'`
-- Angular: `'angle'`
-- Distance: `'x-distance'`, `'y-distance'`
-- Circle: `'radius'`
+**Available Constraint Types** (from `src/engine/constraint-types.ts`):
+- Geometric: `distance`, `parallel`, `perpendicular`, `horizontal`, `vertical`, `angle`
+- Positional: `x`, `y`, `same-x`, `same-y`, `x-distance`, `y-distance`
+- Circle: `radius`
 
-### State Management Pattern
+### Development Tools
+- **Store debugging**: `window.__GEOCALC_STORE__` (dev mode)
+- **Test diagnostics**: `window.__GEOCALC_DIAGNOSTICS__` (e2e tests)
 
-- **Store**: `src/store.ts` - Zustand store with geometry document, UI state, selection
-- **Immutable Updates**: Uses Immer for clean state transitions
-- **Actions**: Store provides methods for CRUD operations on geometry entities
-- **Debugging**: Store exposed on `window.__GEOCALC_STORE__` in development
-- **Diagnostics**: E2E diagnostics available via `window.__GEOCALC_DIAGNOSTICS__` for test debugging
+## Implementation Notes
 
-## Important Implementation Details
-
-### Constraint Solving System
-
-**Location**: `src/engine/GradientDescentSolver.ts`
-**Algorithm**: Adam optimizer with momentum for numerical constraint satisfaction
-**Key Insight**: Uses gradient descent instead of algebraic solving - easier to implement and extend
-
-### Canvas Interaction System
-
-**Right-Click Workflow**: Modern UI uses right-click context menus for constraint creation (replaced old dropdown system)
-**Selection Handling**: Multi-select with Shift+click, constraint/entity selection are mutually exclusive
-**Point Selection in Tests**: Use coordinate-based clicking on left 30% of entity panel rows to avoid coordinate editing interference
-
-### Testing Architecture
-
-**Unit Tests**: Vitest with jsdom environment, focused on engine logic and utilities. Test files are co-located with source files (e.g., `src/engine/ConstraintEvaluator.test.ts` next to `ConstraintEvaluator.ts`)
-
-**E2E Tests**: Playwright with comprehensive UI testing following these principles:
-- **Philosophy**: "Inspect, Don't Bypass" - tests must use real user interactions, never shortcuts around UI
-- **TestHarness Class**: `e2e/test-helpers.ts` provides business-logic abstractions (use `const h = new TestHarness(page)`)
-- **Diagnostics**: `window.__GEOCALC_DIAGNOSTICS__` provides state inspection without bypassing UI
-- **Entity Selection**: Use entity panel selection (`selectPointsInPanel`) over canvas clicks for reliability
-- **State Verification**: Use diagnostics to verify constraint satisfaction rather than manual calculations
-
-**Test Separation**: Vitest excludes `e2e/` directory to prevent conflicts
+### Core Systems
+- **Solver**: `src/engine/GradientDescentSolver.ts` - Uses gradient descent with Adam optimizer for numerical constraint satisfaction
+- **UI**: Right-click context menus for constraint creation, multi-select with Shift+click, entity panel showing all geometries on the left, constraint panel showing all constraints and solver statistics on the right.
+- **Testing**: Unit tests (Vitest) co-located with source files, E2E tests (Playwright) in `e2e/` directory using TestHarness abstraction for maintainable business-logic interactions
 
 ### Common Gotchas
+1. **Store property**: Use `geometry` not `document` (avoid shadowing `window.document`)
+2. **Null safety**: Always check `geometry?.entities` in components
+3. **Constraint types**: Use string literals (`'x'`, `'y'`) from `constraint-types.ts`
+4. **Test selection**: Use entity panel selection over canvas clicks for reliability
 
-1. **Document vs Geometry**: Store property is `geometry` (not `document`) - avoid variable shadowing with `window.document`
-2. **Null Safety**: Always check `geometry?.entities` - components must handle null geometry state
-3. **Constraint Types**: Use string literals (`'x'`, `'y'`) not old names (`'fix-x'`, `'fix-y'`). Import types from `constraint-types.ts`
-4. **Constraint Gradients**: Same-x/same-y constraints use pairwise evaluation, not multi-point reference
-5. **Portal Rendering**: Context menus use React Portal to `document.getElementById('root')` for proper positioning
+## Constraint Development Workflow
 
-## Development Workflow
+### Requirements
+- **Precision**: Geometric properties (positions, angles, distances) must be accurate to 3 decimal places
+- **Testing**: Tests must start from unsolved states to verify solver works
+- **Parameters**: Never change solver parameters for individual tests
 
-### Adding New Constraint Types
-1. Add string literal to `ConstraintType` union in `src/engine/constraint-types.ts`
-2. Add display names to `CONSTRAINT_DISPLAY_NAMES` and `CONSTRAINT_MENU_NAMES`
-3. Add to `ALL_CONSTRAINT_TYPES` array for test iteration
-4. Implement evaluation logic in `src/engine/ConstraintEvaluator.ts`
-5. Add UI controls to constraint panels/context menus
-6. Write unit tests for constraint mathematics in `src/engine/ConstraintEvaluator.test.ts`
-7. Add e2e tests for UI workflow using TestHarness
+### Implementation Steps
 
-### Debugging Constraint Issues
-1. Check solver convergence in `SolverPanel` - watch iteration count and final error
-2. Use browser devtools to inspect `__GEOCALC_STORE__.geometry.constraints`
-3. In e2e tests, use `h.debugConstraints()` to see actual constraint state vs expected
-4. Use diagnostics: `window.__GEOCALC_DIAGNOSTICS__.debug.logConstraints()` in browser
-5. Verify gradient calculations in `ConstraintEvaluator.test.ts`
-6. Test constraint behavior in isolation with integration tests
+1. **Type System** (`src/engine/constraint-types.ts`)
+   - Add constraint to `ConstraintType` union
+   - Add display names to `CONSTRAINT_DISPLAY_NAMES` and `CONSTRAINT_MENU_NAMES`
+   - Add to `ALL_CONSTRAINT_TYPES` array
 
-### Testing Strategy: Unit Tests vs E2E Tests
+2. **Core Implementation** (`src/engine/ConstraintEvaluator.ts`)
+   - Add evaluation case with proper mathematics
+   - Return error values and gradients
+   - Handle edge cases and missing entities
 
-**Core Principle**: Always prefer unit tests for core functionality, use E2E tests for UI interactions.
+3. **Unit Testing** (mandatory)
+   - **Minimal test**: Single constraint, unsolved → solved, verify geometric properties to 3 decimal places
+   - **Compound test**: Multiple constraints, verify solver convergence
+   - **Edge cases**: Test degenerate inputs and missing entities
 
-**When to Write Unit Tests**:
-- **Core engine logic**: Constraint solving, geometry calculations, mathematical operations
-- **Algorithm testing**: Gradient descent convergence, constraint evaluation accuracy
-- **Edge cases**: Complex constraint combinations, numerical stability issues
-- **Performance testing**: Solver iteration counts, convergence speed
-- **Debugging unknown issues**: When E2E tests fail, write unit tests to isolate the problem
+4. **UI Integration**
+   - Update `ConstraintPanel.tsx` for display and editing
+   - Add to context menus for constraint creation
+   - Ensure constraint values are click-to-edit
 
-**When to Write E2E Tests**:
-- **UI workflows**: User interactions, tool switching, selection behavior
-- **Integration testing**: UI → Store → Engine data flow
-- **Visual feedback**: Canvas rendering, constraint visualization
-- **User experience**: Tooltip behavior, error messages, accessibility
+5. **E2E Testing**
+   - Create minimal test using `TestHarness` class for business-logic abstraction
+   - Use real user interactions (no UI shortcuts)
+   - Verify with diagnostics, not manual calculations
 
-**Problem Isolation Strategy**:
-When E2E tests fail, follow this process:
-1. **Identify the failure domain**: Is this a UI problem or core functionality problem?
-2. **Write unit tests first**: Create focused unit tests for the suspected core functionality
-3. **If unit tests pass**: Problem is in UI layer (selection, constraint creation, state management)
-4. **If unit tests fail**: Problem is in engine layer (constraint evaluation, solver logic)
-5. **Fix the core issue first**: Solve unit test failures before E2E test failures
-6. **Verify E2E tests pass**: Ensure UI integration works after core fix
+### Testing Guidelines
 
-**Example: Same-X Constraint for 3 Points Fails**
+**Unit Test Pattern**:
 ```typescript
-// ❌ Wrong approach: Debug in E2E test
-test('same-x constraint for 3 points', async ({ page }) => {
-  // Create 3 points, apply constraint, debug why it doesn't work
-  // This mixes UI testing with constraint solver testing
-});
-
-// ✅ Correct approach: Write unit test first
-test('constraint evaluator handles 3-point same-x', () => {
-  const p1 = createPoint(100, 200);
-  const p2 = createPoint(200, 300);
-  const p3 = createPoint(300, 400);
-  const constraint = createConstraint("same-x", [p1.id, p2.id, p3.id]);
-
-  // Test if constraint evaluator can handle 3 points
-  const result = evaluator.evaluate(constraint, geometry);
-  // This isolates the core problem from UI complexity
-});
-
-// ✅ Then fix the E2E test to match correct behavior
-test('UI creates correct constraints for 3 points', async ({ page }) => {
-  // Focus on UI behavior: does selection work, does constraint creation work
-  // Assume constraint solver is correct (proven by unit tests)
-});
+// Start with entities that violate the constraint
+const result = solver.solve(geometry)
+expect(result.success).toBe(true)
+// Verify actual geometric properties to 3 decimal places
+expect(actualDistance).toBeCloseTo(expectedDistance, 3)
+expect(actualAngle).toBeCloseTo(expectedAngle, 3)
 ```
 
-### E2E Testing Best Practices
-
-**Philosophy**: Tests should validate exactly what users do - no shortcuts or UI bypassing.
-
-**Writing Tests**:
+**E2E Test Pattern**:
 ```typescript
-// ✅ Good: Use TestHarness with 'h' abbreviation
-const h = new TestHarness(page);
-await h.goto();
-await h.createPointAt(200, 200);
-await h.expectPointCount(1);
-
-// ✅ Good: Use diagnostics for verification
-const constraints = await h.debugConstraints();
-const isFixed = await h.verifyPointIsFixed();
-
-// ✅ Good: Entity panel selection over canvas clicks
-await h.selectPointsInPanel([0, 1], true);
-
-// ❌ Bad: Bypassing UI or hardcoding expectations
-await page.evaluate(() => window.store.addPoint(...)); // Don't bypass UI
-expect(actualDistance - 150).toBeLessThan(0.01);       // Use verification helpers instead
+const h = new TestHarness(page)
+await h.createConstraint("constraint-type", value)
+await h.runSolver()
+const isConstraintSatisfied = await h.verifyConstraintSatisfied("constraint-type")
+expect(isConstraintSatisfied).toBe(true)
 ```
 
-**Test Structure**:
-- Create entities using UI interactions (`h.createPointAt`, `h.createLine`)
-- Select entities using reliable methods (`h.selectPointsInPanel` over canvas clicks)
-- Verify results using diagnostics (`h.debugConstraints`, `h.verifyPointIsFixed`)
-- Use centralized constraint types from `constraint-types.ts`
+**TestHarness Abstraction**: The `TestHarness` class provides business-logic methods that read like plain English, making tests easier to understand and maintain. It abstracts all the UI interaction details (selectors, clicks, waits) so that if UI elements change (button labels, selectors), you only need to update the TestHarness implementation, not every test that uses that functionality.
 
-**Debugging Failing Tests**:
-- **NEVER use `npm run test:e2e:debug`** - it opens an inactive browser and leads to debugging dead ends
-- **Edit tests to add console.log statements** - this is the most effective debugging approach
-- Add `await h.debugConstraints()` to see actual vs expected constraint state
-- Use `await h.logPointPositions()` and `await h.logConstraints()` for debugging
-- Check browser console for diagnostics output
-- Use Playwright UI mode (`npm run test:e2e:ui`) for visual debugging
+**Key Rules**:
+- Always use `expect(value).toBeCloseTo(expected, 3)` for geometric properties (positions, angles, distances)
+- Never modify solver parameters for individual tests
+- Use TestHarness methods for E2E tests, never bypass UI
 
-### Canvas Rendering Performance
-- Rendering pipeline in `src/renderer.ts` handles efficient redraws
-- Transform management for smooth pan/zoom in viewport system
-- Use `requestAnimationFrame` for smooth interactions
+## Debugging
 
-## Architecture Decision Records
+### Constraint Issues
+1. Check solver convergence in `SolverPanel` (iteration count, final error)
+2. Inspect `__GEOCALC_STORE__.geometry.constraints` in browser devtools
+3. Use `h.debugConstraints()` in E2E tests to see constraint state
+4. Verify gradient calculations in unit tests
 
-**Numerical vs Algebraic Solving**: Chose gradient descent over symbolic algebra for simpler implementation and easier extensibility to complex constraint combinations.
+### E2E Test Debugging
+- **Edit tests to add console.log** - most effective debugging approach
+- Use `h.debugConstraints()` and `h.logPointPositions()` for state inspection
 
-**Canvas vs SVG**: HTML5 Canvas for high-performance 2D graphics with custom rendering pipeline, better for interactive geometry applications.
+### Testing Philosophy
 
-**Zustand vs Redux**: Zustand + Immer provides simpler state management with immutable updates, less boilerplate than Redux.
+**Core Principles**:
+- **Precision**: Geometric properties (positions, angles, distances) must be accurate to 3 decimal places
+- **Start unsolved**: Tests begin with constraint violations to prove solver works
+- **Never modify solver parameters** for individual tests
+- **Unit tests for core logic**, E2E tests for UI workflows
 
-**Component Architecture**: Functional React components with hooks, minimal prop drilling through centralized store, clear separation between UI and business logic.
+**When E2E Tests Fail**:
+1. Write unit tests first to isolate the core functionality issue
+2. Fix unit test failures before E2E test failures
+3. Ensure UI integration works after core fix
 
-**Constraint Type System**: Centralized constraint types using string literals (`'distance'`, `'x'`, `'y'`) instead of constants object. Provides type safety while avoiding unnecessary complexity. Display names managed in `constraint-types.ts` for UI consistency.
+## Architecture Decisions
 
-**E2E Testing Philosophy**: "Inspect, Don't Bypass" - tests use real user interactions with diagnostics for verification rather than shortcuts around UI. TestHarness provides business-logic abstractions while maintaining true user behavior testing.
+- **Solver**: Gradient descent (not algebraic) for easier implementation and extensibility
+- **UI**: HTML5 Canvas for high-performance 2D graphics
+- **State**: Zustand + Immer for simple immutable updates
+- **Types**: String literals (`'distance'`, `'x'`, `'y'`) for constraint types
+- **Tests**: "Inspect, Don't Bypass" - real user interactions with diagnostics
 
-## Constraint Solver Architecture and Debugging
+## Solver Configuration
 
-### Solver Philosophy: Precision Over Speed
-
-The GradientDescentSolver prioritizes **precision over speed** with hardcoded parameters optimized through systematic analysis:
-
-```typescript
-// Hardcoded solver parameters (DO NOT make configurable per test)
-private readonly maxIterations = 10000;  // Generous iteration budget
-private readonly tolerance = 1e-10;      // Tight convergence tolerance
-private readonly learningRate = 0.01;    // Conservative for stability
-private readonly momentum = 0.95;        // High momentum for smooth convergence
-```
-
-**Key Principle**: Never allow per-test solver parameter overrides. This prevents "chasing our tail" by trying to fix individual tests with custom parameters instead of fixing the underlying solver.
-
-### Solver Success Logic
-
-The solver uses **realistic success thresholds** for numerical optimization:
-
-```typescript
-// Success threshold accounts for gradient descent limitations
-success: totalError < 1e-2  // Achievable precision for complex systems
-```
-
-**Important**: The solver checks convergence quality even when hitting max iterations, rather than automatically failing.
-
-### Debugging Solver Issues
-
-**Root Cause Analysis Process**:
-1. **Check success vs. convergence**: Solver might converge well but fail success threshold
-2. **Verify constraint evaluation**: Use `ConstraintEvaluator.evaluate()` directly to test constraint math
-3. **Test in isolation**: Create minimal test cases with single constraint types
-4. **Check gradient accuracy**: Compare analytical vs numerical gradients (expect <1e-5 difference)
-
-**Debugging Tools**:
-```typescript
-// Create isolated constraint tests
-const evaluator = new ConstraintEvaluator();
-const violation = evaluator.evaluate(constraint, geometry);
-console.log(`Error: ${violation.error}, Gradients:`, violation.gradient);
-
-// Test different constraint combinations
-const solver = new GradientDescentSolver();
-const result = solver.solve(geometry);
-console.log(`Success: ${result.success}, Error: ${result.finalError}, Iterations: ${result.iterations}`);
-```
-
-**E2E Test Philosophy**: E2E tests validate UI workflows, not solver precision. If E2E tests fail due to solver convergence, fix the unit-tested solver first, then verify E2E passes.
-
-### Solver Performance Characteristics
-
-**Convergence Indicators**:
-- **Good**: Final error < 1e-3, iterations < 1000, success = true
-- **Acceptable**: Final error < 1e-2, iterations < 5000, success = true
-- **Poor**: Final error > 1e-2, success = false (investigate constraint conflicts)
-
-**Typical Results by Constraint Type**:
-- **Angle constraints**: ~0.1° accuracy (excellent for numerical methods)
-- **Distance constraints**: Sub-millimeter precision consistently
-- **Same-x/same-y**: Pixel-level precision for multi-point constraints
-- **Mixed systems**: Balanced convergence across all constraint types
+**Solver Debugging Steps**:
+1. Check success vs. convergence (solver might converge well but fail success threshold)
+2. Verify constraint evaluation with `ConstraintEvaluator.evaluate()` directly
+3. Test in isolation with minimal single constraint cases
+4. Compare analytical vs numerical gradients (expect <1e-5 difference)
