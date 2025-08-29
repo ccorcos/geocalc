@@ -139,7 +139,90 @@ expect(isConstraintSatisfied).toBe(true)
 
 ## Debugging
 
-### Constraint Issues
+### Constraint Debugging Process
+
+When a constraint isn't working properly, follow this systematic debugging procedure:
+
+#### Step 1: Verify Unit Test Quality
+**Goal**: Ensure the unit test properly validates the constraint implementation
+
+1. **Locate/Create Unit Test**: Find or create the unit test file for the constraint (e.g., `src/engine/ConstraintEvaluator.test.ts`)
+
+2. **Verify Test Setup**: Ensure the test starts with entities in an **unsolved state**
+   ```typescript
+   // BAD: Already satisfies constraint
+   const p1 = { x: 0, y: 0 }
+   const p2 = { x: 10, y: 0 }  // Distance already = 10
+
+   // GOOD: Violates constraint initially
+   const p1 = { x: 0, y: 0 }
+   const p2 = { x: 5, y: 7 }   // Distance ≠ 10, solver must fix
+   ```
+
+3. **Verify High Precision Testing**: Check that final results are tested to 3 decimal places
+   ```typescript
+   const actualDistance = Math.sqrt((p2.x - p1.x)² + (p2.y - p1.y)²)
+   expect(actualDistance).toBeCloseTo(expectedDistance, 3)  // Must be 3 decimals
+   ```
+
+4. **Run Unit Test**: Execute the specific unit test
+   ```bash
+   npx vitest run src/engine/ConstraintEvaluator.test.ts
+   ```
+
+#### Step 2: Fix Unit Test Issues
+**If unit test fails**, debug in this order:
+
+1. **Check Constraint Evaluation**: Verify `ConstraintEvaluator.evaluate()` returns correct error values
+2. **Verify Gradients**: Ensure gradients are computed correctly (compare with numerical gradients)
+3. **Test Edge Cases**: Handle missing entities, degenerate cases
+4. **Solver Parameters**: Never modify solver parameters; fix the constraint math instead
+
+#### Step 3: Verify E2E Test (Only After Unit Test Passes)
+**Goal**: Ensure UI integration works correctly
+
+1. **Run E2E Test**: Execute the specific E2E test
+   ```bash
+   npx playwright test --grep "constraint-name"
+   ```
+
+2. **Use TestHarness Methods**: Ensure test uses proper abstraction
+   ```typescript
+   const h = new TestHarness(page)
+   await h.createConstraint("constraint-type", value)
+   await h.runSolver()
+   const isConstraintSatisfied = await h.verifyConstraintSatisfied("constraint-type")
+   expect(isConstraintSatisfied).toBe(true)
+   ```
+
+#### Step 4: Debug E2E Test Failures
+**If E2E test fails after unit test passes**:
+
+1. **Add Debug Logging**: Edit the test to add `console.log` statements
+   ```typescript
+   console.log('Before constraint:', await h.debugConstraints())
+   await h.createConstraint("distance", 15)
+   console.log('After constraint:', await h.debugConstraints())
+   await h.runSolver()
+   console.log('After solving:', await h.logPointPositions())
+   ```
+
+2. **Check UI Integration**:
+   - Verify constraint appears in constraint panel
+   - Check constraint creation via context menu
+   - Ensure solver runs and converges
+
+3. **Inspect Browser State**: Use `__GEOCALC_DIAGNOSTICS__` in browser devtools during test
+
+#### Step 5: Root Cause Analysis
+**Common failure patterns**:
+
+- **Unit test passes, E2E fails**: UI integration issue (constraint creation, panel display)
+- **Both fail**: Core constraint evaluation problem
+- **Solver converges but constraint unsatisfied**: Tolerance or gradient issues
+- **Solver doesn't converge**: Mathematical instability or conflicting constraints
+
+### General Constraint Issues
 1. Check solver convergence in `SolverPanel` (iteration count, final error)
 2. Inspect `__GEOCALC_STORE__.geometry.constraints` in browser devtools
 3. Use `h.debugConstraints()` in E2E tests to see constraint state
