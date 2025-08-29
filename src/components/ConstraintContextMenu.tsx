@@ -128,6 +128,13 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					{ type: "vertical", label: "Vertical", needsValue: false },
 				]
 			}
+
+			// Single circle -> radius
+			if (entity?.type === "circle") {
+				return [
+					{ type: "radius", label: "Radius", needsValue: true },
+				]
+			}
 		}
 
 		return []
@@ -187,6 +194,11 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					} else {
 						defaultValue = 90
 					}
+				}
+			} else if (constraintType === "radius" && selectedIds.length === 1) {
+				const circle = geometry.circles.get(selectedIds[0])
+				if (circle) {
+					defaultValue = circle.radius
 				}
 			}
 

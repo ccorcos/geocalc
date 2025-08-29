@@ -1,4 +1,4 @@
-import { distance, vectorDot, vectorFromPoints, vectorNormalize } from "../math"
+import { distance } from "../math"
 import { Constraint, Geometry } from "./types"
 
 export interface ConstraintViolation {
@@ -108,45 +108,85 @@ export class ConstraintEvaluator {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
 		}
 
-		const v1 = vectorNormalize(vectorFromPoints(p1a, p1b))
-		const v2 = vectorNormalize(vectorFromPoints(p2a, p2b))
+		// Calculate direction vectors (not normalized yet)
+		const v1x = p1b.x - p1a.x
+		const v1y = p1b.y - p1a.y
+		const v2x = p2b.x - p2a.x
+		const v2y = p2b.y - p2a.y
 
+		// Calculate magnitudes
+		const mag1 = Math.sqrt(v1x * v1x + v1y * v1y)
+		const mag2 = Math.sqrt(v2x * v2x + v2y * v2y)
+
+		if (mag1 < 1e-10 || mag2 < 1e-10) {
+			// Degenerate case: one line has zero length
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Dot product of normalized vectors
+		const dot = (v1x * v2x + v1y * v2y) / (mag1 * mag2)
+		
 		// For parallel lines, dot product should be ±1
-		const dot = vectorDot(v1, v2)
-		const error = (1 - dot * dot) ** 2
+		// Error = (1 - dot²)² ensures error is 0 when lines are parallel
+		const dotSquared = dot * dot
+		const error = (1 - dotSquared) ** 2
 
-		// Simplified gradient calculation (more complex analytical gradient would be better)
+		// Analytical gradient calculation
+		// error = (1 - dot²)²
+		// d(error)/d(dot) = -4 * dot * (1 - dot²)
+		const dErrorDDot = -4 * dot * (1 - dotSquared)
+
+		// If error is very small, zero out gradients to prevent numerical issues
 		const gradient = new Map<string, { x: number; y: number }>()
-		const epsilon = 1e-6
+		if (Math.abs(1 - dotSquared) < 1e-6) {
+			// Lines are essentially parallel, zero gradients
+			gradient.set(p1a.id, { x: 0, y: 0 })
+			gradient.set(p1b.id, { x: 0, y: 0 })
+			gradient.set(p2a.id, { x: 0, y: 0 })
+			gradient.set(p2b.id, { x: 0, y: 0 })
+		} else {
+			// Calculate d(dot)/d(point) for each point
+			// dot = (v1 · v2) / (|v1| * |v2|)
+			const mag1Mag2 = mag1 * mag2
+			const invMag1 = 1 / mag1
+			const invMag2 = 1 / mag2
 
-		// Numerical gradient approximation
-		;[p1a, p1b, p2a, p2b].forEach((point) => {
-			const originalX = point.x
-			const originalY = point.y
+			// For p1a (affects v1 = p1b - p1a, so d(v1)/d(p1a) = -1)
+			const dDotDx1a = (-v2x * mag2 + dot * v1x * invMag1) / mag1Mag2
+			const dDotDy1a = (-v2y * mag2 + dot * v1y * invMag1) / mag1Mag2
 
-			// X gradient
-			point.x = originalX + epsilon
-			const v1x = vectorNormalize(vectorFromPoints(p1a, p1b))
-			const v2x = vectorNormalize(vectorFromPoints(p2a, p2b))
-			const dotX = vectorDot(v1x, v2x)
-			const errorX = (1 - dotX * dotX) ** 2
+			// For p1b (affects v1 = p1b - p1a, so d(v1)/d(p1b) = 1)  
+			const dDotDx1b = (v2x * mag2 - dot * v1x * invMag1) / mag1Mag2
+			const dDotDy1b = (v2y * mag2 - dot * v1y * invMag1) / mag1Mag2
 
-			point.x = originalX
+			// For p2a (affects v2 = p2b - p2a, so d(v2)/d(p2a) = -1)
+			const dDotDx2a = (-v1x * mag1 + dot * v2x * invMag2) / mag1Mag2
+			const dDotDy2a = (-v1y * mag1 + dot * v2y * invMag2) / mag1Mag2
 
-			// Y gradient
-			point.y = originalY + epsilon
-			const v1y = vectorNormalize(vectorFromPoints(p1a, p1b))
-			const v2y = vectorNormalize(vectorFromPoints(p2a, p2b))
-			const dotY = vectorDot(v1y, v2y)
-			const errorY = (1 - dotY * dotY) ** 2
+			// For p2b (affects v2 = p2b - p2a, so d(v2)/d(p2b) = 1)
+			const dDotDx2b = (v1x * mag1 - dot * v2x * invMag2) / mag1Mag2
+			const dDotDy2b = (v1y * mag1 - dot * v2y * invMag2) / mag1Mag2
 
-			point.y = originalY
-
-			gradient.set(point.id, {
-				x: (errorX - error) / epsilon,
-				y: (errorY - error) / epsilon,
+			gradient.set(p1a.id, {
+				x: dErrorDDot * dDotDx1a,
+				y: dErrorDDot * dDotDy1a,
 			})
-		})
+
+			gradient.set(p1b.id, {
+				x: dErrorDDot * dDotDx1b,
+				y: dErrorDDot * dDotDy1b,
+			})
+
+			gradient.set(p2a.id, {
+				x: dErrorDDot * dDotDx2a,
+				y: dErrorDDot * dDotDy2a,
+			})
+
+			gradient.set(p2b.id, {
+				x: dErrorDDot * dDotDx2b,
+				y: dErrorDDot * dDotDy2b,
+			})
+		}
 
 		return { constraintId: constraint.id, error, gradient }
 	}
@@ -175,44 +215,84 @@ export class ConstraintEvaluator {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
 		}
 
-		const v1 = vectorNormalize(vectorFromPoints(p1a, p1b))
-		const v2 = vectorNormalize(vectorFromPoints(p2a, p2b))
+		// Calculate direction vectors (not normalized yet)
+		const v1x = p1b.x - p1a.x
+		const v1y = p1b.y - p1a.y
+		const v2x = p2b.x - p2a.x
+		const v2y = p2b.y - p2a.y
 
+		// Calculate magnitudes
+		const mag1 = Math.sqrt(v1x * v1x + v1y * v1y)
+		const mag2 = Math.sqrt(v2x * v2x + v2y * v2y)
+
+		if (mag1 < 1e-10 || mag2 < 1e-10) {
+			// Degenerate case: one line has zero length
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Dot product of normalized vectors
+		const dot = (v1x * v2x + v1y * v2y) / (mag1 * mag2)
+		
 		// For perpendicular lines, dot product should be 0
-		const dot = vectorDot(v1, v2)
-		const error = dot ** 2
+		// Error = dot²
+		const error = dot * dot
 
-		// Numerical gradient (similar to parallel)
+		// Analytical gradient calculation
+		// error = dot²
+		// d(error)/d(dot) = 2 * dot
+		const dErrorDDot = 2 * dot
+
+		// If error is very small, zero out gradients to prevent numerical issues
 		const gradient = new Map<string, { x: number; y: number }>()
-		const epsilon = 1e-6
+		if (Math.abs(dot) < 1e-6) {
+			// Lines are essentially perpendicular, zero gradients
+			gradient.set(p1a.id, { x: 0, y: 0 })
+			gradient.set(p1b.id, { x: 0, y: 0 })
+			gradient.set(p2a.id, { x: 0, y: 0 })
+			gradient.set(p2b.id, { x: 0, y: 0 })
+		} else {
+			// Calculate d(dot)/d(point) for each point
+			// dot = (v1 · v2) / (|v1| * |v2|)
+			const mag1Mag2 = mag1 * mag2
+			const invMag1 = 1 / mag1
+			const invMag2 = 1 / mag2
 
-		;[p1a, p1b, p2a, p2b].forEach((point) => {
-			const originalX = point.x
-			const originalY = point.y
+			// For p1a (affects v1 = p1b - p1a, so d(v1)/d(p1a) = -1)
+			const dDotDx1a = (-v2x * mag2 + dot * v1x * invMag1) / mag1Mag2
+			const dDotDy1a = (-v2y * mag2 + dot * v1y * invMag1) / mag1Mag2
 
-			// X gradient
-			point.x = originalX + epsilon
-			const v1x = vectorNormalize(vectorFromPoints(p1a, p1b))
-			const v2x = vectorNormalize(vectorFromPoints(p2a, p2b))
-			const dotX = vectorDot(v1x, v2x)
-			const errorX = dotX ** 2
+			// For p1b (affects v1 = p1b - p1a, so d(v1)/d(p1b) = 1)  
+			const dDotDx1b = (v2x * mag2 - dot * v1x * invMag1) / mag1Mag2
+			const dDotDy1b = (v2y * mag2 - dot * v1y * invMag1) / mag1Mag2
 
-			point.x = originalX
+			// For p2a (affects v2 = p2b - p2a, so d(v2)/d(p2a) = -1)
+			const dDotDx2a = (-v1x * mag1 + dot * v2x * invMag2) / mag1Mag2
+			const dDotDy2a = (-v1y * mag1 + dot * v2y * invMag2) / mag1Mag2
 
-			// Y gradient
-			point.y = originalY + epsilon
-			const v1y = vectorNormalize(vectorFromPoints(p1a, p1b))
-			const v2y = vectorNormalize(vectorFromPoints(p2a, p2b))
-			const dotY = vectorDot(v1y, v2y)
-			const errorY = dotY ** 2
+			// For p2b (affects v2 = p2b - p2a, so d(v2)/d(p2b) = 1)
+			const dDotDx2b = (v1x * mag1 - dot * v2x * invMag2) / mag1Mag2
+			const dDotDy2b = (v1y * mag1 - dot * v2y * invMag2) / mag1Mag2
 
-			point.y = originalY
-
-			gradient.set(point.id, {
-				x: (errorX - error) / epsilon,
-				y: (errorY - error) / epsilon,
+			gradient.set(p1a.id, {
+				x: dErrorDDot * dDotDx1a,
+				y: dErrorDDot * dDotDy1a,
 			})
-		})
+
+			gradient.set(p1b.id, {
+				x: dErrorDDot * dDotDx1b,
+				y: dErrorDDot * dDotDy1b,
+			})
+
+			gradient.set(p2a.id, {
+				x: dErrorDDot * dDotDx2a,
+				y: dErrorDDot * dDotDy2a,
+			})
+
+			gradient.set(p2b.id, {
+				x: dErrorDDot * dDotDx2b,
+				y: dErrorDDot * dDotDy2b,
+			})
+		}
 
 		return { constraintId: constraint.id, error, gradient }
 	}

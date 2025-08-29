@@ -207,6 +207,23 @@ export class TestHarness {
 		await this.waitForConstraintUI(2)
 	}
 
+	// Circle operations
+	async createCircle(centerPoint: TestPoint, radiusPoint: TestPoint) {
+		await this.selectTool("circle")
+		// Click to place center
+		await this.canvas.click({ position: { x: centerPoint.x, y: centerPoint.y } })
+		// Click to set radius (drag to radius point)
+		await this.canvas.click({ position: { x: radiusPoint.x, y: radiusPoint.y } })
+	}
+
+	async selectCircleInPanel(circleIndex: number = 0) {
+		const circleInPanel = this.entityList
+			.locator("div")
+			.filter({ hasText: "circle" })
+			.nth(circleIndex)
+		await circleInPanel.click()
+	}
+
 	// Complex operations
 	async selectTwoPoints(point1: TestPoint, point2: TestPoint) {
 		await this.selectTool("select")
@@ -355,6 +372,26 @@ export class TestHarness {
 		)
 
 		return fixConstraints.length > 0
+	}
+
+	async verifyRadiusConstraint(
+		expectedRadius: number,
+		tolerance = 0.001
+	): Promise<boolean> {
+		// Get circle information from the diagnostics
+		const actualRadius = await this.page.evaluate(() => {
+			const diagnostics = (window as any).__GEOCALC_DIAGNOSTICS__
+			if (!diagnostics) return null
+			
+			const circles = diagnostics.getCircles()
+			if (circles.length === 0) return null
+			
+			// Return radius of first circle (for simple test cases)
+			return circles[0].radius
+		})
+		
+		if (actualRadius === null) return false
+		return Math.abs(actualRadius - expectedRadius) <= tolerance
 	}
 
 	async logPointPositions() {

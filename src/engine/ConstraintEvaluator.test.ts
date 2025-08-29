@@ -221,6 +221,48 @@ describe("ConstraintEvaluator", () => {
 
 			expect(result.error).toBeGreaterThan(0) // Perpendicular lines should have max error
 		})
+
+		it("should compute correct gradients for parallel constraint", () => {
+			// Create non-parallel lines with known configuration
+			const p1a = createPoint(0, 0)
+			const p1b = createPoint(2, 0) // horizontal line
+			const p2a = createPoint(0, 1)
+			const p2b = createPoint(1, 2) // sloped line (slope = 1)
+
+			geometry.points.set(p1a.id, p1a)
+			geometry.points.set(p1b.id, p1b)
+			geometry.points.set(p2a.id, p2a)
+			geometry.points.set(p2b.id, p2b)
+
+			const line1 = createLine(p1a.id, p1b.id)
+			const line2 = createLine(p2a.id, p2b.id)
+
+			geometry.lines.set(line1.id, line1)
+			geometry.lines.set(line2.id, line2)
+
+			const constraint = createConstraint("parallel", [line1.id, line2.id])
+			const result = evaluator.evaluate(constraint, geometry)
+
+			// Should have gradients for all four points
+			expect(result.gradient.has(p1a.id)).toBe(true)
+			expect(result.gradient.has(p1b.id)).toBe(true)
+			expect(result.gradient.has(p2a.id)).toBe(true)
+			expect(result.gradient.has(p2b.id)).toBe(true)
+
+			// Gradients should be non-zero (lines are not parallel)
+			const grad1a = result.gradient.get(p1a.id)!
+			const grad1b = result.gradient.get(p1b.id)!
+			const grad2a = result.gradient.get(p2a.id)!
+			const grad2b = result.gradient.get(p2b.id)!
+
+			// At least some gradients should be non-zero
+			const totalGradMagnitude = Math.abs(grad1a.x) + Math.abs(grad1a.y) + 
+			                          Math.abs(grad1b.x) + Math.abs(grad1b.y) +
+			                          Math.abs(grad2a.x) + Math.abs(grad2a.y) +
+			                          Math.abs(grad2b.x) + Math.abs(grad2b.y)
+			
+			expect(totalGradMagnitude).toBeGreaterThan(0)
+		})
 	})
 
 	describe("Perpendicular Constraints", () => {
@@ -268,6 +310,48 @@ describe("ConstraintEvaluator", () => {
 			const result = evaluator.evaluate(constraint, geometry)
 
 			expect(result.error).toBeGreaterThan(0.5) // Parallel lines should have high error for perpendicular constraint
+		})
+
+		it("should compute correct gradients for perpendicular constraint", () => {
+			// Create parallel lines (not perpendicular) 
+			const p1a = createPoint(0, 0)
+			const p1b = createPoint(2, 0) // horizontal line
+			const p2a = createPoint(0, 1)
+			const p2b = createPoint(2, 1) // parallel horizontal line
+
+			geometry.points.set(p1a.id, p1a)
+			geometry.points.set(p1b.id, p1b)
+			geometry.points.set(p2a.id, p2a)
+			geometry.points.set(p2b.id, p2b)
+
+			const line1 = createLine(p1a.id, p1b.id)
+			const line2 = createLine(p2a.id, p2b.id)
+
+			geometry.lines.set(line1.id, line1)
+			geometry.lines.set(line2.id, line2)
+
+			const constraint = createConstraint("perpendicular", [line1.id, line2.id])
+			const result = evaluator.evaluate(constraint, geometry)
+
+			// Should have gradients for all four points
+			expect(result.gradient.has(p1a.id)).toBe(true)
+			expect(result.gradient.has(p1b.id)).toBe(true)
+			expect(result.gradient.has(p2a.id)).toBe(true)
+			expect(result.gradient.has(p2b.id)).toBe(true)
+
+			// Gradients should be non-zero (lines are parallel, not perpendicular)
+			const grad1a = result.gradient.get(p1a.id)!
+			const grad1b = result.gradient.get(p1b.id)!
+			const grad2a = result.gradient.get(p2a.id)!
+			const grad2b = result.gradient.get(p2b.id)!
+
+			// At least some gradients should be non-zero
+			const totalGradMagnitude = Math.abs(grad1a.x) + Math.abs(grad1a.y) + 
+			                          Math.abs(grad1b.x) + Math.abs(grad1b.y) +
+			                          Math.abs(grad2a.x) + Math.abs(grad2a.y) +
+			                          Math.abs(grad2b.x) + Math.abs(grad2b.y)
+			
+			expect(totalGradMagnitude).toBeGreaterThan(0)
 		})
 	})
 

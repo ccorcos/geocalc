@@ -8,6 +8,7 @@ interface Diagnostics {
 			getConstraintsByType: (type: string) => any[]
 		}
 	}
+	getCircles: () => any[]
 	debug: {
 		logConstraints: () => void
 	}
@@ -29,6 +30,11 @@ function createDiagnostics(): Diagnostics {
 					)
 				},
 			},
+		},
+
+		getCircles() {
+			const state = useStore.getState()
+			return Array.from(state.geometry.circles.values())
 		},
 
 		debug: {
