@@ -123,69 +123,95 @@ export class ConstraintEvaluator {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
 		}
 
-		// Dot product of normalized vectors
-		const dot = (v1x * v2x + v1y * v2y) / (mag1 * mag2)
+		// Use slope-based approach for more direct parallel constraint
+		// This avoids the length-increase issues of normalized dot product approach
 		
-		// For parallel lines, dot product should be ±1
-		// Error = (1 - dot²)² ensures error is 0 when lines are parallel
-		const dotSquared = dot * dot
-		const error = (1 - dotSquared) ** 2
-
-		// Analytical gradient calculation
-		// error = (1 - dot²)²
-		// d(error)/d(dot) = -4 * dot * (1 - dot²)
-		const dErrorDDot = -4 * dot * (1 - dotSquared)
+		// Handle vertical lines specially
+		const isVertical1 = Math.abs(v1x) < 1e-10
+		const isVertical2 = Math.abs(v2x) < 1e-10
+		
+		let error: number
+		let dErrorDS1: number // derivative with respect to slope1
+		let dErrorDS2: number // derivative with respect to slope2
+		
+		if (isVertical1 && isVertical2) {
+			// Both lines are vertical - already parallel
+			error = 0
+			dErrorDS1 = 0
+			dErrorDS2 = 0
+		} else if (isVertical1 || isVertical2) {
+			// One line is vertical, other isn't - for parallel constraint, this should be a large error
+			// Since a vertical line can only be parallel to another vertical line
+			const slope = isVertical1 ? v2y / v2x : v1y / v1x
+			error = 1 + slope * slope // Base error of 1 for vertical/non-vertical mismatch + slope error
+			dErrorDS1 = isVertical1 ? 0 : 2 * slope
+			dErrorDS2 = isVertical2 ? 0 : 2 * slope
+		} else {
+			// Both lines have finite slopes - use slope difference
+			const slope1 = v1y / v1x
+			const slope2 = v2y / v2x
+			const slopeDiff = slope1 - slope2
+			error = slopeDiff * slopeDiff
+			dErrorDS1 = 2 * slopeDiff
+			dErrorDS2 = -2 * slopeDiff
+		}
 
 		// If error is very small, zero out gradients to prevent numerical issues
 		const gradient = new Map<string, { x: number; y: number }>()
-		if (Math.abs(1 - dotSquared) < 1e-6) {
+		if (error < 1e-6) {
 			// Lines are essentially parallel, zero gradients
 			gradient.set(p1a.id, { x: 0, y: 0 })
 			gradient.set(p1b.id, { x: 0, y: 0 })
 			gradient.set(p2a.id, { x: 0, y: 0 })
 			gradient.set(p2b.id, { x: 0, y: 0 })
 		} else {
-			// Calculate d(dot)/d(point) for each point
-			// dot = (v1 · v2) / (|v1| * |v2|)
-			const mag1Mag2 = mag1 * mag2
-			const invMag1 = 1 / mag1
-			const invMag2 = 1 / mag2
+			// Calculate gradients using slope derivatives - much simpler and more direct
+			// For non-vertical lines: slope = dy/dx
+			// ∂(slope)/∂x = -dy/dx², ∂(slope)/∂y = 1/dx
+			
+			if (isVertical1 || isVertical2) {
+				// Handle vertical line case - use different gradient calculation
+				// This pushes the non-vertical line toward vertical
+				const nonVerticalSlope = isVertical1 ? v2y / v2x : v1y / v1x
+				const pushToVertical = 2 * nonVerticalSlope // Push slope toward infinity (vertical)
+				
+				if (isVertical2) {
+					// Line 1 is not vertical, push it toward vertical
+					const dx1Squared = v1x * v1x
+					gradient.set(p1a.id, { x: pushToVertical * v1y / dx1Squared, y: -pushToVertical / v1x })
+					gradient.set(p1b.id, { x: -pushToVertical * v1y / dx1Squared, y: pushToVertical / v1x })
+					gradient.set(p2a.id, { x: 0, y: 0 })
+					gradient.set(p2b.id, { x: 0, y: 0 })
+				} else {
+					// Line 2 is not vertical, push it toward vertical
+					const dx2Squared = v2x * v2x
+					gradient.set(p1a.id, { x: 0, y: 0 })
+					gradient.set(p1b.id, { x: 0, y: 0 })
+					gradient.set(p2a.id, { x: pushToVertical * v2y / dx2Squared, y: -pushToVertical / v2x })
+					gradient.set(p2b.id, { x: -pushToVertical * v2y / dx2Squared, y: pushToVertical / v2x })
+				}
+			} else {
+				// Both lines have finite slopes - use slope difference gradients
+				const dx1Squared = v1x * v1x
+				const dx2Squared = v2x * v2x
+				
+				// Gradients for slope1 (line 1)
+				const dS1_dp1ax = dErrorDS1 * v1y / dx1Squared   // ∂(error)/∂(p1a.x) = dErrorDS1 * ∂(slope1)/∂(p1a.x)
+				const dS1_dp1ay = dErrorDS1 * (-1 / v1x)         // ∂(error)/∂(p1a.y) = dErrorDS1 * ∂(slope1)/∂(p1a.y)
+				const dS1_dp1bx = dErrorDS1 * (-v1y / dx1Squared) // ∂(error)/∂(p1b.x) = dErrorDS1 * ∂(slope1)/∂(p1b.x)
+				const dS1_dp1by = dErrorDS1 * (1 / v1x)          // ∂(error)/∂(p1b.y) = dErrorDS1 * ∂(slope1)/∂(p1b.y)
+				
+				// Gradients for slope2 (line 2)
+				const dS2_dp2ax = dErrorDS2 * v2y / dx2Squared   // ∂(error)/∂(p2a.x) = dErrorDS2 * ∂(slope2)/∂(p2a.x)
+				const dS2_dp2ay = dErrorDS2 * (-1 / v2x)         // ∂(error)/∂(p2a.y) = dErrorDS2 * ∂(slope2)/∂(p2a.y)
+				const dS2_dp2bx = dErrorDS2 * (-v2y / dx2Squared) // ∂(error)/∂(p2b.x) = dErrorDS2 * ∂(slope2)/∂(p2b.x)
+				const dS2_dp2by = dErrorDS2 * (1 / v2x)          // ∂(error)/∂(p2b.y) = dErrorDS2 * ∂(slope2)/∂(p2b.y)
 
-			// For p1a (affects v1 = p1b - p1a, so d(v1)/d(p1a) = -1)
-			const dDotDx1a = (-v2x * mag2 + dot * v1x * invMag1) / mag1Mag2
-			const dDotDy1a = (-v2y * mag2 + dot * v1y * invMag1) / mag1Mag2
-
-			// For p1b (affects v1 = p1b - p1a, so d(v1)/d(p1b) = 1)  
-			const dDotDx1b = (v2x * mag2 - dot * v1x * invMag1) / mag1Mag2
-			const dDotDy1b = (v2y * mag2 - dot * v1y * invMag1) / mag1Mag2
-
-			// For p2a (affects v2 = p2b - p2a, so d(v2)/d(p2a) = -1)
-			const dDotDx2a = (-v1x * mag1 + dot * v2x * invMag2) / mag1Mag2
-			const dDotDy2a = (-v1y * mag1 + dot * v2y * invMag2) / mag1Mag2
-
-			// For p2b (affects v2 = p2b - p2a, so d(v2)/d(p2b) = 1)
-			const dDotDx2b = (v1x * mag1 - dot * v2x * invMag2) / mag1Mag2
-			const dDotDy2b = (v1y * mag1 - dot * v2y * invMag2) / mag1Mag2
-
-			gradient.set(p1a.id, {
-				x: dErrorDDot * dDotDx1a,
-				y: dErrorDDot * dDotDy1a,
-			})
-
-			gradient.set(p1b.id, {
-				x: dErrorDDot * dDotDx1b,
-				y: dErrorDDot * dDotDy1b,
-			})
-
-			gradient.set(p2a.id, {
-				x: dErrorDDot * dDotDx2a,
-				y: dErrorDDot * dDotDy2a,
-			})
-
-			gradient.set(p2b.id, {
-				x: dErrorDDot * dDotDx2b,
-				y: dErrorDDot * dDotDy2b,
-			})
+				gradient.set(p1a.id, { x: dS1_dp1ax, y: dS1_dp1ay })
+				gradient.set(p1b.id, { x: dS1_dp1bx, y: dS1_dp1by })
+				gradient.set(p2a.id, { x: dS2_dp2ax, y: dS2_dp2ay })
+				gradient.set(p2b.id, { x: dS2_dp2bx, y: dS2_dp2by })
+			}
 		}
 
 		return { constraintId: constraint.id, error, gradient }

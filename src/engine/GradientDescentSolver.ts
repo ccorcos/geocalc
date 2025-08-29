@@ -13,8 +13,8 @@ export class GradientDescentSolver {
 	private velocity = new Map<string, { x: number; y: number }>()
 
 	// Hardcoded solver parameters optimized for precision
-	private readonly maxIterations = 10000
-	private readonly tolerance = 1e-10
+	private readonly maxIterations = 20000  // Increased for better convergence
+	private readonly tolerance = 1e-12       // Stricter tolerance for movement detection
 	private readonly learningRate = 0.01
 	private readonly momentum = 0.95
 
