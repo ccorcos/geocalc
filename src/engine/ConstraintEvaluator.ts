@@ -207,10 +207,16 @@ export class ConstraintEvaluator {
 				const dS2_dp2bx = dErrorDS2 * (-v2y / dx2Squared) // ∂(error)/∂(p2b.x) = dErrorDS2 * ∂(slope2)/∂(p2b.x)
 				const dS2_dp2by = dErrorDS2 * (1 / v2x)          // ∂(error)/∂(p2b.y) = dErrorDS2 * ∂(slope2)/∂(p2b.y)
 
-				gradient.set(p1a.id, { x: dS1_dp1ax, y: dS1_dp1ay })
-				gradient.set(p1b.id, { x: dS1_dp1bx, y: dS1_dp1by })
-				gradient.set(p2a.id, { x: dS2_dp2ax, y: dS2_dp2ay })
-				gradient.set(p2b.id, { x: dS2_dp2bx, y: dS2_dp2by })
+				// Scale gradients to ensure reasonable convergence speed
+				// The issue is that for long lines, gradients become very small
+				// Scale by the harmonic mean of line lengths to balance responsiveness
+				const avgLineLength = 2 / (1/mag1 + 1/mag2)
+				const scaleFactor = Math.max(10.0, avgLineLength / 10) // More aggressive scaling
+				
+				gradient.set(p1a.id, { x: dS1_dp1ax * scaleFactor, y: dS1_dp1ay * scaleFactor })
+				gradient.set(p1b.id, { x: dS1_dp1bx * scaleFactor, y: dS1_dp1by * scaleFactor })
+				gradient.set(p2a.id, { x: dS2_dp2ax * scaleFactor, y: dS2_dp2ay * scaleFactor })
+				gradient.set(p2b.id, { x: dS2_dp2bx * scaleFactor, y: dS2_dp2by * scaleFactor })
 			}
 		}
 

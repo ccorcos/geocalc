@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 
 import { ConstraintEvaluator } from "../engine/ConstraintEvaluator"
+import { CONSTRAINT_SATISFACTION_THRESHOLD } from "../engine/constants"
 import { useStore } from "../store"
 
 interface ConstraintPanelProps {
@@ -231,7 +232,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({
 
 						try {
 							const result = evaluator.evaluate(constraint, geometry)
-							isViolated = Math.abs(result.error) > 1e-6
+							isViolated = Math.abs(result.error) > CONSTRAINT_SATISFACTION_THRESHOLD
 
 							// Only show error for all constraints
 							values = {
@@ -369,7 +370,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({
 													fontWeight: 600,
 												}}
 											>
-												{Math.abs(values.error) < 1e-6
+												{Math.abs(values.error) < CONSTRAINT_SATISFACTION_THRESHOLD
 													? "0.000"
 													: formatNumber(Math.abs(values.error))}
 											</span>

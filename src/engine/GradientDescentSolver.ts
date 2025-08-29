@@ -1,4 +1,8 @@
 import { ConstraintEvaluator, ConstraintViolation } from "./ConstraintEvaluator"
+import {
+	CONSTRAINT_SATISFACTION_THRESHOLD,
+	MOVEMENT_TOLERANCE,
+} from "./constants"
 import { Geometry } from "./types"
 
 interface SolverResult {
@@ -13,15 +17,16 @@ export class GradientDescentSolver {
 	private velocity = new Map<string, { x: number; y: number }>()
 
 	// Hardcoded solver parameters optimized for precision
-	private readonly maxIterations = 20000  // Increased for better convergence
-	private readonly tolerance = 1e-12       // Stricter tolerance for movement detection
+	private readonly maxIterations = 20000 // Increased for better convergence
+	private readonly movementTolerance = MOVEMENT_TOLERANCE
+	private readonly constraintErrorTolerance =
+		CONSTRAINT_SATISFACTION_THRESHOLD ** 2
 	private readonly learningRate = 0.01
 	private readonly momentum = 0.95
 
 	solve(geometry: Geometry): SolverResult {
 		let currentGeometry = this.cloneGeometry(geometry)
 		this.currentGeometry = currentGeometry // Track for constraint priorities
-		let totalError = this.calculateTotalError(currentGeometry)
 
 		for (let iteration = 0; iteration < this.maxIterations; iteration++) {
 			// Calculate all constraint violations and gradients
@@ -62,8 +67,8 @@ export class GradientDescentSolver {
 
 				// Check if there's actual movement
 				if (
-					Math.abs(newX - point.x) > this.tolerance ||
-					Math.abs(newY - point.y) > this.tolerance
+					Math.abs(newX - point.x) > this.movementTolerance ||
+					Math.abs(newY - point.y) > this.movementTolerance
 				) {
 					hasMovement = true
 				}
@@ -72,33 +77,43 @@ export class GradientDescentSolver {
 				point.y = newY
 			})
 
-			// Calculate new total error
-			const newTotalError = this.calculateTotalError(currentGeometry)
-
-			// Check for convergence
-			if (
-				!hasMovement ||
-				Math.abs(totalError - newTotalError) < this.tolerance
-			) {
+			// Check for convergence: prioritize constraint satisfaction over movement
+			const allSatisfied = this.allConstraintsSatisfied(currentGeometry)
+			if (allSatisfied) {
+				// Success: all constraints satisfied
 				this.currentGeometry = null // Cleanup
+				const finalError = this.calculateTotalError(currentGeometry)
 				return {
-					success: newTotalError < 1e-2, // Realistic precision for gradient descent
+					success: true,
 					iterations: iteration + 1,
-					finalError: newTotalError,
+					finalError: finalError,
 					geometry: currentGeometry,
 				}
 			}
 
-			totalError = newTotalError
+			// If constraints aren't satisfied but there's no movement, we've stagnated
+			if (!hasMovement) {
+				// Stagnated: no movement but constraints not satisfied
+				this.currentGeometry = null // Cleanup
+				const finalError = this.calculateTotalError(currentGeometry)
+				return {
+					success: false, // Failed to satisfy constraints despite no movement
+					iterations: iteration + 1,
+					finalError: finalError,
+					geometry: currentGeometry,
+				}
+			}
 		}
 
 		// Cleanup
 		this.currentGeometry = null
 
+		// Max iterations reached
+
 		return {
-			success: totalError < 1e-2, // Realistic precision for gradient descent even at max iterations
+			success: this.allConstraintsSatisfied(currentGeometry),
 			iterations: this.maxIterations,
-			finalError: totalError,
+			finalError: this.calculateTotalError(currentGeometry),
 			geometry: currentGeometry,
 		}
 	}
@@ -260,6 +275,17 @@ export class GradientDescentSolver {
 		})
 
 		return totalError
+	}
+
+	// Check if all individual constraints are satisfied (align with UI expectations)
+	private allConstraintsSatisfied(geometry: Geometry): boolean {
+		for (const constraint of geometry.constraints.values()) {
+			const violation = this.evaluator.evaluate(constraint, geometry)
+			if (Math.abs(violation.error) > this.constraintErrorTolerance) {
+				return false
+			}
+		}
+		return true
 	}
 
 	private cloneGeometry(geometry: Geometry): Geometry {

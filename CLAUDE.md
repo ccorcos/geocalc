@@ -137,6 +137,117 @@ expect(isConstraintSatisfied).toBe(true)
 - Never modify solver parameters for individual tests
 - Use TestHarness methods for E2E tests, never bypass UI
 
+## Solver Configuration & Testing Philosophy
+
+### Unified Constraint Satisfaction Threshold
+
+The system uses a **single source of truth** for constraint satisfaction:
+- **Constant**: `CONSTRAINT_SATISFACTION_THRESHOLD = 1e-3` in `src/engine/constants.ts`
+- **Solver**: Uses this threshold to determine individual constraint satisfaction  
+- **UI**: Uses same threshold for green/red constraint display
+- **Tests**: Use same `1e-3` precision for all geometric assertions
+
+**Architecture Benefits**:
+- When solver reports `success: true`, all constraints show green in UI
+- Consistent precision expectations across solver, UI, and tests
+- Single place to adjust precision requirements
+
+### Testing Philosophy: Geometric Outcomes Over Solver Internals
+
+**❌ Don't Test Solver Internals**:
+```typescript
+// BAD: Testing solver implementation details
+expect(result.finalError).toBeLessThan(1e-6)
+expect(result.iterations).toBeLessThan(100)
+```
+
+**✅ Test Actual Geometric Outcomes**:
+```typescript  
+// GOOD: Testing what users care about
+expect(Math.abs(actualDistance - 10)).toBeLessThan(1e-3)
+expect(Math.abs(point1.y - point2.y)).toBeLessThan(1e-3) // horizontal constraint
+expect(Math.abs(angle - 90)).toBeLessThan(0.1) // angle constraint
+```
+
+**Core Principles**:
+1. **Test geometric properties**: distances, angles, positions - what constraints actually enforce
+2. **Use unified precision**: `1e-3` threshold for all geometric assertions (consistent with `CONSTRAINT_SATISFACTION_THRESHOLD`)
+3. **Keep success checks**: `expect(result.success).toBe(true)` tells us if solver achieved the goal
+4. **Ignore `finalError`**: Total error is sum of individual errors and not meaningful for users
+
+**Common Test Patterns**:
+```typescript
+// Distance constraint
+expect(Math.abs(distance(p1, p2) - targetDistance)).toBeLessThan(1e-3)
+
+// Position constraint (x=5, y=3)
+expect(Math.abs(point.x - 5)).toBeLessThan(1e-3)
+expect(Math.abs(point.y - 3)).toBeLessThan(1e-3)
+
+// Alignment constraint (same-x)
+expect(Math.abs(point1.x - point2.x)).toBeLessThan(1e-3)
+
+// Angle constraint (90 degrees)
+expect(Math.abs(calculatedAngle - 90)).toBeLessThan(0.1)
+```
+
+**Why This Matters**:
+- Tests remain stable when solver implementation changes
+- Clear intent: tests verify the geometric outcome users expect
+- Easier debugging: failed test shows exactly which constraint isn't satisfied
+- Consistent with user experience: same precision standards as UI
+
+### Constraint Development: Gradient Scaling Considerations
+
+When implementing new constraints, be aware of **gradient magnitude scaling** issues that can prevent solver convergence:
+
+**Problem**: Small gradients can cause extremely slow convergence
+- **Symptom**: Solver hits 20k iteration limit with `success: false`
+- **Root Cause**: Gradient magnitudes too small relative to learning rate (0.01)
+- **Math**: If gradients are ~0.001, movement per step is only ~0.00001 pixels
+
+**Example from Parallel Constraint Fix**:
+```typescript
+// BEFORE: Raw slope-based gradients (too small)
+gradient.set(pointId, { x: dErrorDSlope * dSlopeDx, y: dErrorDSlope * dSlopeDy })
+
+// AFTER: Scaled gradients for reasonable convergence
+const avgLineLength = 2 / (1/mag1 + 1/mag2)
+const scaleFactor = Math.max(10.0, avgLineLength / 10)
+gradient.set(pointId, { 
+  x: dErrorDSlope * dSlopeDx * scaleFactor, 
+  y: dErrorDSlope * dSlopeDy * scaleFactor 
+})
+```
+
+**Gradient Scaling Guidelines**:
+1. **Scale by geometric context**: Longer lines need larger scaling factors
+2. **Target effective step sizes**: Aim for meaningful movement (~0.01-0.1 pixels per iteration)
+3. **Preserve gradient direction**: Only scale magnitude, never change direction
+4. **Test convergence speed**: Should solve typical cases in <5k iterations
+
+**Debugging Slow Convergence**:
+```typescript
+// Check gradient magnitudes in unit tests
+const violation = evaluator.evaluate(constraint, geometry)
+const maxGradMag = Math.max(...Array.from(violation.gradient.values())
+  .map(g => Math.sqrt(g.x*g.x + g.y*g.y)))
+console.log('Max gradient magnitude:', maxGradMag) // Should be > 0.01
+
+// Check convergence rate manually
+for (let i = 0; i < 10; i++) {
+  // ... apply one gradient descent step
+  const newError = evaluator.evaluate(constraint, geometry).error
+  console.log(`Step ${i}: error = ${newError}`) // Should decrease meaningfully
+}
+```
+
+**When to Apply Scaling**:
+- ✅ Constraint involves inverse relationships (slopes, angles)
+- ✅ Constraint spans large geometric distances
+- ✅ Unit tests show >10k iterations needed
+- ❌ Simple position/distance constraints (usually fine as-is)
+
 ## Debugging
 
 ### Constraint Debugging Process
