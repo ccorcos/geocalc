@@ -31,7 +31,8 @@ export type ConstraintType =
 
 	// Circle constraints
 	| "radius"
-// | 'tangent';  // Not implemented yet
+	| "point-on-circle"
+	| "line-tangent-to-circle"
 
 // Display names for UI - these are what users see
 export const CONSTRAINT_DISPLAY_NAMES: Record<ConstraintType, string> = {
@@ -48,6 +49,8 @@ export const CONSTRAINT_DISPLAY_NAMES: Record<ConstraintType, string> = {
 	"same-y": "same y",
 	angle: "angle",
 	radius: "radius",
+	"point-on-circle": "Point on Circle",
+	"line-tangent-to-circle": "Line Tangent to Circle",
 }
 
 // UI menu names - these are what appear in constraint creation menus
@@ -65,6 +68,8 @@ export const CONSTRAINT_MENU_NAMES: Record<ConstraintType, string> = {
 	"same-y": "Same Y Coordinate",
 	angle: "Fixed Angle (degrees)",
 	radius: "Radius",
+	"point-on-circle": "Point on Circle",
+	"line-tangent-to-circle": "Line Tangent to Circle",
 }
 
 // All constraint types as array (for iteration in tests)
@@ -82,4 +87,6 @@ export const ALL_CONSTRAINT_TYPES: ConstraintType[] = [
 	"same-y",
 	"angle",
 	"radius",
+	"point-on-circle",
+	"line-tangent-to-circle",
 ]

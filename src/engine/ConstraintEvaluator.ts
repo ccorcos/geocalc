@@ -36,6 +36,10 @@ export class ConstraintEvaluator {
 				return this.evaluateAngle(constraint, geometry)
 			case "radius":
 				return this.evaluateFixRadius(constraint, geometry)
+			case "point-on-circle":
+				return this.evaluatePointOnCircle(constraint, geometry)
+			case "line-tangent-to-circle":
+				return this.evaluateLineTangentToCircle(constraint, geometry)
 			default:
 				return {
 					constraintId: constraint.id,
@@ -753,6 +757,163 @@ export class ConstraintEvaluator {
 		// Gradient: d/dy1 = -errorDerivative, d/dy2 = errorDerivative
 		gradient.set(point1.id, { x: 0, y: -errorDerivative })
 		gradient.set(point2.id, { x: 0, y: errorDerivative })
+
+		return { constraintId: constraint.id, error, gradient }
+	}
+
+	private evaluatePointOnCircle(
+		constraint: Constraint,
+		geometry: Geometry
+	): ConstraintViolation {
+		if (constraint.entityIds.length !== 2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		const point = geometry.points.get(constraint.entityIds[0])
+		const circle = geometry.circles.get(constraint.entityIds[1])
+
+		if (!point || !circle) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		const center = geometry.points.get(circle.centerId)
+		if (!center) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Distance from point to circle center
+		const dx = point.x - center.x
+		const dy = point.y - center.y
+		const currentDistance = Math.sqrt(dx * dx + dy * dy)
+
+		// Error: squared difference between current distance and circle radius
+		const error = (currentDistance - circle.radius) ** 2
+
+		// Gradient calculation
+		const gradient = new Map<string, { x: number; y: number }>()
+
+		if (currentDistance > 1e-10) {
+			// Factor for gradient: 2 * (currentDistance - radius) / currentDistance
+			const factor = (2 * (currentDistance - circle.radius)) / currentDistance
+
+			// Gradient for the point (moves toward/away from center)
+			gradient.set(point.id, {
+				x: factor * dx,
+				y: factor * dy,
+			})
+
+			// Gradient for the center (opposite direction)
+			gradient.set(center.id, {
+				x: -factor * dx,
+				y: -factor * dy,
+			})
+		} else {
+			// Degenerate case: point is at center
+			gradient.set(point.id, { x: 0, y: 0 })
+			gradient.set(center.id, { x: 0, y: 0 })
+		}
+
+		return { constraintId: constraint.id, error, gradient }
+	}
+
+	private evaluateLineTangentToCircle(
+		constraint: Constraint,
+		geometry: Geometry
+	): ConstraintViolation {
+		if (constraint.entityIds.length !== 2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		const line = geometry.lines.get(constraint.entityIds[0])
+		const circle = geometry.circles.get(constraint.entityIds[1])
+
+		if (!line || !circle) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		const p1 = geometry.points.get(line.point1Id)
+		const p2 = geometry.points.get(line.point2Id)
+		const center = geometry.points.get(circle.centerId)
+
+		if (!p1 || !p2 || !center) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Line direction vector
+		const dx = p2.x - p1.x
+		const dy = p2.y - p1.y
+		const lineLength = Math.sqrt(dx * dx + dy * dy)
+
+		if (lineLength < 1e-10) {
+			// Degenerate case: line has zero length
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Normalized line direction
+		const nx = dx / lineLength
+		const ny = dy / lineLength
+
+		// Vector from line start to circle center
+		const cx = center.x - p1.x
+		const cy = center.y - p1.y
+
+		// Project center onto line to find closest point
+		const projLength = cx * nx + cy * ny
+		const closestX = p1.x + projLength * nx
+		const closestY = p1.y + projLength * ny
+
+		// Distance from center to closest point on line
+		const distX = center.x - closestX
+		const distY = center.y - closestY
+		const distanceToLine = Math.sqrt(distX * distX + distY * distY)
+
+		// Error: squared difference between distance and radius
+		const error = (distanceToLine - circle.radius) ** 2
+
+		// Gradient calculation using simpler geometric approach
+		const gradient = new Map<string, { x: number; y: number }>()
+
+		if (distanceToLine > 1e-10) {
+			// Unit vector from closest point on line to center
+			const unitDistX = distX / distanceToLine
+			const unitDistY = distY / distanceToLine
+
+			// Error derivative factor
+			const errorDerivative = 2 * (distanceToLine - circle.radius)
+
+			// Gradient for circle center (simple: move toward/away from line)
+			gradient.set(center.id, {
+				x: errorDerivative * unitDistX,
+				y: errorDerivative * unitDistY,
+			})
+
+			// Gradients for line points (more complex: how moving the line affects distance)
+			// For simplicity, we'll use a scaling factor to ensure reasonable convergence
+			const scaleFactor = Math.max(1.0, lineLength / 50.0)
+
+			// Moving p1 in direction perpendicular to line affects distance
+			const perpX = -ny  // perpendicular to line direction
+			const perpY = nx
+
+			// If center is on positive side of perpendicular, gradients should move line away
+			const centerSide = distX * perpX + distY * perpY
+			const sideSign = centerSide >= 0 ? 1 : -1
+
+			gradient.set(p1.id, {
+				x: -errorDerivative * perpX * sideSign * scaleFactor,
+				y: -errorDerivative * perpY * sideSign * scaleFactor,
+			})
+
+			gradient.set(p2.id, {
+				x: -errorDerivative * perpX * sideSign * scaleFactor,
+				y: -errorDerivative * perpY * sideSign * scaleFactor,
+			})
+		} else {
+			// Center is exactly on the line, use zero gradients
+			gradient.set(p1.id, { x: 0, y: 0 })
+			gradient.set(p2.id, { x: 0, y: 0 })
+			gradient.set(center.id, { x: 0, y: 0 })
+		}
 
 		return { constraintId: constraint.id, error, gradient }
 	}

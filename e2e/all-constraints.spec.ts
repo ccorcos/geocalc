@@ -399,4 +399,146 @@ test.describe("All Constraint Types", () => {
 		expect(constraint.type).toBe("distance")
 		expect(constraint.value).toBe(150)
 	})
+
+	test("point-on-circle constraint", async ({ page }) => {
+		const helper = new TestHarness(page)
+		await helper.goto()
+
+		// Create a circle
+		const centerPoint = await helper.createPointAt(300, 300)
+		const radiusPoint = await helper.createPointAt(350, 300) // Radius = 50
+		await helper.createCircle(centerPoint, radiusPoint)
+
+		// Create a point away from the circle
+		const pointOnCircle = await helper.createPointAt(400, 400) // Far from circle
+		
+		// Select point and circle using entity panel (like selectTwoLinesInPanel)
+		await helper.selectTool("select")
+		
+		// First select the third point (the one we want to constrain to circle)
+		const pointInPanel = helper.entityPanel
+			.locator('[data-testid="entity-list"]')
+			.locator("div")
+			.filter({ hasText: "point" })
+			.nth(2) // Third point
+		await pointInPanel.click()
+		
+		// Then select the circle with shift+click (like selectTwoLinesInPanel does)
+		const circleInPanel = helper.entityPanel
+			.locator('[data-testid="entity-list"]')
+			.locator("div")
+			.filter({ hasText: "circle" })
+			.nth(0)
+		await circleInPanel.click({ modifiers: ["Shift"] })
+		
+		// Wait for selection to register
+		await page.waitForTimeout(300)
+		
+		// Debug: Check what's selected
+		const selectionInfo = await page.evaluate(() => {
+			const state = window.__GEOCALC_STORE__?.getState()
+			if (!state) return { count: 0, ids: [], entityTypes: [] }
+			
+			const selectedIds = Array.from(state.selection.selectedIds)
+			const entityTypes = selectedIds.map(id => {
+				if (state.geometry.points.has(id)) return 'point'
+				if (state.geometry.lines.has(id)) return 'line'  
+				if (state.geometry.circles.has(id)) return 'circle'
+				return 'unknown'
+			})
+			
+			return {
+				count: selectedIds.length,
+				ids: selectedIds,
+				entityTypes: entityTypes
+			}
+		})
+		console.log('Selection info:', selectionInfo)
+		
+		// Debug: Click the add constraint button and see what menu appears
+		await page.click('[data-testid="add-constraint"]')
+		await page.waitForTimeout(500)
+		
+		// Check if our constraint option exists
+		const contextMenuText = await page.locator('[data-context-menu]').textContent()
+		console.log('Context menu content:', contextMenuText)
+		
+		// Look for our constraint button more flexibly
+		const constraintButton = page.getByText("Point on Circle")
+		if (await constraintButton.isVisible()) {
+			await constraintButton.click()
+		} else {
+			throw new Error("Point on Circle constraint not available in menu. Available: " + contextMenuText)
+		}
+		
+		await helper.expectConstraintExists("point-on-circle")
+
+		// Run solver
+		await helper.runSolver()
+
+		// Verify point is now on the circle
+		const positions = await helper.getPointPositions()
+		const pointIds = Object.keys(positions)
+		const center = positions[pointIds[0]] // First point created
+		const pointPos = positions[pointIds[2]] // Third point created
+		
+		const actualDistance = Math.sqrt(
+			Math.pow(pointPos.x - center.x, 2) + Math.pow(pointPos.y - center.y, 2)
+		)
+		expect(Math.abs(actualDistance - 50)).toBeLessThan(1) // Should be on circle with radius 50
+	})
+
+	test("line-tangent-to-circle constraint", async ({ page }) => {
+		const helper = new TestHarness(page)
+		await helper.goto()
+
+		// Create a circle
+		const centerPoint = await helper.createPointAt(300, 300)
+		const radiusPoint = await helper.createPointAt(350, 300) // Radius = 50
+		await helper.createCircle(centerPoint, radiusPoint)
+
+		// Create a line that intersects the circle
+		const lineStart = await helper.createPointAt(250, 280) 
+		const lineEnd = await helper.createPointAt(350, 320)
+		await helper.createLine(lineStart, lineEnd)
+		
+		// Select line and circle
+		await helper.selectTool("select")
+		await helper.selectLineInPanel(0) // Select the line
+		
+		// Add circle to selection using shift+click
+		const circleInPanel = helper.entityPanel
+			.locator('[data-testid="entity-list"]')
+			.locator("div")
+			.filter({ hasText: "circle" })
+			.nth(0)
+		await circleInPanel.click({ modifiers: ["Shift"] })
+		
+		// Create line-tangent-to-circle constraint
+		await helper.createConstraint("line-tangent-to-circle")
+		await helper.expectConstraintExists("line-tangent-to-circle")
+
+		// Run solver
+		await helper.runSolver()
+
+		// Verify line is tangent to circle
+		// Get final positions
+		const positions = await helper.getPointPositions()
+		const pointIds = Object.keys(positions)
+		const center = positions[pointIds[0]]
+		const p1 = positions[pointIds[2]] // Line start point
+		const p2 = positions[pointIds[3]] // Line end point
+
+		// Calculate distance from center to line
+		const vx = p2.x - p1.x
+		const vy = p2.y - p1.y
+		const lineLength = Math.sqrt(vx * vx + vy * vy)
+		
+		const cx = center.x - p1.x
+		const cy = center.y - p1.y
+		const crossProduct = Math.abs(vx * cy - vy * cx)
+		const distanceToLine = crossProduct / lineLength
+		
+		expect(Math.abs(distanceToLine - 50)).toBeLessThan(1) // Should be tangent (distance = radius)
+	})
 })

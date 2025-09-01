@@ -116,6 +116,26 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					{ type: "perpendicular", label: "Perpendicular", needsValue: false },
 				]
 			}
+
+			// Point + Circle -> point-on-circle constraint
+			if (
+				(entity1?.type === "point" && entity2?.type === "circle") ||
+				(entity1?.type === "circle" && entity2?.type === "point")
+			) {
+				return [
+					{ type: "point-on-circle", label: "Point on Circle", needsValue: false },
+				]
+			}
+
+			// Line + Circle -> line-tangent-to-circle constraint
+			if (
+				(entity1?.type === "line" && entity2?.type === "circle") ||
+				(entity1?.type === "circle" && entity2?.type === "line")
+			) {
+				return [
+					{ type: "line-tangent-to-circle", label: "Line Tangent to Circle", needsValue: false },
+				]
+			}
 		}
 
 		if (selectedIds.length === 1) {

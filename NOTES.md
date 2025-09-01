@@ -10,13 +10,18 @@ Strategies:
 ---
 
 
-  | "parallel"
-  | "perpendicular"
-  | "tangent"
+	| "point-on-circle"
+	| "line-tangent-to-circle"
+
+  fixed radius + point on circle / tangent line
+
+
+coincident (point + circle)
+tangent (line + circle)
 
 
 colinear (3+ points, or a line + points)
-coincident (point + circle)
+
 
 orthoganol-distance (line + point)
 same-length (2+ lines)

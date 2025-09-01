@@ -248,6 +248,196 @@ for (let i = 0; i < 10; i++) {
 - ✅ Unit tests show >10k iterations needed
 - ❌ Simple position/distance constraints (usually fine as-is)
 
+## Constraint Architecture: Point-Based Design
+
+**Core Principle**: All constraints must resolve to point gradients for the gradient descent solver to work effectively.
+
+### Why Point-Only Architecture Matters
+
+The solver can **only move points** via gradients. Constraints that depend on stored properties (like `circle.radius` or `line.length`) cannot be satisfied because:
+
+1. **Properties aren't moveable**: The solver has no mechanism to change `radius: number` 
+2. **Gradients target points**: All gradients must specify `{ pointId: { x: number, y: number } }`
+3. **Architecture mismatch**: Property-based constraints fundamentally incompatible with point-based solver
+
+### Correct Architecture Pattern
+
+**✅ Two-Point Primitives (Solvable)**:
+```typescript
+// Line: two points define everything
+interface Line {
+  id: string
+  point1Id: string  // moveable point
+  point2Id: string  // moveable point
+}
+// Length = distance(point1, point2) - computed, not stored
+// Length constraint = distance constraint between points
+
+// Circle: two points define everything  
+interface Circle {
+  id: string
+  centerId: string      // center point (moveable)
+  radiusPointId: string // radius point (moveable) 
+}
+// Radius = distance(center, radiusPoint) - computed, not stored
+// Radius constraint = distance constraint between points
+```
+
+**❌ Point + Property (Unsolvable)**:
+```typescript
+// BROKEN: Properties can't be moved by solver
+interface Circle {
+  id: string
+  centerId: string  // moveable point
+  radius: number    // property - solver can't change this!
+}
+// Radius constraint fails: no way to modify radius via gradients
+```
+
+### Implementation Example: Circle Radius Constraint
+
+**Problem**: Users want to constrain circle radius to a specific value.
+
+**Wrong Approach**: Store radius as property, try to create gradients for radius changes.
+```typescript
+// This fails - solver can't move properties
+const error = (circle.radius - targetRadius) ** 2
+return { error, gradient: new Map() } // Empty gradient = unsolvable
+```
+
+**Correct Approach**: Represent as distance constraint between center and radius point.
+```typescript
+// This works - solver moves both points to achieve target distance  
+const radiusConstraint = createConstraint("distance", [circle.centerId, circle.radiusPointId], targetRadius)
+// Solver can move center and/or radius point to satisfy constraint
+```
+
+### UI Considerations
+
+**Entity Panel Display**: Show computed values like line length, not stored properties.
+```typescript
+// Lines show: "len: 10.5" (computed from points)
+const lineLength = distance(point1, point2) 
+
+// Circles show: "radius: 5.2" (computed from points)
+const circleRadius = distance(center, radiusPoint)
+```
+
+**User Experience**: Hide architectural complexity - users still see familiar "radius constraint" options, but implementation uses point-based architecture underneath.
+
+### Constraint Implementation Strategies
+
+When implementing complex geometric constraints, mathematical elegance often conflicts with numerical stability. These proven strategies help create robust constraints that converge reliably:
+
+#### Choose Geometric Intuition Over Mathematical Elegance
+
+**Problem**: Complex mathematical formulations (cross products, dot products, trigonometric derivatives) often lead to numerical instability, tiny gradients, or solver convergence failures.
+
+**Solution**: Use simpler geometric approaches that match human intuition about the constraint.
+
+**Examples**:
+
+**✅ Line-Tangent-to-Circle (Geometric Approach)**:
+```typescript
+// Project center onto line to find closest point
+const projLength = cx * nx + cy * ny
+const closestX = p1.x + projLength * nx
+const closestY = p1.y + projLength * ny
+
+// Direct distance calculation
+const distX = center.x - closestX  
+const distY = center.y - closestY
+const distanceToLine = Math.sqrt(distX * distX + distY * distY)
+```
+
+**❌ Line-Tangent-to-Circle (Complex Mathematical Approach)**:
+```typescript
+// Cross product with complex derivative chains
+const crossProduct = Math.abs(vx * cy - vy * cx)  
+const distanceToLine = crossProduct / lineLength
+// ... followed by complex gradient derivatives that often have errors
+```
+
+**✅ Angle Constraint (Direct Angle)**:
+```typescript
+// Use angle directly, not dot product relationships
+const currentAngle = Math.acos(clampedCos)
+const error = (currentAngle - targetAngle) ** 2
+```
+
+**❌ Angle Constraint (Dot Product)**:
+```typescript
+// Dot product approach can be unstable near 0° and 180°
+const dotError = (dotProduct - Math.cos(targetAngle)) ** 2
+```
+
+#### Prioritize Numerical Stability
+
+**Key Principles**:
+1. **Avoid division by small numbers**: Check for degenerate cases (zero-length lines, coincident points)
+2. **Use unit vectors**: Normalize directions before calculations to maintain consistent magnitudes  
+3. **Clamp trigonometric inputs**: `Math.acos(Math.max(-1, Math.min(1, value)))` prevents NaN
+4. **Separate error calculation from gradient calculation**: Makes debugging easier
+
+#### Design for Debuggability
+
+**Strategy**: Structure constraint code to be easily debuggable:
+
+```typescript
+// GOOD: Clear intermediate values
+const distanceToLine = calculateDistancePointToLine(center, p1, p2)
+const error = (distanceToLine - circle.radius) ** 2
+const gradient = calculateTangentGradients(distanceToLine, circle.radius, ...)
+
+// BAD: Monolithic calculation
+const error = (Math.abs(vx * cy - vy * cx) / Math.sqrt(vx*vx + vy*vy) - radius) ** 2
+```
+
+#### Gradient Implementation Patterns
+
+**For Circle Center Gradients**: Usually simple unit vectors pointing toward/away from constraint target:
+```typescript
+gradient.set(center.id, {
+  x: errorDerivative * unitDirectionX,
+  y: errorDerivative * unitDirectionY,
+})
+```
+
+**For Line Point Gradients**: Move perpendicular to line direction:
+```typescript
+const perpX = -normalizedY  // perpendicular to line
+const perpY = normalizedX
+gradient.set(pointId, {
+  x: errorDerivative * perpX * scaleFactor,
+  y: errorDerivative * perpY * scaleFactor,
+})
+```
+
+**For Angle/Rotation Gradients**: Often require careful handling of singularities and appropriate scaling.
+
+#### Testing Strategy for Complex Constraints
+
+1. **Start Simple**: Test with axis-aligned cases (horizontal/vertical lines, circles at origin)
+2. **Test Edge Cases**: Zero-length lines, coincident points, 0°/180° angles
+3. **Verify Gradient Direction**: Check that gradients point toward constraint satisfaction
+4. **Test Convergence Speed**: Complex constraints should solve in <5k iterations for typical cases
+
+#### When Implementation Fails
+
+**Red Flags**:
+- Solver consistently fails to converge (`success: false`)  
+- Gradients are extremely small (<1e-6) or extremely large (>1000)
+- Constraint works for some configurations but fails for others
+- Unit tests require unrealistic tolerance (>0.1) to pass
+
+**Debugging Steps**:
+1. **Simplify the mathematics**: Replace complex formulas with geometric projection/distance calculations
+2. **Add gradient scaling**: Multiply gradients by appropriate scaling factors
+3. **Check intermediate values**: Log error, distance, angle values to verify correctness
+4. **Test with manual cases**: Create simple test cases where you can verify results by hand
+
+These strategies have proven effective for constraints like `parallel`, `angle`, `point-on-circle`, and `line-tangent-to-circle`. The key insight is that **solver convergence is more important than mathematical elegance**.
+
 ## Debugging
 
 ### Constraint Debugging Process
