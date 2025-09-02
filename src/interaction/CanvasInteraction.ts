@@ -9,8 +9,6 @@ export class CanvasInteraction {
 	private currentMousePos = { x: 0, y: 0 }
 	private tempLineStart: Point | null = null
 	private tempCircleCenter: Point | null = null
-	private circleRadiusDrag: { circleId: string; initialRadius: number } | null =
-		null
 	private selectionRect: {
 		startX: number
 		startY: number
@@ -208,31 +206,6 @@ export class CanvasInteraction {
 		return Math.sqrt(dx * dx + dy * dy)
 	}
 
-	private findCircleRadiusDragTarget(
-		worldX: number,
-		worldY: number
-	): string | null {
-		const store = useStore.getState()
-		const { geometry } = store
-		const tolerance = 15 / store.viewport.zoom // Slightly larger tolerance for radius drag
-
-		for (const [id, circle] of geometry.circles) {
-			const center = geometry.points.get(circle.centerId)
-			if (!center) continue
-
-			const distToCenter = Math.sqrt(
-				(center.x - worldX) ** 2 + (center.y - worldY) ** 2
-			)
-			const distToCircle = Math.abs(distToCenter - getCircleRadius(circle, store.geometry))
-
-			// Check if clicking near the circle edge (not the center)
-			if (distToCircle <= tolerance && distToCenter > tolerance) {
-				return id
-			}
-		}
-
-		return null
-	}
 
 	private handleMouseDown = (e: MouseEvent): void => {
 		const mousePos = this.getMousePos(e)
@@ -283,10 +256,6 @@ export class CanvasInteraction {
 		const store = useStore.getState()
 
 
-		// Reset circle radius drag state for select tool
-		if (store.currentTool === "select") {
-			this.circleRadiusDrag = null
-		}
 
 		// Complete rectangular selection
 		if (this.selectionRect) {
@@ -305,7 +274,6 @@ export class CanvasInteraction {
 		// Reset temporary states when leaving canvas
 		this.tempLineStart = null
 		this.tempCircleCenter = null
-		this.circleRadiusDrag = null
 		this.selectionRect = null
 	}
 
@@ -386,11 +354,6 @@ export class CanvasInteraction {
 
 		// If we found an entity, handle it first (this includes radius points)
 		if (entityId) {
-			// Check if this is a radius point that belongs to a circle
-			const isRadiusPoint = Array.from(store.geometry.circles.values()).some(
-				circle => circle.radiusPointId === entityId
-			)
-
 			// Handle Cmd/Ctrl+Click for toggling point fixed state (including radius points)
 			if (cmdKey && store.geometry.points.has(entityId)) {
 				const point = store.geometry.points.get(entityId)
@@ -411,62 +374,6 @@ export class CanvasInteraction {
 				return // Don't change selection when toggling fixed state
 			}
 
-			// If this is a radius point and cmd+click, we handle it above
-			// For regular clicks on radius points, proceed with normal selection
-			// Skip circle radius dragging logic for radius points
-			if (!isRadiusPoint) {
-				// Check for circle radius drag (only if NOT clicking on radius point)
-				const circleRadiusTarget = this.findCircleRadiusDragTarget(
-					worldPos.x,
-					worldPos.y
-				)
-				if (circleRadiusTarget && !shiftKey) {
-					const circle = store.geometry.circles.get(circleRadiusTarget)
-					if (circle) {
-						if (cmdKey) {
-							// Cmd+click on circle circumference to toggle radius constraint
-							const existingConstraint = Array.from(
-								store.geometry.constraints.entries()
-							).find(
-								([, constraint]) =>
-									constraint.type === "radius" &&
-									constraint.entityIds.includes(circleRadiusTarget)
-							)
-
-							if (existingConstraint) {
-								// Remove the constraint
-								store.removeEntity(existingConstraint[0])
-							} else {
-								// Add a radius constraint
-								const fixRadiusConstraint = {
-									id: `constraint-${Date.now()}-${Math.random()
-										.toString(36)
-										.substr(2, 9)}`,
-									type: "radius" as const,
-									entityIds: [circleRadiusTarget],
-									value: getCircleRadius(circle, store.geometry),
-									priority: 1,
-								}
-								store.addConstraint(fixRadiusConstraint)
-							}
-
-							// Select the circle
-							store.setSelection({ selectedIds: new Set([circleRadiusTarget]) })
-							return
-						} else {
-							// Set up circle radius dragging
-							this.circleRadiusDrag = {
-								circleId: circleRadiusTarget,
-								initialRadius: getCircleRadius(circle, store.geometry),
-							}
-
-							// Select the circle
-							store.setSelection({ selectedIds: new Set([circleRadiusTarget]) })
-							return
-						}
-					}
-				}
-			}
 		}
 
 		if (entityId) {
@@ -497,6 +404,41 @@ export class CanvasInteraction {
 				return // Don't proceed with normal click handling
 			}
 
+			// Handle Cmd/Ctrl+Click for toggling circle radius constraint
+			if (cmdKey && store.geometry.circles.has(entityId)) {
+				const circle = store.geometry.circles.get(entityId)
+				if (!circle) return
+
+				const existingConstraint = Array.from(
+					store.geometry.constraints.entries()
+				).find(
+					([, constraint]) =>
+						constraint.type === "radius" &&
+						constraint.entityIds.includes(entityId)
+				)
+
+				if (existingConstraint) {
+					// Remove the constraint
+					store.removeEntity(existingConstraint[0])
+				} else {
+					// Add a radius constraint
+					const fixRadiusConstraint = {
+						id: `constraint-${Date.now()}-${Math.random()
+							.toString(36)
+							.substr(2, 9)}`,
+						type: "radius" as const,
+						entityIds: [entityId],
+						value: getCircleRadius(circle, store.geometry),
+						priority: 1,
+					}
+					store.addConstraint(fixRadiusConstraint)
+				}
+
+				// Select the circle
+				store.setSelection({ selectedIds: new Set([entityId]) })
+				return
+			}
+
 			const selectedIds = new Set(store.selection.selectedIds)
 
 			if (shiftKey) {
@@ -520,7 +462,6 @@ export class CanvasInteraction {
 			const hasMovableEntities = Array.from(selectedIds).some(
 				(id) =>
 					store.geometry.points.has(id) ||
-					store.geometry.circles.has(id) ||
 					store.geometry.lines.has(id)
 			)
 
@@ -670,31 +611,6 @@ export class CanvasInteraction {
 	): void {
 		const store = useStore.getState()
 
-		// Handle circle radius dragging (for select tool only)
-		if (this.circleRadiusDrag && store.currentTool === "select") {
-			const circle = store.geometry.circles.get(this.circleRadiusDrag.circleId)
-			const center = circle ? store.geometry.points.get(circle.centerId) : null
-
-			if (circle && center) {
-				// Calculate new radius as distance from center to mouse
-				const newRadius = Math.sqrt(
-					(worldPos.x - center.x) ** 2 + (worldPos.y - center.y) ** 2
-				)
-
-				// Update circle radius by moving the radius point (minimum radius of 1)
-				const finalRadius = Math.max(1, newRadius)
-				const scale = center ? finalRadius / Math.max(1, Math.sqrt(
-					(worldPos.x - center.x) ** 2 + (worldPos.y - center.y) ** 2
-				)) : 1
-				
-				// Move the radius point to the correct position
-				store.updatePoint(circle.radiusPointId, {
-					x: center.x + (worldPos.x - center.x) * scale,
-					y: center.y + (worldPos.y - center.y) * scale,
-				})
-			}
-			return
-		}
 
 		if (
 			store.currentTool === "select" &&
@@ -715,17 +631,6 @@ export class CanvasInteraction {
 					})
 				}
 
-				// Move circles by moving their center points
-				const circle = store.geometry.circles.get(entityId)
-				if (circle) {
-					const centerPoint = store.geometry.points.get(circle.centerId)
-					if (centerPoint) {
-						store.updatePoint(circle.centerId, {
-							x: centerPoint.x + dx,
-							y: centerPoint.y + dy,
-						})
-					}
-				}
 
 				// Move lines by moving their endpoint points
 				const line = store.geometry.lines.get(entityId)

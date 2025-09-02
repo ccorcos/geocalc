@@ -170,16 +170,10 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 			if (selection.selectedIds.has(selection.hoveredId)) {
 				const canMove =
 					geometry.points.has(selection.hoveredId) ||
-					geometry.circles.has(selection.hoveredId) ||
 					geometry.lines.has(selection.hoveredId)
 				if (canMove) {
 					return "grab"
 				}
-			}
-
-			// Show resize cursor for circle radius handles
-			if (geometry.circles.has(selection.hoveredId)) {
-				return "ew-resize"
 			}
 		}
 
