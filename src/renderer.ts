@@ -6,6 +6,7 @@ import {
 	SelectionState,
 	Viewport,
 } from "./engine/types"
+import { getCircleRadius } from "./engine/geometry"
 
 export class CanvasRenderer {
 	private ctx: CanvasRenderingContext2D
@@ -33,6 +34,10 @@ export class CanvasRenderer {
 				startPoint: Point
 				endPoint: { x: number; y: number }
 			} | null
+			circlePreview?: {
+				centerPoint: Point
+				radiusPoint: { x: number; y: number }
+			} | null
 		}
 	): void {
 		this.clear()
@@ -48,6 +53,9 @@ export class CanvasRenderer {
 		if (interactionStates) {
 			if (interactionStates.linePreview) {
 				this.renderLinePreview(interactionStates.linePreview)
+			}
+			if (interactionStates.circlePreview) {
+				this.renderCirclePreview(interactionStates.circlePreview)
 			}
 			if (interactionStates.selectionRect) {
 				this.renderSelectionRect(interactionStates.selectionRect)
@@ -307,8 +315,9 @@ export class CanvasRenderer {
 
 		this.ctx.fillStyle = "transparent"
 
+		const radius = getCircleRadius(circle, geometry)
 		this.ctx.beginPath()
-		this.ctx.arc(center.x, center.y, circle.radius, 0, 2 * Math.PI)
+		this.ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI)
 		this.ctx.stroke()
 
 		this.ctx.restore()
@@ -436,6 +445,34 @@ export class CanvasRenderer {
 		this.ctx.beginPath()
 		this.ctx.moveTo(linePreview.startPoint.x, linePreview.startPoint.y)
 		this.ctx.lineTo(linePreview.endPoint.x, linePreview.endPoint.y)
+		this.ctx.stroke()
+
+		this.ctx.restore()
+	}
+
+	private renderCirclePreview(circlePreview: {
+		centerPoint: Point
+		radiusPoint: { x: number; y: number }
+	}): void {
+		this.ctx.save()
+
+		// Calculate radius
+		const radius = Math.sqrt(
+			(circlePreview.radiusPoint.x - circlePreview.centerPoint.x) ** 2 +
+			(circlePreview.radiusPoint.y - circlePreview.centerPoint.y) ** 2
+		)
+
+		// Draw preview circle with dashed style
+		this.ctx.strokeStyle = "#666666"
+		this.ctx.lineWidth = 2 / this.ctx.getTransform().a // Scale line width with zoom
+		this.ctx.setLineDash([
+			8 / this.ctx.getTransform().a,
+			4 / this.ctx.getTransform().a,
+		])
+		this.ctx.globalAlpha = 0.7
+
+		this.ctx.beginPath()
+		this.ctx.arc(circlePreview.centerPoint.x, circlePreview.centerPoint.y, radius, 0, 2 * Math.PI)
 		this.ctx.stroke()
 
 		this.ctx.restore()

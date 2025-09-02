@@ -74,11 +74,17 @@ describe("Geometry Operations", () => {
 
 	describe("createCircle", () => {
 		it("should create circle with center and radius", () => {
-			const circle = createCircle("center-id", 42)
+			const geometry = createEmptyGeometry()
+			const center = createPoint(0, 0)
+			geometry.points.set(center.id, center)
+			
+			const result = createCircle(geometry, center.id, 42)
 
-			expect(circle.id).toBeDefined()
-			expect(circle.centerId).toBe("center-id")
-			expect(circle.radius).toBe(42)
+			expect(result.circle.id).toBeDefined()
+			expect(result.circle.centerId).toBe(center.id)
+			expect(result.circle.radiusPointId).toBeDefined()
+			expect(result.radiusPoint.x).toBe(42) // radius point at (42, 0)
+			expect(result.radiusPoint.y).toBe(0)
 		})
 	})
 
@@ -142,11 +148,14 @@ describe("Geometry Operations", () => {
 
 	describe("addCircle", () => {
 		it("should add circle to geometry", () => {
-			const circle = createCircle("center", 50)
-			const updatedDoc = addCircle(geometry, circle)
+			const center = createPoint(0, 0)
+			geometry.points.set(center.id, center)
+			
+			const result = createCircle(geometry, center.id, 50)
+			const updatedDoc = addCircle(result.updatedGeometry, result.circle)
 
-			expect(updatedDoc.circles.has(circle.id)).toBe(true)
-			expect(updatedDoc.circles.get(circle.id)).toBe(circle)
+			expect(updatedDoc.circles.has(result.circle.id)).toBe(true)
+			expect(updatedDoc.circles.get(result.circle.id)).toBe(result.circle)
 		})
 	})
 
@@ -165,16 +174,22 @@ describe("Geometry Operations", () => {
 			const p1 = createPoint(0, 0)
 			const p2 = createPoint(10, 10)
 			const line = createLine(p1.id, p2.id)
-			const circle = createCircle(p1.id, 5)
+			
+			let tempGeometry = createEmptyGeometry()
+			tempGeometry.points.set(p1.id, p1)
+			const circleResult = createCircle(tempGeometry, p1.id, 5)
+			const circle = circleResult.circle
+			
 			const constraint = createConstraint("distance", [p1.id, p2.id], 14.142)
 
 			let doc = addPoint(geometry, p1)
 			doc = addPoint(doc, p2)
+			doc = addPoint(doc, circleResult.radiusPoint) // Add radius point
 			doc = addLine(doc, line)
 			doc = addCircle(doc, circle)
 			doc = addConstraint(doc, constraint)
 
-			expect(doc.points.size).toBe(2)
+			expect(doc.points.size).toBe(3) // p1, p2, and radius point
 			expect(doc.lines.size).toBe(1)
 			expect(doc.circles.size).toBe(1)
 			expect(doc.constraints.size).toBe(1)

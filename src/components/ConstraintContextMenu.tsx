@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 
 import { createPortal } from "react-dom"
 
-import { createConstraint } from "../engine/geometry"
+import { createConstraint, getCircleRadius } from "../engine/geometry"
 import { ConstraintType } from "../engine/types"
 import { distance } from "../math"
 import { useStore } from "../store"
@@ -218,7 +218,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 			} else if (constraintType === "radius" && selectedIds.length === 1) {
 				const circle = geometry.circles.get(selectedIds[0])
 				if (circle) {
-					defaultValue = circle.radius
+					defaultValue = getCircleRadius(circle, geometry)
 				}
 			}
 

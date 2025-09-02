@@ -8,6 +8,7 @@ import {
 	createEmptyGeometry,
 	createLine,
 	createPoint,
+	getCircleRadius,
 } from "./geometry"
 import { Geometry } from "./types"
 
@@ -506,13 +507,17 @@ describe("Geometry Engine Integration Tests", () => {
 		it("should design a simple mechanical linkage with circles", () => {
 			// Simplified cam mechanism - just test circle radius constraint with points
 			const center = createPoint(5, 5)
+			geometry.points.set(center.id, center)
+			
 			const camRadius = 3
-			const cam = createCircle(center.id, camRadius)
-
+			const camResult = createCircle(geometry, center.id, camRadius)
+			const cam = camResult.circle
+			
 			// Single point constrained to circle
 			const follower = createPoint(8, 5) // will be constrained to circle
 
-			;[center, follower].forEach((p) => geometry.points.set(p.id, p))
+			geometry.points.set(camResult.radiusPoint.id, camResult.radiusPoint) // Add radius point
+			geometry.points.set(follower.id, follower)
 			geometry.circles.set(cam.id, cam)
 
 			const constraints = [
@@ -537,7 +542,8 @@ describe("Geometry Engine Integration Tests", () => {
 			const solvedCam = result.geometry.circles.get(cam.id)!
 
 			// Verify constraints are satisfied
-			expect(solvedCam.radius).toBeCloseTo(camRadius, 2)
+			const solvedCamRadius = getCircleRadius(solvedCam, result.geometry)
+			expect(solvedCamRadius).toBeCloseTo(camRadius, 2)
 			expect(distance(solvedCenter, solvedFollower)).toBeCloseTo(camRadius, 2)
 		})
 	})

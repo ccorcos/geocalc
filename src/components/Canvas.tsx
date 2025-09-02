@@ -65,12 +65,14 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 			const tempCircleCenter = interactionRef.current.getTempCircleCenter()
 			const selectionRect = interactionRef.current.getSelectionRect()
 			const linePreview = interactionRef.current.getLinePreview()
+			const circlePreview = interactionRef.current.getCirclePreview()
 
 			rendererRef.current.render(geometry, viewport, selection, {
 				tempLineStart,
 				tempCircleCenter,
 				selectionRect,
 				linePreview,
+				circlePreview,
 			})
 		}
 	}, [geometry, viewport, selection, isDragging])
@@ -89,7 +91,8 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 			if (interactionRef.current) {
 				const selectionRect = interactionRef.current.getSelectionRect()
 				const linePreview = interactionRef.current.getLinePreview()
-				const isActive = !!selectionRect || !!linePreview
+				const circlePreview = interactionRef.current.getCirclePreview()
+				const isActive = !!selectionRect || !!linePreview || !!circlePreview
 
 				if (isActive) {
 					renderCanvas()

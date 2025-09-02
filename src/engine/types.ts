@@ -17,7 +17,7 @@ export interface Line {
 export interface Circle {
 	id: string
 	centerId: string
-	radius: number
+	radiusPointId: string
 }
 
 export type GeometryEntity = Point | Line | Circle

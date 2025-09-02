@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react"
 
+import { getCircleRadius } from "../engine/geometry"
 import { distance } from "../math"
 import { useStore } from "../store"
 import { ConstraintContextMenu } from "./ConstraintContextMenu"
@@ -13,7 +14,6 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 		geometry,
 		selection,
 		updatePoint,
-		updateCircle,
 		addConstraint,
 		addFixXConstraint,
 		addFixYConstraint,
@@ -120,9 +120,24 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 
 		const newRadius = parseFloat(editingRadius.value)
 		if (!isNaN(newRadius) && newRadius > 0) {
-			updateCircle(editingRadius.circleId, {
-				radius: newRadius,
-			})
+			// In the new architecture, update the radius by moving the radius point
+			const circle = geometry?.circles.get(editingRadius.circleId)
+			const center = circle && geometry?.points.get(circle.centerId)
+			const radiusPoint = circle && geometry?.points.get(circle.radiusPointId)
+			
+			if (circle && center && radiusPoint) {
+				// Calculate new radius point position at the correct distance
+				const currentDistance = Math.sqrt(
+					(radiusPoint.x - center.x) ** 2 + (radiusPoint.y - center.y) ** 2
+				)
+				if (currentDistance > 0) {
+					const scale = newRadius / currentDistance
+					updatePoint(circle.radiusPointId, {
+						x: center.x + (radiusPoint.x - center.x) * scale,
+						y: center.y + (radiusPoint.y - center.y) * scale,
+					})
+				}
+			}
 		}
 		setEditingRadius(null)
 	}
@@ -142,7 +157,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 				id: constraintId,
 				type: "radius" as const,
 				entityIds: [circleId],
-				value: circle.radius,
+				value: getCircleRadius(circle, geometry),
 				priority: 1,
 			}
 			addConstraint(fixRadiusConstraint)
@@ -734,12 +749,12 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 												e.stopPropagation()
 												handleRadiusClick(
 													id,
-													circle.radius,
+													getCircleRadius(circle, geometry),
 													e.metaKey || e.ctrlKey
 												)
 											}}
 										>
-											r: {formatNumber(circle.radius)}
+											r: {formatNumber(getCircleRadius(circle, geometry))}
 										</span>
 									)}
 								</div>

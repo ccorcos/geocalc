@@ -1,5 +1,6 @@
 import { distance } from "../math"
 import { Constraint, Geometry } from "./types"
+import { getCircleRadius } from "./geometry"
 
 export interface ConstraintViolation {
 	constraintId: string
@@ -686,19 +687,17 @@ export class ConstraintEvaluator {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
 		}
 
-		const targetRadius = constraint.value
-		const currentRadius = circle.radius
-		const error = (currentRadius - targetRadius) ** 2
-
-		// For radius constraints, we don't allow the radius to change
-		// The gradient affects the center point to maintain the fixed radius
-		const gradient = new Map<string, { x: number; y: number }>()
-
-		// For circles, we typically don't apply gradients to constrain radius directly
-		// since radius is a property of the circle, not a point position
-		// This constraint would be handled by preventing radius changes in the solver
-
-		return { constraintId: constraint.id, error, gradient }
+		// Convert to distance constraint between center and radius point
+		// Create virtual distance constraint
+		const virtualDistanceConstraint: Constraint = {
+			id: constraint.id,
+			type: "distance",
+			entityIds: [circle.centerId, circle.radiusPointId],
+			value: constraint.value,
+			priority: constraint.priority
+		}
+		
+		return this.evaluateDistance(virtualDistanceConstraint, geometry)
 	}
 
 	private evaluateXDistance(
@@ -787,14 +786,15 @@ export class ConstraintEvaluator {
 		const currentDistance = Math.sqrt(dx * dx + dy * dy)
 
 		// Error: squared difference between current distance and circle radius
-		const error = (currentDistance - circle.radius) ** 2
+		const radius = getCircleRadius(circle, geometry)
+		const error = (currentDistance - radius) ** 2
 
 		// Gradient calculation
 		const gradient = new Map<string, { x: number; y: number }>()
 
 		if (currentDistance > 1e-10) {
 			// Factor for gradient: 2 * (currentDistance - radius) / currentDistance
-			const factor = (2 * (currentDistance - circle.radius)) / currentDistance
+			const factor = (2 * (currentDistance - radius)) / currentDistance
 
 			// Gradient for the point (moves toward/away from center)
 			gradient.set(point.id, {
@@ -868,7 +868,8 @@ export class ConstraintEvaluator {
 		const distanceToLine = Math.sqrt(distX * distX + distY * distY)
 
 		// Error: squared difference between distance and radius
-		const error = (distanceToLine - circle.radius) ** 2
+		const radius = getCircleRadius(circle, geometry)
+		const error = (distanceToLine - radius) ** 2
 
 		// Gradient calculation using simpler geometric approach
 		const gradient = new Map<string, { x: number; y: number }>()
@@ -879,7 +880,7 @@ export class ConstraintEvaluator {
 			const unitDistY = distY / distanceToLine
 
 			// Error derivative factor
-			const errorDerivative = 2 * (distanceToLine - circle.radius)
+			const errorDerivative = 2 * (distanceToLine - radius)
 
 			// Gradient for circle center (simple: move toward/away from line)
 			gradient.set(center.id, {
