@@ -10,25 +10,34 @@ Strategies:
 ---
 
 
-Implement some label UX improvements:
-- when a label is on top of a point or other shape, when I try to move the label, it will attempt to grab the shape underneath instead of moving the label.
-- when the label is moved far away from the entity its labeling, there should be some kind of arrow pointing to what its labeling, particularly coordinates and angles.
+
+I want to make some improvements to the way the background grid is presented.
+- Lets show the x-y axis as a slightly bolder line.
+- When I zoom in far enough, the background is just white. Instead, I should see the grid adjust by factors of 10 so that I can see increasing precision as I zoom in. The legend at the bottom should adjust accordingly, showing the grid size.
+- Zooming out should similarly adjust the grid size. And lets stick to factors of 10.
+Lets strategize about the best way to do this in plans/grid.md.
 
 
-
-
+The legend should only show a line thats the width of the grid and the grid scale. It shouldn't show this dynamically stretching thing thats showing anything other than the factor of 10 grid scale. And instead of 1k, write out 1,000. Also no need for percent zoom in the legend. And no need to display a subgrid at all.
 
 ---
 
-I want to make some improvements to the way the background grid is presented.
-- When I zoom in far enough, the background is just white. Instead, I should see the grid adjust by factors of 10 so that I can see increasing precision as I zoom in. The legend at the bottom should adjust accordingly, showing the grid size.
-- Zooming out should similarly adjust the grid size. And lets stick to factors of 10.
-- Lets show the x-y axis as a slightly bolder line.
+
+selecting all and moving it moves the labels wrong. moving a label with its corresponding point should not move the label exactly...
 
 
 - I should be able to set the initial scale of the drawing so that all the shapes are an appropriate size.
 
 
+There should be a max size of a label, max size of a point circle, and max thickness of a line (as a function of the viewport) so that as I zoom in, things don't get obnoxiously big. Zooming out though, they should get smaller and thats fine.
+
+
+
+
+
+- better colors. red vs green.
+
+---
 
 
 
@@ -51,31 +60,15 @@ bisector, midpoint (custom fraction though?)
 
 
 
-I want to display constraints and dimensions visually in the canvas in a style consistent with physics or engineering drawings like dimension lines.
-- For a point, lets display (x: ?) if there's an x constraint and (x: ?, y: ?) if there's an x and y constraint. Don't display the current coordinated but the desired coordinates for the constraint.
-- For distance, if its just two points then draw a dimension line with the distance constraint value labeled. If its a distance but there's a line already drawn there then you don't need a dimension line, just draw the number label next to the line.
 
 
 
 
 
 
-
-in the constraint panel, swap the position of the target number with the list of entities.
-
-
-e2e
-constraints
+Later or Never: In the constraint panel, swap the target label with the list of entities. That way the topright shows the target with the error below. And the bottom left shows the list of entities.
 
 
-
-lets alter the type system to ensure that any constraints we define but also be implemented.
-Lets focus on unit tests. Make a minimal unit test for each constraint type.
-claude.md process for creating a constraint. the different places in the menu, and the tests to create.
-Let write a simple ui test for ever kind of constraint. Create the minimal number of shapes necessary, create the constraint, hit solve, and observe that the constraint is satisfied.
-
-
-Create a measurement tool. The tool is disabled until you have a valid selection. If you select a point, then measure gives will display the coordinates in the canvas. If I click two points, it measures the distance between between them and displays it on the canvas. These measurements are entities themselves and can be re-arranges on the canvas. If I click on three points, it measures the angle between them and also shows an angle indicator.
 
 e2e interactions for cmd-click.
 

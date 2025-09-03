@@ -89,16 +89,36 @@ export class CanvasRenderer {
 	}
 
 	private renderGrid(viewport: Viewport): void {
-		const gridSize = 50
-		const minGridSize = 20 // Minimum pixels between grid lines
-		const actualGridSize = gridSize / viewport.zoom
+		const primaryGridSize = this.calculateOptimalGridSize(viewport)
 
-		if (actualGridSize < minGridSize) return
+		// Render primary grid only
+		this.renderGridLayer(viewport, primaryGridSize, '#e0e0e0', 0.5, 1)
 
+		// Render axes (bold)
+		this.renderAxes(viewport)
+	}
+
+	private calculateOptimalGridSize(viewport: Viewport): number {
+		const targetPixelSpacing = 50 // Ideal pixel distance between grid lines
+		const baseGridSize = targetPixelSpacing / viewport.zoom
+
+		// Find the appropriate power of 10
+		const logValue = Math.log10(baseGridSize)
+		const roundedLog = Math.round(logValue)
+		return Math.pow(10, roundedLog)
+	}
+
+	private renderGridLayer(
+		viewport: Viewport,
+		gridSize: number,
+		strokeStyle: string,
+		globalAlpha: number,
+		lineWidth: number = 1
+	): void {
 		this.ctx.save()
-		this.ctx.strokeStyle = "#e0e0e0"
-		this.ctx.lineWidth = 1 / viewport.zoom
-		this.ctx.globalAlpha = 0.5
+		this.ctx.strokeStyle = strokeStyle
+		this.ctx.lineWidth = lineWidth / viewport.zoom
+		this.ctx.globalAlpha = globalAlpha
 
 		const left = viewport.x - viewport.width / (2 * viewport.zoom)
 		const right = viewport.x + viewport.width / (2 * viewport.zoom)
@@ -108,6 +128,9 @@ export class CanvasRenderer {
 		// Vertical lines
 		const startX = Math.floor(left / gridSize) * gridSize
 		for (let x = startX; x <= right; x += gridSize) {
+			// Skip lines that will be rendered as axes
+			if (Math.abs(x) < gridSize / 1000) continue // Skip x=0 (Y-axis)
+
 			this.ctx.beginPath()
 			this.ctx.moveTo(x, top)
 			this.ctx.lineTo(x, bottom)
@@ -117,9 +140,42 @@ export class CanvasRenderer {
 		// Horizontal lines
 		const startY = Math.floor(top / gridSize) * gridSize
 		for (let y = startY; y <= bottom; y += gridSize) {
+			// Skip lines that will be rendered as axes
+			if (Math.abs(y) < gridSize / 1000) continue // Skip y=0 (X-axis)
+
 			this.ctx.beginPath()
 			this.ctx.moveTo(left, y)
 			this.ctx.lineTo(right, y)
+			this.ctx.stroke()
+		}
+
+		this.ctx.restore()
+	}
+
+	private renderAxes(viewport: Viewport): void {
+		const left = viewport.x - viewport.width / (2 * viewport.zoom)
+		const right = viewport.x + viewport.width / (2 * viewport.zoom)
+		const top = viewport.y - viewport.height / (2 * viewport.zoom)
+		const bottom = viewport.y + viewport.height / (2 * viewport.zoom)
+
+		this.ctx.save()
+		this.ctx.strokeStyle = '#999999'
+		this.ctx.lineWidth = 2 / viewport.zoom // Slightly thicker
+		this.ctx.globalAlpha = 0.8 // More opaque
+
+		// Y-axis (vertical line at x=0) - only render if visible
+		if (left <= 0 && right >= 0) {
+			this.ctx.beginPath()
+			this.ctx.moveTo(0, top)
+			this.ctx.lineTo(0, bottom)
+			this.ctx.stroke()
+		}
+
+		// X-axis (horizontal line at y=0) - only render if visible
+		if (top <= 0 && bottom >= 0) {
+			this.ctx.beginPath()
+			this.ctx.moveTo(left, 0)
+			this.ctx.lineTo(right, 0)
 			this.ctx.stroke()
 		}
 
@@ -693,21 +749,16 @@ export class CanvasRenderer {
 	}
 
 	private renderGridLegend(viewport: Viewport): void {
-		const gridSpacingPixels = 50 // Fixed pixel spacing between grid lines
-		const minGridSize = 20 // Minimum pixels between grid lines
-		const actualGridSpacing = gridSpacingPixels * viewport.zoom // Pixels between lines on screen
-
-		if (actualGridSpacing < minGridSize) return // Don't show legend if grid is too dense
-
-		// Calculate the world unit size that each grid square represents
-		const worldUnitsPerGridSquare = gridSpacingPixels / viewport.zoom
+		const currentGridSize = this.calculateOptimalGridSize(viewport)
+		const currentPixelSpacing = currentGridSize * viewport.zoom
 
 		this.ctx.save()
 		// Reset transform to screen coordinates
 		this.ctx.setTransform(1, 0, 0, 1, 0, 0)
 
-		// Draw legend background - make it wider for longer numbers
-		const legendWidth = 140
+		// Calculate legend dimensions based on line length
+		const scaleLineLength = Math.min(currentPixelSpacing, 100) // Cap at 100px for very large grid
+		const legendWidth = scaleLineLength + 80 // Extra space for text
 		const legendHeight = 30
 		const margin = 10
 		const x = this.canvas.width - legendWidth - margin
@@ -720,10 +771,9 @@ export class CanvasRenderer {
 		this.ctx.lineWidth = 1
 		this.ctx.strokeRect(x, y, legendWidth, legendHeight)
 
-		// Draw grid scale indicator
+		// Draw grid scale indicator - line matches actual grid spacing
 		const scaleLineY = y + legendHeight / 2
 		const scaleStartX = x + 10
-		const scaleLineLength = Math.min(50, actualGridSpacing) // Use actual grid spacing but cap at 50px
 		const scaleEndX = scaleStartX + scaleLineLength
 
 		this.ctx.strokeStyle = "#666"
@@ -739,43 +789,34 @@ export class CanvasRenderer {
 		this.ctx.lineTo(scaleEndX, scaleLineY + 3)
 		this.ctx.stroke()
 
-		// Add label with dynamic unit size
+		// Add label showing grid size
 		this.ctx.fillStyle = "#333"
 		this.ctx.font = "12px Arial"
 		this.ctx.textAlign = "left"
 		this.ctx.textBaseline = "middle"
 
-		// Format the world units nicely based on zoom level
-		let unitsText: string
-		const scaledUnits =
-			worldUnitsPerGridSquare * (scaleLineLength / gridSpacingPixels)
-
-		if (scaledUnits >= 1000) {
-			unitsText = `${(scaledUnits / 1000).toFixed(1)}k`
-		} else if (scaledUnits >= 100) {
-			unitsText = `${Math.round(scaledUnits)}`
-		} else if (scaledUnits >= 10) {
-			unitsText = `${scaledUnits.toFixed(1)}`
-		} else if (scaledUnits >= 1) {
-			unitsText = `${scaledUnits.toFixed(1)}`
-		} else if (scaledUnits >= 0.1) {
-			unitsText = `${scaledUnits.toFixed(2)}`
-		} else {
-			unitsText = `${scaledUnits.toFixed(3)}`
-		}
-
-		this.ctx.fillText(`${unitsText} units`, scaleEndX + 8, scaleLineY)
-
-		// Add zoom level indicator
-		this.ctx.font = "10px Arial"
-		this.ctx.fillStyle = "#999"
-		this.ctx.fillText(
-			`${(viewport.zoom * 100).toFixed(0)}%`,
-			x + 5,
-			y + legendHeight - 5
-		)
+		const unitsText = this.formatGridSize(currentGridSize)
+		this.ctx.fillText(unitsText, scaleEndX + 8, scaleLineY)
 
 		this.ctx.restore()
+	}
+
+	private formatGridSize(size: number): string {
+		if (size >= 1000) {
+			return size.toLocaleString('en-US')
+		} else if (size >= 100) {
+			return `${Math.round(size)}`
+		} else if (size >= 10) {
+			return `${size.toFixed(1)}`
+		} else if (size >= 1) {
+			return `${size.toFixed(1)}`
+		} else if (size >= 0.1) {
+			return `${size.toFixed(2)}`
+		} else if (size >= 0.01) {
+			return `${size.toFixed(3)}`
+		} else {
+			return `${size.toExponential(1)}`
+		}
 	}
 
 	resize(width: number, height: number): void {
