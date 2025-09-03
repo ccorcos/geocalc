@@ -412,64 +412,12 @@ test.describe("All Constraint Types", () => {
 		// Create a point away from the circle
 		const pointOnCircle = await helper.createPointAt(400, 400) // Far from circle
 		
-		// Select point and circle using entity panel (like selectTwoLinesInPanel)
+		// Select point and circle using helper method
 		await helper.selectTool("select")
-		
-		// First select the third point (the one we want to constrain to circle)
-		const pointInPanel = helper.entityPanel
-			.locator('[data-testid="entity-list"]')
-			.locator("div")
-			.filter({ hasText: "point" })
-			.nth(2) // Third point
-		await pointInPanel.click()
-		
-		// Then select the circle with shift+click (like selectTwoLinesInPanel does)
-		const circleInPanel = helper.entityPanel
-			.locator('[data-testid="entity-list"]')
-			.locator("div")
-			.filter({ hasText: "circle" })
-			.nth(0)
-		await circleInPanel.click({ modifiers: ["Shift"] })
-		
-		// Wait for selection to register
-		await page.waitForTimeout(300)
-		
-		// Debug: Check what's selected
-		const selectionInfo = await page.evaluate(() => {
-			const state = window.__GEOCALC_STORE__?.getState()
-			if (!state) return { count: 0, ids: [], entityTypes: [] }
-			
-			const selectedIds = Array.from(state.selection.selectedIds)
-			const entityTypes = selectedIds.map(id => {
-				if (state.geometry.points.has(id)) return 'point'
-				if (state.geometry.lines.has(id)) return 'line'  
-				if (state.geometry.circles.has(id)) return 'circle'
-				return 'unknown'
-			})
-			
-			return {
-				count: selectedIds.length,
-				ids: selectedIds,
-				entityTypes: entityTypes
-			}
-		})
-		console.log('Selection info:', selectionInfo)
-		
-		// Debug: Click the add constraint button and see what menu appears
-		await page.click('[data-testid="add-constraint"]')
-		await page.waitForTimeout(500)
-		
-		// Check if our constraint option exists
-		const contextMenuText = await page.locator('[data-context-menu]').textContent()
-		console.log('Context menu content:', contextMenuText)
-		
-		// Look for our constraint button more flexibly
-		const constraintButton = page.getByText("Point on Circle")
-		if (await constraintButton.isVisible()) {
-			await constraintButton.click()
-		} else {
-			throw new Error("Point on Circle constraint not available in menu. Available: " + contextMenuText)
-		}
+		await helper.selectPointAndCircleInPanel(2, 0) // Third point (index 2) and first circle (index 0)
+
+		// Create point-on-circle constraint
+		await helper.createConstraint("point-on-circle")
 		
 		await helper.expectConstraintExists("point-on-circle")
 
@@ -502,17 +450,9 @@ test.describe("All Constraint Types", () => {
 		const lineEnd = await helper.createPointAt(350, 320)
 		await helper.createLine(lineStart, lineEnd)
 		
-		// Select line and circle
+		// Select line and circle using helper method
 		await helper.selectTool("select")
-		await helper.selectLineInPanel(0) // Select the line
-		
-		// Add circle to selection using shift+click
-		const circleInPanel = helper.entityPanel
-			.locator('[data-testid="entity-list"]')
-			.locator("div")
-			.filter({ hasText: "circle" })
-			.nth(0)
-		await circleInPanel.click({ modifiers: ["Shift"] })
+		await helper.selectLineAndCircleInPanel(0, 0) // First line and first circle
 		
 		// Create line-tangent-to-circle constraint
 		await helper.createConstraint("line-tangent-to-circle")

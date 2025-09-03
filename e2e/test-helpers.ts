@@ -198,6 +198,7 @@ export class TestHarness {
 			.filter({ hasText: "line" })
 			.nth(lineIndex)
 		await lineInPanel.click()
+		await this.waitForConstraintUI(1)
 	}
 
 	async selectTwoLinesInPanel() {
@@ -217,11 +218,48 @@ export class TestHarness {
 	}
 
 	async selectCircleInPanel(circleIndex: number = 0) {
-		const circleInPanel = this.entityList
-			.locator("div")
+		// Click on the name span within the circle row (this is where the onClick handler is)
+		const circleRow = this.entityList
+			.locator('div')
 			.filter({ hasText: "circle" })
 			.nth(circleIndex)
-		await circleInPanel.click()
+		const nameSpan = circleRow.locator('span').first() // The name span is the first span
+		await nameSpan.click()
+		await this.waitForConstraintUI(1)
+	}
+
+	async selectPointAndCircleInPanel(pointIndex: number = 0, circleIndex: number = 0) {
+		const pointInPanel = this.entityList
+			.locator("div")
+			.filter({ hasText: "point" })
+			.nth(pointIndex)
+		await pointInPanel.click()
+		
+		// Use corrected circle selection - click on the name span
+		const circleRow = this.entityList
+			.locator('div')
+			.filter({ hasText: "circle" })
+			.nth(circleIndex)
+		const nameSpan = circleRow.locator('span').first()
+		await nameSpan.click({ modifiers: ["Shift"] })
+		await this.waitForConstraintUI(2)
+	}
+
+	async selectLineAndCircleInPanel(lineIndex: number = 0, circleIndex: number = 0) {
+		const lineInPanel = this.entityList
+			.locator("div")
+			.filter({ hasText: "line" })
+			.nth(lineIndex)
+		await lineInPanel.click()
+		
+		// Use corrected circle selection - click on the name span
+		const circleRow = this.entityList
+			.locator('div')
+			.filter({ hasText: "circle" })
+			.nth(circleIndex)
+		const nameSpan = circleRow.locator('span').first()
+		await nameSpan.click({ modifiers: ["Shift"] })
+		await this.waitForConstraintUI(2)
 	}
 
 	// Complex operations
@@ -396,12 +434,12 @@ export class TestHarness {
 
 	async logPointPositions() {
 		const points = await this.getPointPositions()
-		console.log("Point positions:", points)
+		// Debug: Point positions for diagnostics
 	}
 
 	async logConstraints() {
 		const constraints = await this.getConstraints()
-		console.log("Active constraints:", constraints)
+		// Debug: Active constraints for diagnostics
 
 		// Also use diagnostics if available
 		await this.page.evaluate(() => {
@@ -430,12 +468,12 @@ export class TestHarness {
 	// Debug helpers
 	async logEntityPanelContent() {
 		const content = await this.entityList.textContent()
-		console.log("Entity Panel Content:", content)
+		// Debug: Entity Panel Content for diagnostics
 	}
 
 	async logConstraintPanelContent() {
 		const content = await this.constraintPanel.textContent()
-		console.log("Constraint Panel Content:", content)
+		// Debug: Constraint Panel Content for diagnostics
 	}
 
 	async takeScreenshot(name: string) {
