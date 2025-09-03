@@ -159,6 +159,15 @@ export const FloatingToolbar: React.FC = () => {
 				shortcut="C"
 			/>
 
+			<ToolButton
+				tool="label"
+				currentTool={currentTool}
+				onClick={setCurrentTool}
+				icon="🏷"
+				tooltip="Label Tool"
+				shortcut="T"
+			/>
+
 			{/* Separator */}
 			<div
 				style={{

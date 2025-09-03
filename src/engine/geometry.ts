@@ -1,11 +1,12 @@
 import { generateId } from "../ids"
 import { distance } from "../math"
-import { Circle, Constraint, Geometry, Line, Point } from "./types"
+import { Circle, Constraint, Geometry, Label, Line, Point } from "./types"
 
 export const createEmptyGeometry = (): Geometry => ({
 	points: new Map(),
 	lines: new Map(),
 	circles: new Map(),
+	labels: new Map(),
 	constraints: new Map(),
 	metadata: {
 		version: "1.0.0",
@@ -124,6 +125,32 @@ export const addConstraint = (
 	return {
 		...geometry,
 		constraints: newConstraints,
+		metadata: {
+			...geometry.metadata,
+			modified: new Date(),
+		},
+	}
+}
+
+export const createLabel = (
+	type: Label["type"],
+	entityIds: string[],
+	offset = { x: 0, y: 0 }
+): Label => ({
+	id: generateId(),
+	type,
+	entityIds,
+	offset,
+	visible: true,
+})
+
+export const addLabel = (geometry: Geometry, label: Label): Geometry => {
+	const newLabels = new Map(geometry.labels)
+	newLabels.set(label.id, label)
+
+	return {
+		...geometry,
+		labels: newLabels,
 		metadata: {
 			...geometry.metadata,
 			modified: new Date(),

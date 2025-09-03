@@ -10,29 +10,17 @@ Strategies:
 ---
 
 
-	| "point-on-circle"
-	| "line-tangent-to-circle"
 
-  fixed radius + point on circle / tangent line
-
-
-coincident (point + circle)
-tangent (line + circle)
+fixed radius + point on circle / tangent line
 
 
 colinear (3+ points, or a line + points)
-
-
 orthoganol-distance (line + point)
 same-length (2+ lines)
 same-radius (2+ circles)
-
-
 bisector, midpoint (custom fraction though?)
 
 
-
-lets make a plan for e2e tests. similar to unit tests, I want a minimal tests for each constraint type, using the ui to draw, select, constrain, and solve.
 
 
 I want to display constraints and dimensions visually in the canvas in a style consistent with physics or engineering drawings like dimension lines.

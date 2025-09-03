@@ -20,7 +20,15 @@ export interface Circle {
 	radiusPointId: string
 }
 
-export type GeometryEntity = Point | Line | Circle
+export interface Label {
+	id: string
+	type: "coordinate" | "distance" | "angle"
+	entityIds: string[]  // Referenced point IDs
+	offset: { x: number; y: number }  // User-dragged offset from calculated position
+	visible: boolean
+}
+
+export type GeometryEntity = Point | Line | Circle | Label
 
 export type { ConstraintType } from "./constraint-types"
 
@@ -36,6 +44,7 @@ export interface Geometry {
 	points: Map<string, Point>
 	lines: Map<string, Line>
 	circles: Map<string, Circle>
+	labels: Map<string, Label>
 	constraints: Map<string, Constraint>
 	metadata: {
 		version: string
@@ -52,7 +61,7 @@ export interface Viewport {
 	height: number
 }
 
-export type ToolType = "select" | "point" | "line" | "circle"
+export type ToolType = "select" | "point" | "line" | "circle" | "label"
 
 export interface SelectionState {
 	selectedIds: Set<string>

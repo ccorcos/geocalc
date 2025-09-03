@@ -7,6 +7,7 @@ import {
 	Circle,
 	Constraint,
 	Geometry,
+	Label,
 	Line,
 	Point,
 	SelectionState,
@@ -22,6 +23,7 @@ const serializeGeometry = (geometry: Geometry): string => {
 		points: Array.from(geometry.points.entries()),
 		lines: Array.from(geometry.lines.entries()),
 		circles: Array.from(geometry.circles.entries()),
+		labels: Array.from(geometry.labels.entries()),
 		constraints: Array.from(geometry.constraints.entries()),
 		metadata: {
 			version: geometry.metadata.version,
@@ -39,6 +41,7 @@ const deserializeGeometry = (data: string): Geometry => {
 			points: new Map(parsed.points || []),
 			lines: new Map(parsed.lines || []),
 			circles: new Map(parsed.circles || []),
+			labels: new Map(parsed.labels || []),
 			constraints: new Map(parsed.constraints || []),
 			metadata: {
 				version: parsed.metadata?.version || "1.0.0",
@@ -108,10 +111,12 @@ interface AppState {
 	addPoint: (point: Point) => void
 	addLine: (line: Line) => void
 	addCircle: (circle: Circle) => void
+	addLabel: (label: Label) => void
 	addConstraint: (constraint: Constraint) => void
 	updateConstraint: (id: string, updates: Partial<Constraint>) => void
 	updatePoint: (id: string, updates: Partial<Point>) => void
 	updateCircle: (id: string, updates: Partial<Circle>) => void
+	updateLabel: (id: string, updates: Partial<Label>) => void
 	addFixXConstraint: (pointId: string, value: number) => void
 	addFixYConstraint: (pointId: string, value: number) => void
 	removeFixXConstraint: (pointId: string) => void
@@ -218,6 +223,13 @@ export const useStore = create<AppState>()(
 				saveGeometry(state.geometry)
 			}),
 
+		addLabel: (label) =>
+			set((state) => {
+				state.geometry.labels.set(label.id, label)
+				state.geometry.metadata.modified = new Date()
+				saveGeometry(state.geometry)
+			}),
+
 		addConstraint: (constraint) =>
 			set((state) => {
 				state.geometry.constraints.set(constraint.id, constraint)
@@ -250,6 +262,16 @@ export const useStore = create<AppState>()(
 				const circle = state.geometry.circles.get(id)
 				if (circle) {
 					Object.assign(circle, updates)
+					state.geometry.metadata.modified = new Date()
+					saveGeometry(state.geometry)
+				}
+			}),
+
+		updateLabel: (id, updates) =>
+			set((state) => {
+				const label = state.geometry.labels.get(id)
+				if (label) {
+					Object.assign(label, updates)
 					state.geometry.metadata.modified = new Date()
 					saveGeometry(state.geometry)
 				}
@@ -372,6 +394,13 @@ export const useStore = create<AppState>()(
 						}
 					}
 
+					// Find labels that depend on any entity being deleted
+					for (const [labelId, label] of state.geometry.labels) {
+						if (label.entityIds.some((entityId) => toDelete.has(entityId))) {
+							toDelete.add(labelId)
+						}
+					}
+
 					// Find constraints that depend on any entity being deleted
 					for (const [constraintId, constraint] of state.geometry.constraints) {
 						if (
@@ -386,6 +415,7 @@ export const useStore = create<AppState>()(
 						state.geometry.points.delete(entityId)
 						state.geometry.lines.delete(entityId)
 						state.geometry.circles.delete(entityId)
+						state.geometry.labels.delete(entityId)
 						state.geometry.constraints.delete(entityId)
 						state.selection.selectedIds.delete(entityId)
 

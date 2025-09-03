@@ -298,6 +298,7 @@ export class GradientDescentSolver {
 			),
 			lines: new Map(geometry.lines),
 			circles: new Map(geometry.circles),
+			labels: new Map(geometry.labels),
 			constraints: new Map(geometry.constraints),
 			metadata: { ...geometry.metadata },
 		}

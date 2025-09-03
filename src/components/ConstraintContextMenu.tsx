@@ -18,7 +18,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 	y,
 	onClose,
 }) => {
-	const { geometry, selection, addConstraint } = useStore()
+	const { geometry, selection, addConstraint, updateLabel, removeEntity } = useStore()
 	const [isClosing, setIsClosing] = useState(false)
 	const [showValueDialog, setShowValueDialog] = useState(false)
 	const [pendingConstraint, setPendingConstraint] = useState<{
@@ -35,12 +35,45 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 		setPortalContainer(document.body)
 	}, [])
 
-	const getAvailableConstraints = (): {
-		type: ConstraintType
+	const getAvailableActions = (): {
+		type: ConstraintType | "delete-label" | "toggle-label-visibility"
 		label: string
 		needsValue: boolean
 	}[] => {
 		const selectedIds = Array.from(selection.selectedIds)
+		
+		// Check if any selected entities are labels
+		const selectedLabels = selectedIds
+			.map(id => geometry.labels.get(id))
+			.filter(Boolean)
+		
+		if (selectedLabels.length > 0) {
+			// Label-specific actions
+			const actions: {
+				type: ConstraintType | "delete-label" | "toggle-label-visibility"
+				label: string
+				needsValue: boolean
+			}[] = [{
+				type: "delete-label" as const,
+				label: "Delete Label",
+				needsValue: false,
+			}]
+			
+			// Add visibility toggle if single label selected
+			if (selectedLabels.length === 1) {
+				const label = selectedLabels[0]
+				if (label) {
+					actions.unshift({
+						type: "toggle-label-visibility" as const,
+						label: label.visible ? "Hide Label" : "Show Label",
+						needsValue: false,
+					})
+				}
+			}
+			
+			return actions
+		}
+
 		const selectedEntities = selectedIds
 			.map((id) => {
 				const point = geometry.points.get(id)
@@ -160,11 +193,36 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 		return []
 	}
 
-	const handleCreateConstraint = (constraintType: ConstraintType) => {
+	const handleAction = (actionType: ConstraintType | "delete-label" | "toggle-label-visibility") => {
 		const selectedIds = Array.from(selection.selectedIds)
 
+		// Handle label-specific actions
+		if (actionType === "delete-label") {
+			selectedIds.forEach(id => {
+				if (geometry.labels.has(id)) {
+					removeEntity(id)
+				}
+			})
+			closeMenu()
+			return
+		}
+
+		if (actionType === "toggle-label-visibility") {
+			selectedIds.forEach(id => {
+				const label = geometry.labels.get(id)
+				if (label) {
+					updateLabel(id, { visible: !label.visible })
+				}
+			})
+			closeMenu()
+			return
+		}
+
+		// Handle constraint creation
+		const constraintType = actionType as ConstraintType
+
 		// Check if this constraint needs a value input
-		const needsValue = getAvailableConstraints().find(
+		const needsValue = getAvailableActions().find(
 			(c) => c.type === constraintType
 		)?.needsValue
 
@@ -265,7 +323,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 		}, 0)
 	}
 
-	const availableConstraints = getAvailableConstraints()
+	const availableActions = getAvailableActions()
 
 	// Don't render if closing to prevent flash
 	if (isClosing) {
@@ -298,7 +356,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					}}
 					onClick={(e) => e.stopPropagation()}
 				>
-					{availableConstraints.map((constraint, index) => (
+					{availableActions.map((action, index) => (
 						<button
 							key={index}
 							style={{
@@ -318,16 +376,16 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 							onMouseLeave={(e) => {
 								e.currentTarget.style.backgroundColor = "transparent"
 							}}
-							onClick={() => handleCreateConstraint(constraint.type)}
+							onClick={() => handleAction(action.type)}
 						>
-							{constraint.label}
+							{action.label}
 						</button>
 					))}
-					{availableConstraints.length === 0 && (
+					{availableActions.length === 0 && (
 						<div
 							style={{ padding: "6px 12px", color: "#666", fontSize: "12px" }}
 						>
-							No constraints available
+							No actions available
 						</div>
 					)}
 				</div>
@@ -354,7 +412,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					<div style={{ marginBottom: "8px", fontSize: "12px", color: "#666" }}>
 						Enter value for{" "}
 						{
-							getAvailableConstraints().find(
+							getAvailableActions().find(
 								(c) => c.type === pendingConstraint.type
 							)?.label
 						}

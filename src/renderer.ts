@@ -1,12 +1,19 @@
 import {
 	Circle,
 	Geometry,
+	Label,
 	Line,
 	Point,
 	SelectionState,
 	Viewport,
 } from "./engine/types"
 import { getCircleRadius } from "./engine/geometry"
+import {
+	calculateLabelPosition,
+	calculateLabelText,
+	calculateDimensionLineEndpoints,
+	calculateAngleArc
+} from "./engine/label-positioning"
 
 export class CanvasRenderer {
 	private ctx: CanvasRenderingContext2D
@@ -47,6 +54,7 @@ export class CanvasRenderer {
 		this.renderLines(geometry, selection)
 		this.renderCircles(geometry, selection)
 		this.renderPoints(geometry, selection)
+		this.renderLabels(geometry, selection)
 		this.renderConstraints()
 
 		// Render interaction states
@@ -321,6 +329,200 @@ export class CanvasRenderer {
 		this.ctx.stroke()
 
 		this.ctx.restore()
+	}
+
+	private renderLabels(geometry: Geometry, selection: SelectionState): void {
+		geometry.labels.forEach((label) => {
+			if (label.visible) {
+				this.renderLabel(label, geometry, selection)
+			}
+		})
+	}
+
+	private renderLabel(
+		label: Label,
+		geometry: Geometry,
+		selection: SelectionState
+	): void {
+		const position = calculateLabelPosition(label, geometry)
+		const text = calculateLabelText(label, geometry)
+		
+		if (!position || !text) return
+
+		const isSelected = selection.selectedIds.has(label.id)
+		const isHovered = selection.hoveredId === label.id
+
+		this.ctx.save()
+
+		// Render dimension lines for distance labels
+		if (label.type === "distance") {
+			const [point1Id, point2Id] = label.entityIds
+			const p1 = geometry.points.get(point1Id)
+			const p2 = geometry.points.get(point2Id)
+			if (p1 && p2) {
+				this.renderDimensionLine(p1, p2, position, isSelected, isHovered)
+			}
+		}
+
+		// Render angle arc for angle labels
+		if (label.type === "angle") {
+			const [point1Id, vertexId, point2Id] = label.entityIds
+			const p1 = geometry.points.get(point1Id)
+			const vertex = geometry.points.get(vertexId)
+			const p2 = geometry.points.get(point2Id)
+			if (p1 && vertex && p2) {
+				this.renderAngleArc(p1, vertex, p2, isSelected, isHovered)
+			}
+		}
+
+		// Render label text with background
+		this.renderLabelText(text, position, isSelected, isHovered)
+
+		this.ctx.restore()
+	}
+
+	private renderDimensionLine(
+		p1: Point,
+		p2: Point,
+		labelPosition: { x: number; y: number },
+		isSelected: boolean,
+		isHovered: boolean
+	): void {
+		const { start, end, extensionLines } = calculateDimensionLineEndpoints(p1, p2, labelPosition)
+		
+		const color = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#666"
+		const lineWidth = isSelected ? 2 : 1
+
+		this.ctx.strokeStyle = color
+		this.ctx.lineWidth = lineWidth
+
+		// Draw extension lines
+		this.ctx.beginPath()
+		this.ctx.moveTo(extensionLines.p1Start.x, extensionLines.p1Start.y)
+		this.ctx.lineTo(extensionLines.p1End.x, extensionLines.p1End.y)
+		this.ctx.moveTo(extensionLines.p2Start.x, extensionLines.p2Start.y)
+		this.ctx.lineTo(extensionLines.p2End.x, extensionLines.p2End.y)
+		this.ctx.stroke()
+
+		// Draw main dimension line
+		this.ctx.beginPath()
+		this.ctx.moveTo(start.x, start.y)
+		this.ctx.lineTo(end.x, end.y)
+		this.ctx.stroke()
+
+		// Draw arrowheads/ticks at ends
+		this.renderDimensionArrows(start, end, color, lineWidth)
+	}
+
+	private renderDimensionArrows(
+		start: { x: number; y: number },
+		end: { x: number; y: number },
+		color: string,
+		lineWidth: number
+	): void {
+		const arrowSize = 5
+		
+		// Calculate direction vector
+		const dx = end.x - start.x
+		const dy = end.y - start.y
+		const length = Math.sqrt(dx * dx + dy * dy)
+		
+		if (length === 0) return
+		
+		const unitX = dx / length
+		const unitY = dy / length
+		const perpX = -unitY
+		const perpY = unitX
+
+		this.ctx.fillStyle = color
+		this.ctx.strokeStyle = color
+		this.ctx.lineWidth = lineWidth
+
+		// Start arrow
+		this.ctx.beginPath()
+		this.ctx.moveTo(start.x, start.y)
+		this.ctx.lineTo(start.x + unitX * arrowSize + perpX * arrowSize/2, start.y + unitY * arrowSize + perpY * arrowSize/2)
+		this.ctx.lineTo(start.x + unitX * arrowSize - perpX * arrowSize/2, start.y + unitY * arrowSize - perpY * arrowSize/2)
+		this.ctx.closePath()
+		this.ctx.fill()
+
+		// End arrow
+		this.ctx.beginPath()
+		this.ctx.moveTo(end.x, end.y)
+		this.ctx.lineTo(end.x - unitX * arrowSize + perpX * arrowSize/2, end.y - unitY * arrowSize + perpY * arrowSize/2)
+		this.ctx.lineTo(end.x - unitX * arrowSize - perpX * arrowSize/2, end.y - unitY * arrowSize - perpY * arrowSize/2)
+		this.ctx.closePath()
+		this.ctx.fill()
+	}
+
+	private renderAngleArc(
+		p1: Point,
+		vertex: Point,
+		p2: Point,
+		isSelected: boolean,
+		isHovered: boolean
+	): void {
+		const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2)
+		
+		const color = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#666"
+		const lineWidth = isSelected ? 2 : 1
+
+		this.ctx.strokeStyle = color
+		this.ctx.lineWidth = lineWidth
+		this.ctx.fillStyle = "transparent"
+
+		// Draw arc
+		this.ctx.beginPath()
+		this.ctx.arc(centerX, centerY, radius, startAngle, endAngle)
+		this.ctx.stroke()
+	}
+
+	private renderLabelText(
+		text: string,
+		position: { x: number; y: number },
+		isSelected: boolean,
+		isHovered: boolean
+	): void {
+		// Calculate text dimensions for background
+		this.ctx.font = "12px Arial"
+		this.ctx.textAlign = "center"
+		this.ctx.textBaseline = "middle"
+		
+		const textMetrics = this.ctx.measureText(text)
+		const textWidth = textMetrics.width
+		const textHeight = 16 // Approximate font height
+		
+		const padding = 4
+		const bgWidth = textWidth + padding * 2
+		const bgHeight = textHeight + padding * 2
+
+		// Draw background
+		this.ctx.fillStyle = isSelected 
+			? "rgba(77, 171, 247, 0.2)" 
+			: isHovered 
+				? "rgba(116, 192, 252, 0.2)" 
+				: "rgba(255, 255, 255, 0.9)"
+		
+		this.ctx.fillRect(
+			position.x - bgWidth / 2,
+			position.y - bgHeight / 2,
+			bgWidth,
+			bgHeight
+		)
+
+		// Draw border
+		this.ctx.strokeStyle = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#ccc"
+		this.ctx.lineWidth = isSelected ? 2 : 1
+		this.ctx.strokeRect(
+			position.x - bgWidth / 2,
+			position.y - bgHeight / 2,
+			bgWidth,
+			bgHeight
+		)
+
+		// Draw text
+		this.ctx.fillStyle = "#333"
+		this.ctx.fillText(text, position.x, position.y)
 	}
 
 	private renderConstraints(): void {

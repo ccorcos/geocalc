@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 
 import { getCircleRadius } from "../engine/geometry"
+import { calculateLabelText } from "../engine/label-positioning"
 import { distance } from "../math"
 import { useStore } from "../store"
 import { ConstraintContextMenu } from "./ConstraintContextMenu"
@@ -375,7 +376,8 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 					Entities (
 					{(geometry?.points.size || 0) +
 						(geometry?.lines.size || 0) +
-						(geometry?.circles.size || 0)}
+						(geometry?.circles.size || 0) +
+						(geometry?.labels.size || 0)}
 					)
 				</h3>
 			</div>
@@ -762,11 +764,101 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 						)
 					})}
 
+				{geometry &&
+					Array.from(geometry.labels.entries()).map(([id, label], index) => {
+						const name = getHumanName(
+							geometry.points.size + geometry.lines.size + geometry.circles.size + index
+						)
+						const labelText = calculateLabelText(label, geometry)
+
+						// Get referenced point names
+						const pointNames = label.entityIds
+							.map((entityId) => {
+								const pointIndex = Array.from(geometry.points.keys()).indexOf(entityId)
+								return pointIndex >= 0 ? getHumanName(pointIndex) : "?"
+							})
+							.join(", ")
+
+						const typeDisplay = {
+							coordinate: "coord",
+							distance: "dist",
+							angle: "angle"
+						}[label.type]
+
+						return (
+							<div
+								key={id}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									padding: "6px 8px",
+									margin: "2px 0",
+									borderRadius: "4px",
+									border: selection.selectedIds.has(id)
+										? "1px solid #4dabf7"
+										: "1px solid transparent",
+									backgroundColor: selection.selectedIds.has(id)
+										? "#e3f2fd"
+										: selection.hoveredId === id
+											? "#f5f5f5"
+											: "white",
+									cursor: "pointer",
+									fontSize: "11px",
+									opacity: label.visible ? 1 : 0.5,
+								}}
+								onClick={(e) =>
+									handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)
+								}
+								onContextMenu={(e) => handleEntityRightClick(e, id)}
+								onMouseEnter={() =>
+									useStore.getState().setSelection({ hoveredId: id })
+								}
+								onMouseLeave={() =>
+									useStore.getState().setSelection({ hoveredId: null })
+								}
+							>
+								<span style={{ fontWeight: 600, minWidth: "20px" }}>
+									{name}
+								</span>
+								<span style={{ margin: "0 8px", color: "#666" }}>
+									{typeDisplay}
+								</span>
+								<div
+									style={{
+										display: "flex",
+										alignItems: "center",
+										gap: "6px",
+										marginLeft: "auto",
+									}}
+								>
+									<span style={{ color: "#666", fontSize: "10px" }}>
+										{pointNames}
+									</span>
+									<span
+										style={{
+											color: "#007bff",
+											fontSize: "10px",
+											fontWeight: 500,
+										}}
+									>
+										{labelText}
+									</span>
+									{!label.visible && (
+										<span style={{ color: "#999", fontSize: "10px" }}>
+											hidden
+										</span>
+									)}
+								</div>
+							</div>
+						)
+					})}
+
 				{/* Empty State */}
 				{geometry &&
 					geometry.points.size === 0 &&
 					geometry.lines.size === 0 &&
-					geometry.circles.size === 0 && (
+					geometry.circles.size === 0 &&
+					geometry.labels.size === 0 && (
 						<div
 							style={{
 								padding: "20px",

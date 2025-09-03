@@ -1,7 +1,8 @@
-import { createLine, createPoint, getCircleRadius } from "../engine/geometry"
+import { createLabel, createLine, createPoint, getCircleRadius } from "../engine/geometry"
 import { generateId } from "../ids"
 import { Point } from "../engine/types"
 import { useStore } from "../store"
+import { calculateLabelPosition } from "../engine/label-positioning"
 
 export class CanvasInteraction {
 	private canvas: HTMLCanvasElement
@@ -100,6 +101,27 @@ export class CanvasInteraction {
 			}
 		}
 
+		// Check labels
+		for (const [id, label] of geometry.labels) {
+			if (!label.visible) continue
+			
+			const position = calculateLabelPosition(label, geometry)
+			if (!position) continue
+
+			// Simple rectangular hit test for label text
+			const textWidth = 60 // Approximate text width
+			const textHeight = 20 // Approximate text height
+			
+			if (
+				worldX >= position.x - textWidth / 2 &&
+				worldX <= position.x + textWidth / 2 &&
+				worldY >= position.y - textHeight / 2 &&
+				worldY <= position.y + textHeight / 2
+			) {
+				return id
+			}
+		}
+
 		return null
 	}
 
@@ -166,6 +188,23 @@ export class CanvasInteraction {
 			}
 		}
 
+		// Check labels (select if label position is in rectangle)
+		for (const [id, label] of geometry.labels) {
+			if (!label.visible) continue
+			
+			const position = calculateLabelPosition(label, geometry)
+			if (!position) continue
+
+			if (
+				position.x >= minX &&
+				position.x <= maxX &&
+				position.y >= minY &&
+				position.y <= maxY
+			) {
+				selectedIds.add(id)
+			}
+		}
+
 		return selectedIds
 	}
 
@@ -226,6 +265,9 @@ export class CanvasInteraction {
 				break
 			case "circle":
 				this.handleCircleMouseDown(worldPos, e)
+				break
+			case "label":
+				this.handleLabelMouseDown(worldPos, e.shiftKey)
 				break
 		}
 	}
@@ -462,7 +504,8 @@ export class CanvasInteraction {
 			const hasMovableEntities = Array.from(selectedIds).some(
 				(id) =>
 					store.geometry.points.has(id) ||
-					store.geometry.lines.has(id)
+					store.geometry.lines.has(id) ||
+					store.geometry.labels.has(id)
 			)
 
 			if (hasMovableEntities) {
@@ -605,6 +648,55 @@ export class CanvasInteraction {
 		}
 	}
 
+	private handleLabelMouseDown(worldPos: { x: number; y: number }, shiftKey: boolean): void {
+		const store = useStore.getState()
+		const selectedIds = Array.from(store.selection.selectedIds)
+
+		// Check if clicking on an existing point
+		const existingPointId = this.findEntityAt(worldPos.x, worldPos.y)
+		const existingPoint = existingPointId
+			? store.geometry.points.get(existingPointId)
+			: null
+
+		// Determine label type based on selection or click
+		if (selectedIds.length === 1 && store.geometry.points.has(selectedIds[0])) {
+			// One point selected -> coordinate label
+			const label = createLabel("coordinate", [selectedIds[0]])
+			store.addLabel(label)
+		} else if (selectedIds.length === 2) {
+			// Two entities selected -> distance label if both are points
+			const arePoints = selectedIds.every(id => store.geometry.points.has(id))
+			if (arePoints) {
+				const label = createLabel("distance", selectedIds)
+				store.addLabel(label)
+			}
+		} else if (selectedIds.length === 3) {
+			// Three points selected -> angle label
+			const arePoints = selectedIds.every(id => store.geometry.points.has(id))
+			if (arePoints) {
+				const label = createLabel("angle", selectedIds)
+				store.addLabel(label)
+			}
+		} else if (existingPoint && !shiftKey) {
+			// Click on a point with no selection -> coordinate label
+			const label = createLabel("coordinate", [existingPoint.id])
+			store.addLabel(label)
+		} else if (shiftKey && existingPoint) {
+			// Shift-click to build up selection for multi-point labels
+			const newSelection = new Set(store.selection.selectedIds)
+			if (newSelection.has(existingPoint.id)) {
+				newSelection.delete(existingPoint.id)
+			} else {
+				newSelection.add(existingPoint.id)
+			}
+			store.setSelection({ selectedIds: newSelection })
+			return // Don't revert to select tool yet
+		}
+
+		// Auto-revert to select tool after creating label
+		store.setCurrentTool("select")
+	}
+
 	private handleMouseDrag(
 		_mousePos: { x: number; y: number },
 		worldPos: { x: number; y: number }
@@ -631,6 +723,16 @@ export class CanvasInteraction {
 					})
 				}
 
+				// Move labels by updating their offset
+				const label = store.geometry.labels.get(entityId)
+				if (label) {
+					store.updateLabel(entityId, {
+						offset: {
+							x: label.offset.x + dx,
+							y: label.offset.y + dy,
+						},
+					})
+				}
 
 				// Move lines by moving their endpoint points
 				const line = store.geometry.lines.get(entityId)
