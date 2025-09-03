@@ -61,32 +61,14 @@ export class CanvasInteraction {
 		const { geometry } = store
 		const tolerance = 10 / store.viewport.zoom // Scale tolerance with zoom
 
-		// Check points first (highest priority for interaction)
+		// Collect all entities within tolerance with their distances
+		const candidates: Array<{ id: string; distance: number; type: string }> = []
+
+		// Check points
 		for (const [id, point] of geometry.points) {
 			const dist = Math.sqrt((point.x - worldX) ** 2 + (point.y - worldY) ** 2)
 			if (dist <= tolerance) {
-				return id
-			}
-		}
-
-		// Check labels second (allow dragging when not clicking on points)
-		for (const [id, label] of geometry.labels) {
-			if (!label.visible) continue
-			
-			const position = calculateLabelPosition(label, geometry)
-			if (!position) continue
-
-			// Simple rectangular hit test for label text
-			const textWidth = 60 // Approximate text width
-			const textHeight = 20 // Approximate text height
-			
-			if (
-				worldX >= position.x - textWidth / 2 &&
-				worldX <= position.x + textWidth / 2 &&
-				worldY >= position.y - textHeight / 2 &&
-				worldY <= position.y + textHeight / 2
-			) {
-				return id
+				candidates.push({ id, distance: dist, type: 'point' })
 			}
 		}
 
@@ -103,7 +85,7 @@ export class CanvasInteraction {
 			)
 
 			if (dist <= tolerance) {
-				return id
+				candidates.push({ id, distance: dist, type: 'line' })
 			}
 		}
 
@@ -118,11 +100,86 @@ export class CanvasInteraction {
 			const distToCircle = Math.abs(distToCenter - getCircleRadius(circle, store.geometry))
 
 			if (distToCircle <= tolerance) {
-				return id
+				candidates.push({ id, distance: distToCircle, type: 'circle' })
 			}
 		}
 
-		return null
+		// Check labels (use larger tolerance since they're rectangular)
+		for (const [id, label] of geometry.labels) {
+			if (!label.visible) continue
+			
+			const position = calculateLabelPosition(label, geometry)
+			if (!position) continue
+
+			// Simple rectangular hit test for label text
+			const textWidth = 60 // Approximate text width
+			const textHeight = 20 // Approximate text height
+			
+			if (
+				worldX >= position.x - textWidth / 2 &&
+				worldX <= position.x + textWidth / 2 &&
+				worldY >= position.y - textHeight / 2 &&
+				worldY <= position.y + textHeight / 2
+			) {
+				// Calculate distance to center of label for comparison
+				const distToLabel = Math.sqrt(
+					(worldX - position.x) ** 2 + (worldY - position.y) ** 2
+				)
+				candidates.push({ id, distance: distToLabel, type: 'label' })
+			}
+		}
+
+		if (candidates.length === 0) {
+			return null
+		}
+
+		// Apply selection logic based on context and distance
+		return this.selectBestCandidate(candidates, worldX, worldY)
+	}
+
+	private selectBestCandidate(
+		candidates: Array<{ id: string; distance: number; type: string }>,
+		worldX: number,
+		worldY: number
+	): string {
+		// If only one candidate, return it
+		if (candidates.length === 1) {
+			return candidates[0].id
+		}
+
+		// Sort by distance (closest first)
+		candidates.sort((a, b) => a.distance - b.distance)
+
+		const closest = candidates[0]
+		const secondClosest = candidates[1]
+
+		// If the closest is significantly closer (>5 pixels difference), prefer it
+		const store = useStore.getState()
+		const significantDistance = 5 / store.viewport.zoom
+		
+		if (closest.distance + significantDistance < secondClosest.distance) {
+			return closest.id
+		}
+
+		// For close competitors, apply context rules:
+		
+		// 1. Always prefer points over everything else when very close
+		const pointCandidate = candidates.find(c => c.type === 'point')
+		if (pointCandidate && pointCandidate.distance <= closest.distance + significantDistance / 2) {
+			return pointCandidate.id
+		}
+
+		// 2. Prefer interactive geometry (lines, circles) over labels
+		const geometryCandidate = candidates.find(c => c.type === 'line' || c.type === 'circle')
+		const labelCandidate = candidates.find(c => c.type === 'label')
+		
+		if (geometryCandidate && labelCandidate && 
+			geometryCandidate.distance <= labelCandidate.distance + significantDistance) {
+			return geometryCandidate.id
+		}
+
+		// 3. Default to closest
+		return closest.id
 	}
 
 	private getEntitiesInRect(rect: {
