@@ -10,6 +10,30 @@ Strategies:
 ---
 
 
+Implement some label UX improvements:
+- when a label is on top of a point or other shape, when I try to move the label, it will attempt to grab the shape underneath instead of moving the label.
+- when the label is moved far away from the entity its labeling, there should be some kind of arrow pointing to what its labeling, particularly coordinates and angles.
+
+
+
+
+
+---
+
+I want to make some improvements to the way the background grid is presented.
+- When I zoom in far enough, the background is just white. Instead, I should see the grid adjust by factors of 10 so that I can see increasing precision as I zoom in. The legend at the bottom should adjust accordingly, showing the grid size.
+- Zooming out should similarly adjust the grid size. And lets stick to factors of 10.
+- Lets show the x-y axis as a slightly bolder line.
+
+
+- I should be able to set the initial scale of the drawing so that all the shapes are an appropriate size.
+
+
+
+
+
+Line length constrating. Distance.
+
 
 fixed radius + point on circle / tangent line
 
@@ -23,22 +47,14 @@ bisector, midpoint (custom fraction though?)
 
 
 
+
+
+
+
 I want to display constraints and dimensions visually in the canvas in a style consistent with physics or engineering drawings like dimension lines.
 - For a point, lets display (x: ?) if there's an x constraint and (x: ?, y: ?) if there's an x and y constraint. Don't display the current coordinated but the desired coordinates for the constraint.
 - For distance, if its just two points then draw a dimension line with the distance constraint value labeled. If its a distance but there's a line already drawn there then you don't need a dimension line, just draw the number label next to the line.
 
-
-  | "distance"
-  | "x-distance"
-  | "y-distance"
-  | "angle"
-  | "horizontal"
-  | "vertical"
-  | "x"
-  | "y"
-  | "same-x"
-  | "same-y"
-  | "radius";
 
 
 

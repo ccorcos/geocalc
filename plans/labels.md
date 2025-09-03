@@ -48,23 +48,42 @@ interface Geometry {
 
 ## User Experience Design
 
-### Creation Flow
+### Creation Flow - Enhanced UX Patterns
 
-1. **Label Tool Activation**: Add label tool to toolbar
-2. **Selection-Based Creation**:
-   - No selection + click point → coordinate label
-   - Two points selected + click tool → distance label  
-   - Click tool first → cursor changes, then multi-select entities
-3. **Visual Feedback**: Show preview of label placement during creation
+1. **Label Tool Activation**: Add label tool to toolbar (shortcut: T)
+2. **Creation Patterns**:
+   - **Single Point**: Click label tool → click any point → coordinate label appears
+   - **Distance Label**: 
+     - Method 1: Shift+click two points with label tool active
+     - Method 2: Select two points (multi-select) → click label tool
+   - **Angle Label**:
+     - Method 1: Shift+click three points in sequence (point1-vertex-point2) with label tool active
+     - Method 2: Select three points → click label tool
+3. **Visual Feedback**: 
+   - Show preview of label placement during creation
+   - Highlight valid targets when label tool is active
+   - Show selection count in cursor or status bar
 
 ### Interaction Patterns
 
-1. **Dragging**: Click and drag labels to reposition (updates `offset` property)
-2. **Deletion**: 
-   - Right-click label → context menu with "Delete"
-   - Select label + Delete key
-   - Include in entity panel with delete button
-3. **Selection**: Labels should be selectable like other entities
+1. **Dragging**: 
+   - Click and drag any label to reposition
+   - Updates `offset` property (relative to calculated base position)
+   - Real-time preview during drag
+   - Maintains offset through solver iterations
+   
+2. **Deletion Workflows**:
+   - **Individual**: Right-click label → context menu → "Delete Label"
+   - **Selection**: Select label + Delete/Backspace key
+   - **Entity Panel**: Delete button next to each label
+   - **Cascade**: When referenced entity is deleted, labels are automatically removed
+   - **Batch**: Multi-select labels → Delete key removes all
+   
+3. **Selection & Management**:
+   - Labels selectable like other entities (click to select, Shift+click for multi-select)
+   - Visual selection indicator (outline/highlight)
+   - Include in "Select All" operations
+   - Visibility toggle per label (eye icon in entity panel)
 
 ### Smart Positioning Algorithms
 
@@ -129,22 +148,46 @@ function calculateAnglePosition(p1: Point, vertex: Point, p2: Point, offset: {x:
 
 ### Engineering Drawing Standards
 
-#### Distance Labels
-- **Dimension Line**: Thin line connecting the two points
-- **Extension Lines**: Short perpendicular lines at each end (`|---|`)
-- **Text Placement**: Above dimension line, centered
-- **Arrowheads**: Small arrows or ticks at line ends
+#### Distance Labels - Full Dimension Line Implementation
+```
+Point A -------|              |------- Point B
+               |              |
+               |<-- extension  extension -->|
+            <--|    10.50     |-->
+               |              |
+               |              |
+```
+- **Dimension Line**: Primary line showing the measurement (thin, solid)
+- **Extension Lines**: Perpendicular lines extending from geometry to dimension line
+- **Gap**: Small gap (~2px) between geometry and start of extension lines
+- **Overhang**: Extension lines extend slightly beyond dimension line (~3px)
+- **Arrowheads**: Closed triangular arrows pointing toward measurement
+- **Text**: Centered on dimension line with small background for contrast
+- **Text Rotation**: Text aligns with dimension line angle (readable orientation)
 
-#### Angle Labels  
-- **Arc Indicator**: Arc drawn between the two rays
-- **Arc Radius**: ~20-25px from vertex
-- **Text Placement**: Along arc or adjacent to arc
-- **Degree Symbol**: Always include `°` symbol
+#### Angle Labels - Arc Indicator Style
+```
+      Point C
+         /
+        /  
+       / )
+      /  45.0°
+     /    ⌒⌒⌒
+Point A -------- Point B
+```
+- **Arc Indicator**: Arc drawn between the two rays, consistent radius from vertex
+- **Arc Radius**: 25-30px from vertex (scales with viewport zoom)
+- **Arc Extents**: Start/end angles match the actual geometry angle
+- **Text Placement**: Along arc path or positioned near arc midpoint
+- **Degree Symbol**: Always include `°` with 1 decimal precision
+- **Multiple Angle Handling**: If angles > 180°, show smaller arc (reflex handling)
 
-#### Coordinate Labels
-- **Format**: `(x.xx, y.yy)` with reasonable decimal precision
-- **Background**: Optional subtle background for readability
-- **Leader Line**: Optional line from label to point if offset is large
+#### Coordinate Labels - Position Annotation
+- **Format**: `(x.xx, y.yy)` with configurable decimal precision
+- **Background**: Subtle rounded rectangle with semi-transparent fill
+- **Text Color**: High contrast (black on light background, white on dark)
+- **Leader Line**: Thin line connecting label to point when offset > 20px
+- **Font**: Monospace font for number alignment
 
 ### Canvas Rendering Code Structure
 
@@ -247,10 +290,50 @@ function renderDistanceLabel(ctx: CanvasRenderingContext2D, label: Label, geomet
 - Coordinates: Match grid precision settings  
 - Angles: 1 decimal place, always degrees
 
-### Solver Integration
-- Labels are display-only, don't participate in constraints
-- Update label positions after solver runs
-- Handle referenced entity deletion gracefully
+### Solver Integration & Position Persistence
+
+#### How Labels Maintain Position During Solving
+```typescript
+interface Label {
+  id: string
+  type: 'coordinate' | 'distance' | 'angle'
+  entityIds: string[]  // Referenced point IDs
+  offset: { x: number, y: number }  // KEY: User-dragged offset from calculated position
+  visible: boolean
+}
+```
+
+The key insight is the **two-part positioning system**:
+
+1. **Base Position** (Calculated): Smart algorithm determines ideal placement based on geometry
+2. **User Offset** (Stored): User's drag adjustments stored as offset from base position
+
+#### Position Calculation During Solving
+```typescript
+function updateLabelPosition(label: Label, geometry: Geometry): {x: number, y: number} {
+  // Step 1: Calculate ideal base position based on current geometry
+  const basePosition = calculateBasePosition(label.type, label.entityIds, geometry)
+  
+  // Step 2: Apply user's stored offset
+  return {
+    x: basePosition.x + label.offset.x,
+    y: basePosition.y + label.offset.y  
+  }
+}
+```
+
+#### Solver Integration Strategy
+- **Labels don't participate in constraints** - they're display-only
+- **Update after each solver iteration** to track geometry changes
+- **Preserve user offsets** throughout solving process
+- **Handle entity deletion** by removing dependent labels
+- **Batch position updates** for performance with many labels
+
+#### Engineering Drawing Placement Intelligence
+- **Distance labels**: Auto-position perpendicular to line, avoiding geometry overlap
+- **Angle labels**: Position along angle bisector, scale distance based on angle size  
+- **Coordinate labels**: Default upper-right, with collision avoidance
+- **Collision detection**: Shift labels to avoid overlapping other labels or geometry
 
 ### Accessibility
 - Ensure labels have sufficient contrast

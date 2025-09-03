@@ -354,6 +354,9 @@ export class CanvasRenderer {
 
 		this.ctx.save()
 
+		// Render leader lines if label is moved far from entity
+		this.renderLeaderLine(label, geometry, position, isSelected, isHovered)
+
 		// Render dimension lines for distance labels
 		if (label.type === "distance") {
 			const [point1Id, point2Id] = label.entityIds
@@ -523,6 +526,165 @@ export class CanvasRenderer {
 		// Draw text
 		this.ctx.fillStyle = "#333"
 		this.ctx.fillText(text, position.x, position.y)
+	}
+
+	private renderLeaderLine(
+		label: Label,
+		geometry: Geometry,
+		labelPosition: { x: number; y: number },
+		isSelected: boolean,
+		isHovered: boolean
+	): void {
+		// Distance labels don't need leader lines - they have dimension lines
+		if (label.type === "distance") return
+
+		// Calculate the base position (where label would be without user offset)
+		const basePosition = this.calculateBasePosition(label, geometry)
+		if (!basePosition) return
+
+		// Calculate distance between label and its base position
+		const distanceFromBase = Math.sqrt(
+			(labelPosition.x - basePosition.x) ** 2 + 
+			(labelPosition.y - basePosition.y) ** 2
+		)
+
+		// Only show leader line if label is moved far enough (threshold: 30 pixels)
+		const leaderThreshold = 30
+		if (distanceFromBase < leaderThreshold) return
+
+		// Get the target point to point leader line to
+		const targetPoint = this.getLeaderTarget(label, geometry)
+		if (!targetPoint) return
+
+		// Draw leader line from target to label
+		this.ctx.strokeStyle = isSelected 
+			? "#4dabf7" 
+			: isHovered 
+				? "#74c0fc" 
+				: "rgba(0, 0, 0, 0.4)"
+		this.ctx.lineWidth = isSelected ? 2 : 1
+		this.ctx.setLineDash([3, 3]) // Dashed line
+
+		this.ctx.beginPath()
+		this.ctx.moveTo(targetPoint.x, targetPoint.y)
+		this.ctx.lineTo(labelPosition.x, labelPosition.y)
+		this.ctx.stroke()
+		
+		// Draw arrowhead at the target end of the line
+		this.drawArrowhead(targetPoint, labelPosition, isSelected, isHovered)
+		
+		// Reset line dash
+		this.ctx.setLineDash([])
+	}
+
+	private calculateBasePosition(label: Label, geometry: Geometry): { x: number; y: number } | null {
+		// Calculate where the label would be positioned without user offset
+		switch (label.type) {
+			case "coordinate": {
+				const [pointId] = label.entityIds
+				const point = geometry.points.get(pointId)
+				if (!point) return null
+				return { x: point.x + 15, y: point.y - 15 } // Default offset
+			}
+			case "distance": {
+				const [point1Id, point2Id] = label.entityIds
+				const p1 = geometry.points.get(point1Id)
+				const p2 = geometry.points.get(point2Id)
+				if (!p1 || !p2) return null
+				return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 } // Midpoint
+			}
+			case "angle": {
+				const [, vertexId] = label.entityIds
+				const vertex = geometry.points.get(vertexId)
+				if (!vertex) return null
+				return { x: vertex.x + 25, y: vertex.y - 25 } // Near vertex
+			}
+		}
+		return null
+	}
+
+	private getLeaderTarget(label: Label, geometry: Geometry): { x: number; y: number } | null {
+		// Get the specific point to point the leader line to
+		switch (label.type) {
+			case "coordinate": {
+				const [pointId] = label.entityIds
+				const point = geometry.points.get(pointId)
+				return point ? { x: point.x, y: point.y } : null
+			}
+			case "distance": {
+				const [point1Id, point2Id] = label.entityIds
+				const p1 = geometry.points.get(point1Id)
+				const p2 = geometry.points.get(point2Id)
+				if (!p1 || !p2) return null
+				return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 } // Line midpoint
+			}
+			case "angle": {
+				const [point1Id, vertexId, point2Id] = label.entityIds
+				const p1 = geometry.points.get(point1Id)
+				const vertex = geometry.points.get(vertexId)
+				const p2 = geometry.points.get(point2Id)
+				if (!p1 || !vertex || !p2) return null
+				
+				// Calculate the arc and point to its midpoint
+				const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2)
+				const midAngle = (startAngle + endAngle) / 2
+				
+				return {
+					x: centerX + radius * Math.cos(midAngle),
+					y: centerY + radius * Math.sin(midAngle)
+				}
+			}
+		}
+		return null
+	}
+
+	private drawArrowhead(
+		targetPoint: { x: number; y: number },
+		labelPoint: { x: number; y: number },
+		isSelected: boolean,
+		isHovered: boolean
+	): void {
+		const arrowLength = 8
+		const arrowWidth = 4
+
+		// Calculate direction vector from target to label
+		const dx = labelPoint.x - targetPoint.x
+		const dy = labelPoint.y - targetPoint.y
+		const length = Math.sqrt(dx * dx + dy * dy)
+		
+		if (length < 0.1) return // Avoid division by zero
+		
+		// Normalize direction vector (pointing from target toward label)
+		const unitX = dx / length
+		const unitY = dy / length
+		
+		// Arrowhead tip is at the target point
+		const arrowTipX = targetPoint.x
+		const arrowTipY = targetPoint.y
+		
+		// Calculate perpendicular vector
+		const perpX = -unitY
+		const perpY = unitX
+		
+		// Calculate arrowhead base points
+		const leftX = arrowTipX + unitX * arrowLength + perpX * arrowWidth
+		const leftY = arrowTipY + unitY * arrowLength + perpY * arrowWidth
+		const rightX = arrowTipX + unitX * arrowLength - perpX * arrowWidth
+		const rightY = arrowTipY + unitY * arrowLength - perpY * arrowWidth
+		
+		// Draw filled arrowhead pointing toward target
+		this.ctx.fillStyle = isSelected 
+			? "#4dabf7" 
+			: isHovered 
+				? "#74c0fc" 
+				: "rgba(0, 0, 0, 0.4)"
+		
+		this.ctx.beginPath()
+		this.ctx.moveTo(arrowTipX, arrowTipY)
+		this.ctx.lineTo(leftX, leftY)
+		this.ctx.lineTo(rightX, rightY)
+		this.ctx.closePath()
+		this.ctx.fill()
 	}
 
 	private renderConstraints(): void {

@@ -61,7 +61,28 @@ export class CanvasInteraction {
 		const { geometry } = store
 		const tolerance = 10 / store.viewport.zoom // Scale tolerance with zoom
 
-		// Check points first (highest priority for selection)
+		// Check labels FIRST (highest priority for selection to allow dragging)
+		for (const [id, label] of geometry.labels) {
+			if (!label.visible) continue
+			
+			const position = calculateLabelPosition(label, geometry)
+			if (!position) continue
+
+			// Simple rectangular hit test for label text
+			const textWidth = 60 // Approximate text width
+			const textHeight = 20 // Approximate text height
+			
+			if (
+				worldX >= position.x - textWidth / 2 &&
+				worldX <= position.x + textWidth / 2 &&
+				worldY >= position.y - textHeight / 2 &&
+				worldY <= position.y + textHeight / 2
+			) {
+				return id
+			}
+		}
+
+		// Check points second (high priority for creation/selection)
 		for (const [id, point] of geometry.points) {
 			const dist = Math.sqrt((point.x - worldX) ** 2 + (point.y - worldY) ** 2)
 			if (dist <= tolerance) {
@@ -97,27 +118,6 @@ export class CanvasInteraction {
 			const distToCircle = Math.abs(distToCenter - getCircleRadius(circle, store.geometry))
 
 			if (distToCircle <= tolerance) {
-				return id
-			}
-		}
-
-		// Check labels
-		for (const [id, label] of geometry.labels) {
-			if (!label.visible) continue
-			
-			const position = calculateLabelPosition(label, geometry)
-			if (!position) continue
-
-			// Simple rectangular hit test for label text
-			const textWidth = 60 // Approximate text width
-			const textHeight = 20 // Approximate text height
-			
-			if (
-				worldX >= position.x - textWidth / 2 &&
-				worldX <= position.x + textWidth / 2 &&
-				worldY >= position.y - textHeight / 2 &&
-				worldY <= position.y + textHeight / 2
-			) {
 				return id
 			}
 		}
