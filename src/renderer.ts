@@ -15,6 +15,39 @@ import {
 	calculateAngleArc
 } from "./engine/label-positioning"
 
+// Centralized color system to ensure consistent state handling
+type EntityState = {
+	isSelected: boolean
+	isHovered: boolean
+	isConstrained: boolean
+}
+
+class ColorSystem {
+	static getEntityColors(state: EntityState): { color: string; width: number } {
+		const { isSelected, isHovered, isConstrained } = state
+
+		if (isConstrained) {
+			return {
+				color: isSelected ? "#dc3545" : isHovered ? "#ff6b81" : "#c44569",
+				width: isSelected ? 4 : isHovered ? 3 : 2
+			}
+		} else {
+			return {
+				color: isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#6c757d",
+				width: isSelected ? 3 : isHovered ? 2 : 1
+			}
+		}
+	}
+
+	static getLabelColors(state: { isSelected: boolean; isHovered: boolean }): { color: string; bgColor: string } {
+		const { isSelected, isHovered } = state
+		return {
+			color: isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#666",
+			bgColor: isSelected ? "rgba(77, 171, 247, 0.2)" : isHovered ? "rgba(116, 192, 252, 0.2)" : "rgba(255, 255, 255, 0.9)"
+		}
+	}
+}
+
 export class CanvasRenderer {
 	private ctx: CanvasRenderingContext2D
 	private canvas: HTMLCanvasElement
@@ -377,22 +410,16 @@ export class CanvasRenderer {
 
 		this.ctx.save()
 
-		// Use red color for fixed radius circles, similar to fixed points
-		if (hasFixRadius) {
-			this.ctx.strokeStyle = isSelected ? "#dc3545" : "#c44569"
-			const baseWidth = isSelected ? 4 : 2
-			const scaledWidth = baseWidth * (viewport.displayScale / 100)
-			this.ctx.lineWidth = scaledWidth / viewport.zoom
-		} else {
-			this.ctx.strokeStyle = isSelected
-				? "#4dabf7"
-				: isHovered
-					? "#74c0fc"
-					: "#6c757d"
-			const baseWidth = isSelected ? 3 : isHovered ? 2 : 1
-			const scaledWidth = baseWidth * (viewport.displayScale / 100)
-			this.ctx.lineWidth = scaledWidth / viewport.zoom
-		}
+		// Use centralized color system for consistent state handling
+		const colors = ColorSystem.getEntityColors({
+			isSelected,
+			isHovered, 
+			isConstrained: hasFixRadius
+		})
+		
+		this.ctx.strokeStyle = colors.color
+		const scaledWidth = colors.width * (viewport.displayScale / 100)
+		this.ctx.lineWidth = scaledWidth / viewport.zoom
 
 		this.ctx.fillStyle = "transparent"
 
