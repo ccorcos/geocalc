@@ -24,6 +24,7 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 		geometry,
 		viewport,
 		selection,
+		selectedConstraintId,
 		setViewport,
 		currentTool,
 		isDragging,
@@ -74,9 +75,9 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 				selectionRect,
 				linePreview,
 				circlePreview,
-			})
+			}, selectedConstraintId)
 		}
-	}, [geometry, viewport, selection, isDragging])
+	}, [geometry, viewport, selection, selectedConstraintId, isDragging])
 
 	// Render on state changes
 	useEffect(() => {

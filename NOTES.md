@@ -9,16 +9,20 @@ Strategies:
 
 ---
 
+selecting constraints should highlihgt the elements in the canvas.
 
-Some drawings are at vastly different scales and it makes it hard to represent here very well. For example, one project might be working with 0.01 sized things. And other project might be working with 100,000 sized things. What happens is that I end up having to zoom in or out a bunch and then the lines and labels become either too big or too small. I think when zooming in, it makes sense that the features should have a max size as a function of the viewport, but when zooming out, I think it makes sense for those features to get smaller so you can see the drawing. I'm not sure what the best way to approach this is though. It seems like there should maybe be an initial scale of the drawing you can set? But then it might make sense to be able to change that whenever you want. It seems like you should be able zoom in or out however much you want with no limit, but then it probably also makes sense to have a button that will recenter the viewport on whatever has been drawn. What do you think we should do? Examine the trade-offs and recommend an approach that considers the UX as well. Write your plan in plans/scale.md
+red color of line vs circle vs point seem different. Lets consolidate and make sure they're the same.
+
+Lets refactor all the colors into their own files so they can be easily tweaked (or just css variables)
 
 
+blurry, retina distplay
 
-- I should be able to set the initial scale of the drawing so that all the shapes are an appropriate size.
+ I should be able to set the initial scale of the drawing so that all the shapes are an appropriate size.
 
 
-There should be a max size of a label, max size of a point circle, and max thickness of a line (as a function of the viewport) so that as I zoom in, things don't get obnoxiously big. Zooming out though, they should get smaller and thats fine.
-
+better ux for label and constraints. line vs two points, etc.
+line dimensional drawing line lable goes too far
 
 ---
 

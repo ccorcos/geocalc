@@ -20,13 +20,20 @@ type EntityState = {
 	isSelected: boolean
 	isHovered: boolean
 	isConstrained: boolean
+	isConstraintHighlighted: boolean
 }
 
 class ColorSystem {
 	static getEntityColors(state: EntityState): { color: string; width: number } {
-		const { isSelected, isHovered, isConstrained } = state
+		const { isSelected, isHovered, isConstrained, isConstraintHighlighted } = state
 
-		if (isConstrained) {
+		// Constraint highlighting takes precedence (distinct orange/amber color)
+		if (isConstraintHighlighted) {
+			return {
+				color: isSelected ? "#f59e0b" : isHovered ? "#fbbf24" : "#f59e0b",
+				width: isSelected ? 4 : isHovered ? 3 : 3 // Always thick for constraint highlighting
+			}
+		} else if (isConstrained) {
 			return {
 				color: isSelected ? "#dc3545" : isHovered ? "#ff6b81" : "#c44569",
 				width: isSelected ? 4 : isHovered ? 3 : 2
@@ -78,15 +85,19 @@ export class CanvasRenderer {
 				centerPoint: Point
 				radiusPoint: { x: number; y: number }
 			} | null
-		}
+		},
+		selectedConstraintId?: string | null
 	): void {
 		this.clear()
 		this.setupTransform(viewport)
 
+		// Get constraint-highlighted entities
+		const constraintHighlightedIds = this.getConstraintHighlightedIds(geometry, selectedConstraintId)
+
 		this.renderGrid(viewport)
-		this.renderLines(geometry, viewport, selection)
-		this.renderCircles(geometry, viewport, selection)
-		this.renderPoints(geometry, viewport, selection)
+		this.renderLines(geometry, viewport, selection, constraintHighlightedIds)
+		this.renderCircles(geometry, viewport, selection, constraintHighlightedIds)
+		this.renderPoints(geometry, viewport, selection, constraintHighlightedIds)
 		this.renderLabels(geometry, viewport, selection)
 		this.renderConstraints()
 
@@ -216,9 +227,9 @@ export class CanvasRenderer {
 		this.ctx.restore()
 	}
 
-	private renderPoints(geometry: Geometry, viewport: Viewport, selection: SelectionState): void {
+	private renderPoints(geometry: Geometry, viewport: Viewport, selection: SelectionState, constraintHighlightedIds: Set<string>): void {
 		geometry.points.forEach((point) => {
-			this.renderPoint(point, viewport, selection, geometry)
+			this.renderPoint(point, viewport, selection, geometry, constraintHighlightedIds)
 		})
 	}
 
@@ -226,10 +237,12 @@ export class CanvasRenderer {
 		point: Point,
 		viewport: Viewport,
 		selection: SelectionState,
-		geometry: Geometry
+		geometry: Geometry,
+		constraintHighlightedIds: Set<string>
 	): void {
 		const isSelected = selection.selectedIds.has(point.id)
 		const isHovered = selection.hoveredId === point.id
+		const isConstraintHighlighted = constraintHighlightedIds.has(point.id)
 
 		// Check for fix constraints
 		const hasFixX = this.hasFixXConstraint(point.id, geometry)
@@ -246,7 +259,14 @@ export class CanvasRenderer {
 		const radius = scaledRadius / viewport.zoom
 		this.ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI)
 
-		if (isFixed) {
+		// Use ColorSystem for consistent color handling
+		if (isConstraintHighlighted) {
+			this.ctx.fillStyle = isSelected
+				? "#f59e0b"
+				: isHovered
+					? "#fbbf24"
+					: "#f59e0b"
+		} else if (isFixed) {
 			this.ctx.fillStyle = isSelected
 				? "#ff4757"
 				: isHovered
@@ -264,7 +284,9 @@ export class CanvasRenderer {
 
 		// Fixed points get a distinctive border
 		if (isFixed) {
-			this.ctx.strokeStyle = "#c44569"
+			this.ctx.strokeStyle = isConstraintHighlighted
+				? "#d97706"
+				: "#c44569"
 			const borderWidth = 2 * (viewport.displayScale / 100)
 			this.ctx.lineWidth = borderWidth / viewport.zoom
 			this.ctx.stroke()
@@ -288,29 +310,40 @@ export class CanvasRenderer {
 			}
 		}
 
-		// Selection ring
-		if (isSelected || isHovered) {
+		// Selection ring or constraint highlight ring
+		if (isSelected || isHovered || isConstraintHighlighted) {
 			this.ctx.beginPath()
 			const ringOffset = 2 * (viewport.displayScale / 100) / viewport.zoom
 			this.ctx.arc(point.x, point.y, radius + ringOffset, 0, 2 * Math.PI)
-			this.ctx.strokeStyle = isFixed
-				? isSelected
+			
+			if (isConstraintHighlighted) {
+				this.ctx.strokeStyle = isSelected
+					? "#d97706"
+					: isHovered
+						? "#f59e0b"
+						: "#d97706"
+			} else if (isFixed) {
+				this.ctx.strokeStyle = isSelected
 					? "#c44569"
 					: "#ff6b81"
-				: isSelected
+			} else {
+				this.ctx.strokeStyle = isSelected
 					? "#1971c2"
 					: "#74c0fc"
-			const ringWidth = 2 * (viewport.displayScale / 100)
-			this.ctx.lineWidth = ringWidth / viewport.zoom
+			}
+			
+			const ringWidth = isConstraintHighlighted ? 3 : 2 // Thicker ring for constraint highlighting
+			const scaledRingWidth = ringWidth * (viewport.displayScale / 100)
+			this.ctx.lineWidth = scaledRingWidth / viewport.zoom
 			this.ctx.stroke()
 		}
 
 		this.ctx.restore()
 	}
 
-	private renderLines(geometry: Geometry, viewport: Viewport, selection: SelectionState): void {
+	private renderLines(geometry: Geometry, viewport: Viewport, selection: SelectionState, constraintHighlightedIds: Set<string>): void {
 		geometry.lines.forEach((line) => {
-			this.renderLine(line, geometry, viewport, selection)
+			this.renderLine(line, geometry, viewport, selection, constraintHighlightedIds)
 		})
 	}
 
@@ -318,7 +351,8 @@ export class CanvasRenderer {
 		line: Line,
 		geometry: Geometry,
 		viewport: Viewport,
-		selection: SelectionState
+		selection: SelectionState,
+		constraintHighlightedIds: Set<string>
 	): void {
 		const point1 = geometry.points.get(line.point1Id)
 		const point2 = geometry.points.get(line.point2Id)
@@ -327,30 +361,23 @@ export class CanvasRenderer {
 
 		const isSelected = selection.selectedIds.has(line.id)
 		const isHovered = selection.hoveredId === line.id
+		const isConstraintHighlighted = constraintHighlightedIds.has(line.id)
 		const hasLengthConstraint = geometry.constraints.has(
 			`line-length-${line.id}`
 		)
 
 		this.ctx.save()
 
-		if (hasLengthConstraint) {
-			// Constrained lines use red color scheme (like fixed points)
-			this.ctx.strokeStyle = isSelected
-				? "#ff4757" // Bright red when selected
-				: isHovered
-					? "#ff6b81" // Light red when hovered
-					: "#dc3545" // Red when constrained
-		} else {
-			// Normal lines use blue/gray color scheme
-			this.ctx.strokeStyle = isSelected
-				? "#4dabf7" // Blue when selected
-				: isHovered
-					? "#74c0fc" // Light blue when hovered
-					: "#6c757d" // Gray default
-		}
-		const baseWidth = isSelected ? 3 : isHovered ? 2 : 1
-		// Scale line width by display scale relative to 100-unit baseline
-		const scaledWidth = baseWidth * (viewport.displayScale / 100)
+		// Use ColorSystem for consistent color handling
+		const colors = ColorSystem.getEntityColors({
+			isSelected,
+			isHovered, 
+			isConstrained: hasLengthConstraint,
+			isConstraintHighlighted
+		})
+		
+		this.ctx.strokeStyle = colors.color
+		const scaledWidth = colors.width * (viewport.displayScale / 100)
 		this.ctx.lineWidth = scaledWidth / viewport.zoom
 
 		this.ctx.beginPath()
@@ -384,9 +411,9 @@ export class CanvasRenderer {
 		this.ctx.restore()
 	}
 
-	private renderCircles(geometry: Geometry, viewport: Viewport, selection: SelectionState): void {
+	private renderCircles(geometry: Geometry, viewport: Viewport, selection: SelectionState, constraintHighlightedIds: Set<string>): void {
 		geometry.circles.forEach((circle) => {
-			this.renderCircle(circle, geometry, viewport, selection)
+			this.renderCircle(circle, geometry, viewport, selection, constraintHighlightedIds)
 		})
 	}
 
@@ -394,13 +421,15 @@ export class CanvasRenderer {
 		circle: Circle,
 		geometry: Geometry,
 		viewport: Viewport,
-		selection: SelectionState
+		selection: SelectionState,
+		constraintHighlightedIds: Set<string>
 	): void {
 		const center = geometry.points.get(circle.centerId)
 		if (!center) return
 
 		const isSelected = selection.selectedIds.has(circle.id)
 		const isHovered = selection.hoveredId === circle.id
+		const isConstraintHighlighted = constraintHighlightedIds.has(circle.id)
 
 		// Check if radius is fixed
 		const hasFixRadius = Array.from(geometry.constraints.entries()).some(
@@ -414,7 +443,8 @@ export class CanvasRenderer {
 		const colors = ColorSystem.getEntityColors({
 			isSelected,
 			isHovered, 
-			isConstrained: hasFixRadius
+			isConstrained: hasFixRadius,
+			isConstraintHighlighted
 		})
 		
 		this.ctx.strokeStyle = colors.color
@@ -917,5 +947,21 @@ export class CanvasRenderer {
 	private hasFixYConstraint(pointId: string, geometry: Geometry): boolean {
 		const constraintId = `y-${pointId}`
 		return geometry.constraints.has(constraintId)
+	}
+
+	private getConstraintHighlightedIds(geometry: Geometry, selectedConstraintId: string | null | undefined): Set<string> {
+		const highlightedIds = new Set<string>()
+		
+		if (!selectedConstraintId || !geometry) {
+			return highlightedIds
+		}
+
+		const constraint = geometry.constraints.get(selectedConstraintId)
+		if (constraint) {
+			// Add all entity IDs from the constraint to the highlighted set
+			constraint.entityIds.forEach(id => highlightedIds.add(id))
+		}
+
+		return highlightedIds
 	}
 }
