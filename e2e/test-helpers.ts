@@ -152,6 +152,16 @@ export class TestHarness {
 		await this.page.waitForTimeout(500) // Wait for solver to complete
 	}
 
+	async getSolverStatistics() {
+		return await this.page.evaluate(() => {
+			const store = (window as any).__GEOCALC_STORE__
+			if (!store) return null
+			
+			const state = store.getState()
+			return state.solverStatistics || null
+		})
+	}
+
 	// Verification helpers
 	async expectPointCount(count: number) {
 		await expect(
@@ -416,7 +426,7 @@ export class TestHarness {
 		expectedRadius: number,
 		tolerance = 0.001
 	): Promise<boolean> {
-		// Get circle information from the diagnostics
+		// Get circle information and calculate radius from center/radius point
 		const actualRadius = await this.page.evaluate(() => {
 			const diagnostics = (window as any).__GEOCALC_DIAGNOSTICS__
 			if (!diagnostics) return null
@@ -424,8 +434,24 @@ export class TestHarness {
 			const circles = diagnostics.getCircles()
 			if (circles.length === 0) return null
 			
-			// Return radius of first circle (for simple test cases)
-			return circles[0].radius
+			// Get the first circle
+			const circle = circles[0]
+			if (!circle) return null
+			
+			// Get geometry to access points
+			const store = (window as any).__GEOCALC_STORE__
+			if (!store) return null
+			
+			const state = store.getState()
+			const centerPoint = state.geometry.points.get(circle.centerId)
+			const radiusPoint = state.geometry.points.get(circle.radiusPointId)
+			
+			if (!centerPoint || !radiusPoint) return null
+			
+			// Calculate radius as distance between center and radius point
+			const dx = radiusPoint.x - centerPoint.x
+			const dy = radiusPoint.y - centerPoint.y
+			return Math.sqrt(dx * dx + dy * dy)
 		})
 		
 		if (actualRadius === null) return false
