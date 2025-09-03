@@ -61,7 +61,15 @@ export class CanvasInteraction {
 		const { geometry } = store
 		const tolerance = 10 / store.viewport.zoom // Scale tolerance with zoom
 
-		// Check labels FIRST (highest priority for selection to allow dragging)
+		// Check points first (highest priority for interaction)
+		for (const [id, point] of geometry.points) {
+			const dist = Math.sqrt((point.x - worldX) ** 2 + (point.y - worldY) ** 2)
+			if (dist <= tolerance) {
+				return id
+			}
+		}
+
+		// Check labels second (allow dragging when not clicking on points)
 		for (const [id, label] of geometry.labels) {
 			if (!label.visible) continue
 			
@@ -78,14 +86,6 @@ export class CanvasInteraction {
 				worldY >= position.y - textHeight / 2 &&
 				worldY <= position.y + textHeight / 2
 			) {
-				return id
-			}
-		}
-
-		// Check points second (high priority for creation/selection)
-		for (const [id, point] of geometry.points) {
-			const dist = Math.sqrt((point.x - worldX) ** 2 + (point.y - worldY) ** 2)
-			if (dist <= tolerance) {
 				return id
 			}
 		}
@@ -371,8 +371,8 @@ export class CanvasInteraction {
 		// Distinguish between pinch-to-zoom and scroll-to-pan
 		// ctrlKey is set during pinch gestures on trackpad
 		if (e.ctrlKey) {
-			// Pinch to zoom with reduced sensitivity
-			const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05
+			// Pinch to zoom
+			const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1
 			store.zoomViewport(zoomFactor, mousePos.x, mousePos.y)
 		} else {
 			// Two-finger scroll to pan

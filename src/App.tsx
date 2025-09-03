@@ -9,7 +9,14 @@ import { useStore } from "./store"
 
 function App() {
 	const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
-	const { setCurrentTool, selection, removeEntity } = useStore()
+	const { 
+		setCurrentTool, 
+		selection, 
+		removeEntity, 
+		fitViewportToDrawing,
+		centerViewportOnDrawing,
+		resetViewportToDrawing
+	} = useStore()
 
 	useEffect(() => {
 		const updateCanvasSize = () => {
@@ -69,12 +76,26 @@ function App() {
 						removeEntity(id)
 					})
 					break
+				case "f":
+					event.preventDefault()
+					fitViewportToDrawing()
+					break
+				case "h":
+					event.preventDefault()
+					centerViewportOnDrawing()
+					break
+				case "r":
+					if (event.shiftKey) {
+						event.preventDefault()
+						resetViewportToDrawing()
+					}
+					break
 			}
 		}
 
 		window.addEventListener("keydown", handleKeyDown)
 		return () => window.removeEventListener("keydown", handleKeyDown)
-	}, [setCurrentTool, selection.selectedIds, removeEntity])
+	}, [setCurrentTool, selection.selectedIds, removeEntity, fitViewportToDrawing, centerViewportOnDrawing, resetViewportToDrawing])
 
 	return (
 		<ErrorBoundary>

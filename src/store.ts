@@ -4,6 +4,11 @@ import { immer } from "zustand/middleware/immer"
 import { GradientDescentSolver } from "./engine/GradientDescentSolver"
 import { createEmptyGeometry } from "./engine/geometry"
 import {
+	fitToDrawing,
+	centerViewport,
+	resetViewport
+} from "./engine/viewport-utils"
+import {
 	Circle,
 	Constraint,
 	Geometry,
@@ -134,6 +139,10 @@ interface AppState {
 	// Viewport actions
 	panViewport: (dx: number, dy: number) => void
 	zoomViewport: (factor: number, centerX?: number, centerY?: number) => void
+	fitViewportToDrawing: () => void
+	centerViewportOnDrawing: () => void
+	resetViewportToDrawing: () => void
+	setDisplayScale: (scale: number) => void
 	screenToWorld: (screenX: number, screenY: number) => { x: number; y: number }
 	worldToScreen: (worldX: number, worldY: number) => { x: number; y: number }
 }
@@ -150,6 +159,7 @@ export const useStore = create<AppState>()(
 			zoom: 1,
 			width: 800,
 			height: 600,
+			displayScale: 100,
 		},
 		selection: {
 			selectedIds: new Set(),
@@ -465,7 +475,7 @@ export const useStore = create<AppState>()(
 		zoomViewport: (factor, centerX = 0, centerY = 0) =>
 			set((state) => {
 				const oldZoom = state.viewport.zoom
-				const newZoom = Math.max(0.1, Math.min(10, oldZoom * factor))
+				const newZoom = Math.max(0.1, Math.min(100, oldZoom * factor))
 
 				if (newZoom !== oldZoom) {
 					// Get the world point under the mouse BEFORE zoom change
@@ -510,5 +520,28 @@ export const useStore = create<AppState>()(
 				y: (worldY - viewport.y) * viewport.zoom + viewport.height / 2,
 			}
 		},
+
+		fitViewportToDrawing: () =>
+			set((state) => {
+				const newViewport = fitToDrawing(state.geometry, state.viewport)
+				Object.assign(state.viewport, newViewport)
+			}),
+
+		centerViewportOnDrawing: () =>
+			set((state) => {
+				const newViewport = centerViewport(state.geometry, state.viewport)
+				Object.assign(state.viewport, newViewport)
+			}),
+
+		resetViewportToDrawing: () =>
+			set((state) => {
+				const newViewport = resetViewport(state.geometry, state.viewport)
+				Object.assign(state.viewport, newViewport)
+			}),
+
+		setDisplayScale: (scale) =>
+			set((state) => {
+				state.viewport.displayScale = Math.max(1, Math.min(10000, scale))
+			}),
 	}))
 )

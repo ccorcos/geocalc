@@ -59,6 +59,7 @@ export interface Viewport {
 	zoom: number
 	width: number
 	height: number
+	displayScale: number
 }
 
 export type ToolType = "select" | "point" | "line" | "circle" | "label"

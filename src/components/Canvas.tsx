@@ -4,6 +4,7 @@ import { CanvasInteraction } from "../interaction/CanvasInteraction"
 import { CanvasRenderer } from "../renderer"
 import { useStore } from "../store"
 import { ConstraintContextMenu } from "./ConstraintContextMenu"
+import { InteractiveLegend } from "./InteractiveLegend"
 
 interface CanvasProps {
 	width: number
@@ -189,7 +190,7 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 	])
 
 	return (
-		<>
+		<div style={{ position: "relative" }}>
 			<canvas
 				ref={canvasRef}
 				width={width}
@@ -202,6 +203,12 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 				}}
 				tabIndex={0}
 			/>
+			
+			<InteractiveLegend 
+				canvasWidth={width}
+				canvasHeight={height}
+			/>
+			
 			{contextMenu && (
 				<ConstraintContextMenu
 					x={contextMenu.x}
@@ -209,6 +216,6 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 					onClose={() => setContextMenu(null)}
 				/>
 			)}
-		</>
+		</div>
 	)
 }

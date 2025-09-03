@@ -51,10 +51,10 @@ export class CanvasRenderer {
 		this.setupTransform(viewport)
 
 		this.renderGrid(viewport)
-		this.renderLines(geometry, selection)
-		this.renderCircles(geometry, selection)
-		this.renderPoints(geometry, selection)
-		this.renderLabels(geometry, selection)
+		this.renderLines(geometry, viewport, selection)
+		this.renderCircles(geometry, viewport, selection)
+		this.renderPoints(geometry, viewport, selection)
+		this.renderLabels(geometry, viewport, selection)
 		this.renderConstraints()
 
 		// Render interaction states
@@ -70,7 +70,8 @@ export class CanvasRenderer {
 			}
 		}
 
-		this.renderGridLegend(viewport)
+		// Legend now rendered by InteractiveLegend component
+		// this.renderGridLegend(viewport)
 	}
 
 	private clear(): void {
@@ -182,14 +183,15 @@ export class CanvasRenderer {
 		this.ctx.restore()
 	}
 
-	private renderPoints(geometry: Geometry, selection: SelectionState): void {
+	private renderPoints(geometry: Geometry, viewport: Viewport, selection: SelectionState): void {
 		geometry.points.forEach((point) => {
-			this.renderPoint(point, selection, geometry)
+			this.renderPoint(point, viewport, selection, geometry)
 		})
 	}
 
 	private renderPoint(
 		point: Point,
+		viewport: Viewport,
 		selection: SelectionState,
 		geometry: Geometry
 	): void {
@@ -204,9 +206,11 @@ export class CanvasRenderer {
 
 		this.ctx.save()
 
-		// Point circle
+		// Point circle - scale with displayScale
 		this.ctx.beginPath()
-		const radius = isFixed ? 5 : 4 // Fixed points are slightly larger
+		const baseRadius = isFixed ? 5 : 4 // Fixed points are slightly larger
+		const scaledRadius = baseRadius * (viewport.displayScale / 100)
+		const radius = scaledRadius / viewport.zoom
 		this.ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI)
 
 		if (isFixed) {
@@ -228,7 +232,8 @@ export class CanvasRenderer {
 		// Fixed points get a distinctive border
 		if (isFixed) {
 			this.ctx.strokeStyle = "#c44569"
-			this.ctx.lineWidth = 2
+			const borderWidth = 2 * (viewport.displayScale / 100)
+			this.ctx.lineWidth = borderWidth / viewport.zoom
 			this.ctx.stroke()
 
 			// Show partial fixing with partial border
@@ -244,7 +249,8 @@ export class CanvasRenderer {
 					this.ctx.lineTo(point.x + radius, point.y)
 				}
 				this.ctx.strokeStyle = "#ffffff"
-				this.ctx.lineWidth = 2
+				const crossWidth = 2 * (viewport.displayScale / 100)
+				this.ctx.lineWidth = crossWidth / viewport.zoom
 				this.ctx.stroke()
 			}
 		}
@@ -252,7 +258,8 @@ export class CanvasRenderer {
 		// Selection ring
 		if (isSelected || isHovered) {
 			this.ctx.beginPath()
-			this.ctx.arc(point.x, point.y, radius + 2, 0, 2 * Math.PI)
+			const ringOffset = 2 * (viewport.displayScale / 100) / viewport.zoom
+			this.ctx.arc(point.x, point.y, radius + ringOffset, 0, 2 * Math.PI)
 			this.ctx.strokeStyle = isFixed
 				? isSelected
 					? "#c44569"
@@ -260,22 +267,24 @@ export class CanvasRenderer {
 				: isSelected
 					? "#1971c2"
 					: "#74c0fc"
-			this.ctx.lineWidth = 2
+			const ringWidth = 2 * (viewport.displayScale / 100)
+			this.ctx.lineWidth = ringWidth / viewport.zoom
 			this.ctx.stroke()
 		}
 
 		this.ctx.restore()
 	}
 
-	private renderLines(geometry: Geometry, selection: SelectionState): void {
+	private renderLines(geometry: Geometry, viewport: Viewport, selection: SelectionState): void {
 		geometry.lines.forEach((line) => {
-			this.renderLine(line, geometry, selection)
+			this.renderLine(line, geometry, viewport, selection)
 		})
 	}
 
 	private renderLine(
 		line: Line,
 		geometry: Geometry,
+		viewport: Viewport,
 		selection: SelectionState
 	): void {
 		const point1 = geometry.points.get(line.point1Id)
@@ -306,7 +315,10 @@ export class CanvasRenderer {
 					? "#74c0fc" // Light blue when hovered
 					: "#6c757d" // Gray default
 		}
-		this.ctx.lineWidth = isSelected ? 3 : isHovered ? 2 : 1
+		const baseWidth = isSelected ? 3 : isHovered ? 2 : 1
+		// Scale line width by display scale relative to 100-unit baseline
+		const scaledWidth = baseWidth * (viewport.displayScale / 100)
+		this.ctx.lineWidth = scaledWidth / viewport.zoom
 
 		this.ctx.beginPath()
 
@@ -339,15 +351,16 @@ export class CanvasRenderer {
 		this.ctx.restore()
 	}
 
-	private renderCircles(geometry: Geometry, selection: SelectionState): void {
+	private renderCircles(geometry: Geometry, viewport: Viewport, selection: SelectionState): void {
 		geometry.circles.forEach((circle) => {
-			this.renderCircle(circle, geometry, selection)
+			this.renderCircle(circle, geometry, viewport, selection)
 		})
 	}
 
 	private renderCircle(
 		circle: Circle,
 		geometry: Geometry,
+		viewport: Viewport,
 		selection: SelectionState
 	): void {
 		const center = geometry.points.get(circle.centerId)
@@ -367,14 +380,18 @@ export class CanvasRenderer {
 		// Use red color for fixed radius circles, similar to fixed points
 		if (hasFixRadius) {
 			this.ctx.strokeStyle = isSelected ? "#dc3545" : "#c44569"
-			this.ctx.lineWidth = isSelected ? 4 : 2
+			const baseWidth = isSelected ? 4 : 2
+			const scaledWidth = baseWidth * (viewport.displayScale / 100)
+			this.ctx.lineWidth = scaledWidth / viewport.zoom
 		} else {
 			this.ctx.strokeStyle = isSelected
 				? "#4dabf7"
 				: isHovered
 					? "#74c0fc"
 					: "#6c757d"
-			this.ctx.lineWidth = isSelected ? 3 : isHovered ? 2 : 1
+			const baseWidth = isSelected ? 3 : isHovered ? 2 : 1
+			const scaledWidth = baseWidth * (viewport.displayScale / 100)
+			this.ctx.lineWidth = scaledWidth / viewport.zoom
 		}
 
 		this.ctx.fillStyle = "transparent"
@@ -387,10 +404,10 @@ export class CanvasRenderer {
 		this.ctx.restore()
 	}
 
-	private renderLabels(geometry: Geometry, selection: SelectionState): void {
+	private renderLabels(geometry: Geometry, viewport: Viewport, selection: SelectionState): void {
 		geometry.labels.forEach((label) => {
 			if (label.visible) {
-				this.renderLabel(label, geometry, selection)
+				this.renderLabel(label, geometry, viewport, selection)
 			}
 		})
 	}
@@ -398,6 +415,7 @@ export class CanvasRenderer {
 	private renderLabel(
 		label: Label,
 		geometry: Geometry,
+		viewport: Viewport,
 		selection: SelectionState
 	): void {
 		const position = calculateLabelPosition(label, geometry)
@@ -411,7 +429,7 @@ export class CanvasRenderer {
 		this.ctx.save()
 
 		// Render leader lines if label is moved far from entity
-		this.renderLeaderLine(label, geometry, position, isSelected, isHovered)
+		this.renderLeaderLine(label, geometry, position, viewport, isSelected, isHovered)
 
 		// Render dimension lines for distance labels
 		if (label.type === "distance") {
@@ -419,7 +437,7 @@ export class CanvasRenderer {
 			const p1 = geometry.points.get(point1Id)
 			const p2 = geometry.points.get(point2Id)
 			if (p1 && p2) {
-				this.renderDimensionLine(p1, p2, position, isSelected, isHovered)
+				this.renderDimensionLine(p1, p2, position, viewport, isSelected, isHovered)
 			}
 		}
 
@@ -430,12 +448,12 @@ export class CanvasRenderer {
 			const vertex = geometry.points.get(vertexId)
 			const p2 = geometry.points.get(point2Id)
 			if (p1 && vertex && p2) {
-				this.renderAngleArc(p1, vertex, p2, isSelected, isHovered)
+				this.renderAngleArc(p1, vertex, p2, viewport, isSelected, isHovered)
 			}
 		}
 
 		// Render label text with background
-		this.renderLabelText(text, position, isSelected, isHovered)
+		this.renderLabelText(text, position, viewport, isSelected, isHovered)
 
 		this.ctx.restore()
 	}
@@ -444,16 +462,18 @@ export class CanvasRenderer {
 		p1: Point,
 		p2: Point,
 		labelPosition: { x: number; y: number },
+		viewport: Viewport,
 		isSelected: boolean,
 		isHovered: boolean
 	): void {
 		const { start, end, extensionLines } = calculateDimensionLineEndpoints(p1, p2, labelPosition)
 		
 		const color = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#666"
-		const lineWidth = isSelected ? 2 : 1
+		const baseWidth = isSelected ? 2 : 1
+		const scaledWidth = baseWidth * (viewport.displayScale / 100)
 
 		this.ctx.strokeStyle = color
-		this.ctx.lineWidth = lineWidth
+		this.ctx.lineWidth = scaledWidth / viewport.zoom
 
 		// Draw extension lines
 		this.ctx.beginPath()
@@ -470,16 +490,18 @@ export class CanvasRenderer {
 		this.ctx.stroke()
 
 		// Draw arrowheads/ticks at ends
-		this.renderDimensionArrows(start, end, color, lineWidth)
+		this.renderDimensionArrows(start, end, color, scaledWidth, viewport)
 	}
 
 	private renderDimensionArrows(
 		start: { x: number; y: number },
 		end: { x: number; y: number },
 		color: string,
-		lineWidth: number
+		scaledWidth: number,
+		viewport: Viewport
 	): void {
-		const arrowSize = 5
+		const baseArrowSize = 5
+		const arrowSize = (baseArrowSize * (viewport.displayScale / 100)) / viewport.zoom
 		
 		// Calculate direction vector
 		const dx = end.x - start.x
@@ -495,7 +517,7 @@ export class CanvasRenderer {
 
 		this.ctx.fillStyle = color
 		this.ctx.strokeStyle = color
-		this.ctx.lineWidth = lineWidth
+		this.ctx.lineWidth = scaledWidth / viewport.zoom
 
 		// Start arrow
 		this.ctx.beginPath()
@@ -518,16 +540,18 @@ export class CanvasRenderer {
 		p1: Point,
 		vertex: Point,
 		p2: Point,
+		viewport: Viewport,
 		isSelected: boolean,
 		isHovered: boolean
 	): void {
 		const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2)
 		
 		const color = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#666"
-		const lineWidth = isSelected ? 2 : 1
+		const baseWidth = isSelected ? 2 : 1
+		const scaledWidth = baseWidth * (viewport.displayScale / 100)
 
 		this.ctx.strokeStyle = color
-		this.ctx.lineWidth = lineWidth
+		this.ctx.lineWidth = scaledWidth / viewport.zoom
 		this.ctx.fillStyle = "transparent"
 
 		// Draw arc
@@ -539,19 +563,23 @@ export class CanvasRenderer {
 	private renderLabelText(
 		text: string,
 		position: { x: number; y: number },
+		viewport: Viewport,
 		isSelected: boolean,
 		isHovered: boolean
 	): void {
 		// Calculate text dimensions for background
-		this.ctx.font = "12px Arial"
+		const baseFontSize = 12
+		const scaledFontSize = baseFontSize * (viewport.displayScale / 100)
+		this.ctx.font = `${scaledFontSize / viewport.zoom}px Arial`
 		this.ctx.textAlign = "center"
 		this.ctx.textBaseline = "middle"
 		
 		const textMetrics = this.ctx.measureText(text)
 		const textWidth = textMetrics.width
-		const textHeight = 16 // Approximate font height
+		const textHeight = scaledFontSize / viewport.zoom * 1.2 // Font height with some spacing
 		
-		const padding = 4
+		const basePadding = 4
+		const padding = (basePadding * (viewport.displayScale / 100)) / viewport.zoom
 		const bgWidth = textWidth + padding * 2
 		const bgHeight = textHeight + padding * 2
 
@@ -571,7 +599,9 @@ export class CanvasRenderer {
 
 		// Draw border
 		this.ctx.strokeStyle = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#ccc"
-		this.ctx.lineWidth = isSelected ? 2 : 1
+		const baseBorderWidth = isSelected ? 2 : 1
+		const scaledBorderWidth = baseBorderWidth * (viewport.displayScale / 100)
+		this.ctx.lineWidth = scaledBorderWidth / viewport.zoom
 		this.ctx.strokeRect(
 			position.x - bgWidth / 2,
 			position.y - bgHeight / 2,
@@ -588,6 +618,7 @@ export class CanvasRenderer {
 		label: Label,
 		geometry: Geometry,
 		labelPosition: { x: number; y: number },
+		viewport: Viewport,
 		isSelected: boolean,
 		isHovered: boolean
 	): void {
@@ -618,8 +649,11 @@ export class CanvasRenderer {
 			: isHovered 
 				? "#74c0fc" 
 				: "rgba(0, 0, 0, 0.4)"
-		this.ctx.lineWidth = isSelected ? 2 : 1
-		this.ctx.setLineDash([3, 3]) // Dashed line
+		const baseWidth = isSelected ? 2 : 1
+		const scaledWidth = baseWidth * (viewport.displayScale / 100)
+		this.ctx.lineWidth = scaledWidth / viewport.zoom
+		const dashSize = (3 * (viewport.displayScale / 100)) / viewport.zoom
+		this.ctx.setLineDash([dashSize, dashSize]) // Dashed line
 
 		this.ctx.beginPath()
 		this.ctx.moveTo(targetPoint.x, targetPoint.y)
@@ -627,7 +661,7 @@ export class CanvasRenderer {
 		this.ctx.stroke()
 		
 		// Draw arrowhead at the target end of the line
-		this.drawArrowhead(targetPoint, labelPosition, isSelected, isHovered)
+		this.drawArrowhead(targetPoint, labelPosition, viewport, isSelected, isHovered)
 		
 		// Reset line dash
 		this.ctx.setLineDash([])
@@ -697,11 +731,14 @@ export class CanvasRenderer {
 	private drawArrowhead(
 		targetPoint: { x: number; y: number },
 		labelPoint: { x: number; y: number },
+		viewport: Viewport,
 		isSelected: boolean,
 		isHovered: boolean
 	): void {
-		const arrowLength = 8
-		const arrowWidth = 4
+		const baseArrowLength = 8
+		const baseArrowWidth = 4
+		const arrowLength = (baseArrowLength * (viewport.displayScale / 100)) / viewport.zoom
+		const arrowWidth = (baseArrowWidth * (viewport.displayScale / 100)) / viewport.zoom
 
 		// Calculate direction vector from target to label
 		const dx = labelPoint.x - targetPoint.x
@@ -748,76 +785,9 @@ export class CanvasRenderer {
 		// For now, we'll skip this and add it later
 	}
 
-	private renderGridLegend(viewport: Viewport): void {
-		const currentGridSize = this.calculateOptimalGridSize(viewport)
-		const currentPixelSpacing = currentGridSize * viewport.zoom
+	// Removed - now handled by InteractiveLegend component
 
-		this.ctx.save()
-		// Reset transform to screen coordinates
-		this.ctx.setTransform(1, 0, 0, 1, 0, 0)
-
-		// Calculate legend dimensions based on line length
-		const scaleLineLength = Math.min(currentPixelSpacing, 100) // Cap at 100px for very large grid
-		const legendWidth = scaleLineLength + 80 // Extra space for text
-		const legendHeight = 30
-		const margin = 10
-		const x = this.canvas.width - legendWidth - margin
-		const y = this.canvas.height - legendHeight - margin
-
-		this.ctx.fillStyle = "rgba(255, 255, 255, 0.9)"
-		this.ctx.fillRect(x, y, legendWidth, legendHeight)
-
-		this.ctx.strokeStyle = "#ccc"
-		this.ctx.lineWidth = 1
-		this.ctx.strokeRect(x, y, legendWidth, legendHeight)
-
-		// Draw grid scale indicator - line matches actual grid spacing
-		const scaleLineY = y + legendHeight / 2
-		const scaleStartX = x + 10
-		const scaleEndX = scaleStartX + scaleLineLength
-
-		this.ctx.strokeStyle = "#666"
-		this.ctx.lineWidth = 2
-		this.ctx.beginPath()
-		this.ctx.moveTo(scaleStartX, scaleLineY)
-		this.ctx.lineTo(scaleEndX, scaleLineY)
-
-		// Add tick marks
-		this.ctx.moveTo(scaleStartX, scaleLineY - 3)
-		this.ctx.lineTo(scaleStartX, scaleLineY + 3)
-		this.ctx.moveTo(scaleEndX, scaleLineY - 3)
-		this.ctx.lineTo(scaleEndX, scaleLineY + 3)
-		this.ctx.stroke()
-
-		// Add label showing grid size
-		this.ctx.fillStyle = "#333"
-		this.ctx.font = "12px Arial"
-		this.ctx.textAlign = "left"
-		this.ctx.textBaseline = "middle"
-
-		const unitsText = this.formatGridSize(currentGridSize)
-		this.ctx.fillText(unitsText, scaleEndX + 8, scaleLineY)
-
-		this.ctx.restore()
-	}
-
-	private formatGridSize(size: number): string {
-		if (size >= 1000) {
-			return size.toLocaleString('en-US')
-		} else if (size >= 100) {
-			return `${Math.round(size)}`
-		} else if (size >= 10) {
-			return `${size.toFixed(1)}`
-		} else if (size >= 1) {
-			return `${size.toFixed(1)}`
-		} else if (size >= 0.1) {
-			return `${size.toFixed(2)}`
-		} else if (size >= 0.01) {
-			return `${size.toFixed(3)}`
-		} else {
-			return `${size.toExponential(1)}`
-		}
-	}
+	// Moved to InteractiveLegend component
 
 	resize(width: number, height: number): void {
 		this.canvas.width = width
