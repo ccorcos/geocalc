@@ -12,6 +12,15 @@ Strategies:
 
 
 
+uuid -> integer id
+
+gzip + url param
+
+url param... plan
+
+
+
+
 
 
 

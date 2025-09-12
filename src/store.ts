@@ -4,11 +4,6 @@ import { immer } from "zustand/middleware/immer"
 import { GradientDescentSolver } from "./engine/GradientDescentSolver"
 import { createEmptyGeometry } from "./engine/geometry"
 import {
-	fitToDrawing,
-	centerViewport,
-	resetViewport
-} from "./engine/viewport-utils"
-import {
 	Circle,
 	Constraint,
 	Geometry,
@@ -20,10 +15,15 @@ import {
 	Viewport,
 } from "./engine/types"
 import {
+	centerViewport,
+	fitToDrawing,
+	resetViewport,
+} from "./engine/viewport-utils"
+import {
 	CURRENT_STORAGE_VERSION,
 	StorageFormat,
 	migrateStorageFormat,
-} from "./migrations"
+} from "./migrations/migrations"
 
 // localStorage persistence functions
 const STORAGE_KEY = "geocalc-geometry"
@@ -42,12 +42,11 @@ const serializeGeometry = (geometry: Geometry): string => {
 	return JSON.stringify(storageFormat)
 }
 
-
 const deserializeGeometry = (data: string): Geometry => {
 	try {
 		const parsed = JSON.parse(data)
 		const migrated = migrateStorageFormat(parsed)
-		
+
 		return {
 			points: new Map(migrated.geometry.points || []),
 			lines: new Map(migrated.geometry.lines || []),
@@ -248,7 +247,7 @@ export const useStore = create<AppState>()(
 				const constraint = state.geometry.constraints.get(id)
 				if (constraint) {
 					Object.assign(constraint, updates)
-						saveGeometry(state.geometry)
+					saveGeometry(state.geometry)
 				}
 			}),
 
@@ -257,7 +256,7 @@ export const useStore = create<AppState>()(
 				const point = state.geometry.points.get(id)
 				if (point) {
 					Object.assign(point, updates)
-						saveGeometry(state.geometry)
+					saveGeometry(state.geometry)
 				}
 			}),
 
@@ -266,7 +265,7 @@ export const useStore = create<AppState>()(
 				const circle = state.geometry.circles.get(id)
 				if (circle) {
 					Object.assign(circle, updates)
-						saveGeometry(state.geometry)
+					saveGeometry(state.geometry)
 				}
 			}),
 
@@ -275,7 +274,7 @@ export const useStore = create<AppState>()(
 				const label = state.geometry.labels.get(id)
 				if (label) {
 					Object.assign(label, updates)
-						saveGeometry(state.geometry)
+					saveGeometry(state.geometry)
 				}
 			}),
 
@@ -346,7 +345,7 @@ export const useStore = create<AppState>()(
 						priority: 1,
 					}
 					state.geometry.constraints.set(lengthConstraint.id, lengthConstraint)
-						saveGeometry(state.geometry)
+					saveGeometry(state.geometry)
 				}
 			}),
 

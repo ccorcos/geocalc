@@ -1,4 +1,4 @@
-import type { Circle, Constraint, Label, Line, Point } from "./engine/types"
+import type { Circle, Constraint, Label, Line, Point } from "../engine/types"
 
 // Current storage format version - increment when making breaking changes
 export const CURRENT_STORAGE_VERSION = 1

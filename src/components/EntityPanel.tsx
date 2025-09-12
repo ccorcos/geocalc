@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react"
 
-import { getCircleRadius } from "../engine/geometry"
+import { createEmptyGeometry, getCircleRadius } from "../engine/geometry"
 import { calculateLabelText } from "../engine/label-positioning"
-import { createEmptyGeometry } from "../engine/geometry"
+import { Geometry } from "../engine/types"
 import { distance } from "../math"
+import {
+	CURRENT_STORAGE_VERSION,
+	StorageFormat,
+	migrateStorageFormat,
+} from "../migrations/migrations"
 import { useStore } from "../store"
 import { ConstraintContextMenu } from "./ConstraintContextMenu"
-import { CURRENT_STORAGE_VERSION, StorageFormat, migrateStorageFormat } from "../migrations"
-import { Geometry } from "../engine/types"
 
 interface EntityPanelProps {
 	className?: string
@@ -129,7 +132,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 			const circle = geometry?.circles.get(editingRadius.circleId)
 			const center = circle && geometry?.points.get(circle.centerId)
 			const radiusPoint = circle && geometry?.points.get(circle.radiusPointId)
-			
+
 			if (circle && center && radiusPoint) {
 				// Calculate new radius point position at the correct distance
 				const currentDistance = Math.sqrt(
@@ -359,12 +362,12 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 		}
 
 		const jsonString = JSON.stringify(storageFormat)
-		const blob = new Blob([jsonString], { type: 'application/json' })
+		const blob = new Blob([jsonString], { type: "application/json" })
 		const url = URL.createObjectURL(blob)
-		
-		const link = document.createElement('a')
+
+		const link = document.createElement("a")
 		link.href = url
-		link.download = `geocalc-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`
+		link.download = `geocalc-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`
 		document.body.appendChild(link)
 		link.click()
 		document.body.removeChild(link)
@@ -372,9 +375,9 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 	}
 
 	const handleLoad = () => {
-		const input = document.createElement('input')
-		input.type = 'file'
-		input.accept = '.json'
+		const input = document.createElement("input")
+		input.type = "file"
+		input.accept = ".json"
 		input.onchange = (event) => {
 			const file = (event.target as HTMLInputElement).files?.[0]
 			if (!file) return
@@ -385,7 +388,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 					const content = e.target?.result as string
 					const parsed = JSON.parse(content)
 					const migrated = migrateStorageFormat(parsed)
-					
+
 					const newGeometry: Geometry = {
 						points: new Map(migrated.geometry.points || []),
 						lines: new Map(migrated.geometry.lines || []),
@@ -396,8 +399,10 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 
 					setGeometry(newGeometry)
 				} catch (error) {
-					alert('Failed to load file. Please check that it is a valid GeoCalc export file.')
-					console.error('Failed to load geometry file:', error)
+					alert(
+						"Failed to load file. Please check that it is a valid GeoCalc export file."
+					)
+					console.error("Failed to load geometry file:", error)
 				}
 			}
 			reader.readAsText(file)
@@ -406,7 +411,11 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 	}
 
 	const handleReset = () => {
-		if (confirm('Are you sure you want to clear the entire canvas? This cannot be undone.')) {
+		if (
+			confirm(
+				"Are you sure you want to clear the entire canvas? This cannot be undone."
+			)
+		) {
 			const emptyGeometry = createEmptyGeometry()
 			setGeometry(emptyGeometry)
 		}
@@ -835,14 +844,19 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 				{geometry &&
 					Array.from(geometry.labels.entries()).map(([id, label], index) => {
 						const name = getHumanName(
-							geometry.points.size + geometry.lines.size + geometry.circles.size + index
+							geometry.points.size +
+								geometry.lines.size +
+								geometry.circles.size +
+								index
 						)
 						const labelText = calculateLabelText(label, geometry)
 
 						// Get referenced point names
 						const pointNames = label.entityIds
 							.map((entityId) => {
-								const pointIndex = Array.from(geometry.points.keys()).indexOf(entityId)
+								const pointIndex = Array.from(geometry.points.keys()).indexOf(
+									entityId
+								)
 								return pointIndex >= 0 ? getHumanName(pointIndex) : "?"
 							})
 							.join(", ")
@@ -850,7 +864,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 						const typeDisplay = {
 							coordinate: "coord",
 							distance: "dist",
-							angle: "angle"
+							angle: "angle",
 						}[label.type]
 
 						return (
