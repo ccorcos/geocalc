@@ -1,5 +1,6 @@
-import type { Geometry, Viewport } from "./types"
+import type { Geometry, Viewport, Label } from "./types"
 import { getCircleRadius } from "./geometry"
+import { calculateLabelPosition, calculateLabelText } from "./label-positioning"
 
 export interface DrawingBounds {
 	minX: number
@@ -9,6 +10,33 @@ export interface DrawingBounds {
 	width: number
 	height: number
 	center: { x: number; y: number }
+}
+
+/**
+ * Calculate approximate text bounds for a label
+ * This provides an estimate without requiring a canvas context
+ */
+const calculateLabelBounds = (label: Label, geometry: Geometry): { minX: number; maxX: number; minY: number; maxY: number } | null => {
+	const position = calculateLabelPosition(label, geometry)
+	const text = calculateLabelText(label, geometry)
+	
+	if (!position || !text) return null
+	
+	// Estimate text dimensions based on character count and font size
+	// This is an approximation - actual rendering would be more accurate
+	const avgCharWidth = 8 // Average character width in pixels for 12px Arial font
+	const lineHeight = 16 // Line height in pixels for 12px font
+	const padding = 8 // Padding around text in label background
+	
+	const textWidth = text.length * avgCharWidth + padding * 2
+	const textHeight = lineHeight + padding * 2
+	
+	return {
+		minX: position.x - textWidth / 2,
+		maxX: position.x + textWidth / 2,
+		minY: position.y - textHeight / 2,
+		maxY: position.y + textHeight / 2
+	}
 }
 
 export const calculateDrawingBounds = (geometry: Geometry): DrawingBounds | null => {
@@ -37,6 +65,20 @@ export const calculateDrawingBounds = (geometry: Geometry): DrawingBounds | null
 			minY = Math.min(minY, center.y - radius)
 			maxY = Math.max(maxY, center.y + radius)
 			hasElements = true
+		}
+	}
+
+	// Check visible label bounds
+	for (const label of geometry.labels.values()) {
+		if (label.visible) {
+			const bounds = calculateLabelBounds(label, geometry)
+			if (bounds) {
+				minX = Math.min(minX, bounds.minX)
+				maxX = Math.max(maxX, bounds.maxX)
+				minY = Math.min(minY, bounds.minY)
+				maxY = Math.max(maxY, bounds.maxY)
+				hasElements = true
+			}
 		}
 	}
 
@@ -84,8 +126,8 @@ export const fitToDrawing = (geometry: Geometry, viewport: Viewport): Viewport =
 		}
 	}
 
-	// Add 20% padding around drawing
-	const padding = 0.2
+	// Add 10% padding around drawing
+	const padding = 0.1
 	const targetZoomX = (viewport.width * (1 - padding)) / bounds.width
 	const targetZoomY = (viewport.height * (1 - padding)) / bounds.height
 	const targetZoom = Math.min(targetZoomX, targetZoomY)

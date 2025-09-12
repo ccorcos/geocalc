@@ -86,8 +86,8 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 
 	// Legend positioning (matching renderer logic)
 	const scaleLineLength = Math.min(currentPixelSpacing, 100)
-	const legendWidth = 200 // Expanded for interactive elements
-	const legendHeight = 50 // Two rows
+	const legendWidth = 180 // Reduced width, more compact layout
+	const legendHeight = 60 // Two rows with more space
 	const margin = 10
 	const x = canvasWidth - legendWidth - margin
 	const y = canvasHeight - legendHeight - margin
@@ -131,8 +131,8 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 				zIndex: 1000
 			}}
 		>
-			{/* Row 1: Scale line and Fit button */}
-			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+			{/* Row 1: Scale line on left, Fit button on right */}
+			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
 				<div style={{ display: "flex", alignItems: "center" }}>
 					{/* Visual scale line */}
 					<div
@@ -176,8 +176,8 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 				</button>
 			</div>
 
-			{/* Row 2: Display Scale and Zoom controls */}
-			<div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "10px" }}>
+			{/* Row 2: Scale control on left, Zoom control on right */}
+			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "10px" }}>
 				<div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
 					<span>Scale:</span>
 					{editingField === "displayScale" ? (

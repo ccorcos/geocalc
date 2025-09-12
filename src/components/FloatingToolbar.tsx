@@ -215,6 +215,7 @@ export const FloatingToolbar: React.FC = () => {
 				+
 			</button>
 
+
 			{/* Constraint Context Menu */}
 			{showConstraintMenu && (
 				<ConstraintContextMenu
