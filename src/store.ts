@@ -19,39 +19,50 @@ import {
 	ToolType,
 	Viewport,
 } from "./engine/types"
+import {
+	CURRENT_STORAGE_VERSION,
+	StorageFormat,
+	migrateStorageFormat,
+} from "./migrations"
 
 // localStorage persistence functions
 const STORAGE_KEY = "geocalc-geometry"
 
 const serializeGeometry = (geometry: Geometry): string => {
-	const serializable = {
-		points: Array.from(geometry.points.entries()),
-		lines: Array.from(geometry.lines.entries()),
-		circles: Array.from(geometry.circles.entries()),
-		labels: Array.from(geometry.labels.entries()),
-		constraints: Array.from(geometry.constraints.entries()),
-		metadata: {
-			version: geometry.metadata.version,
-			created: geometry.metadata.created.toISOString(),
-			modified: geometry.metadata.modified.toISOString(),
+	const storageFormat: StorageFormat = {
+		version: CURRENT_STORAGE_VERSION,
+		geometry: {
+			points: Array.from(geometry.points.entries()),
+			lines: Array.from(geometry.lines.entries()),
+			circles: Array.from(geometry.circles.entries()),
+			labels: Array.from(geometry.labels.entries()),
+			constraints: Array.from(geometry.constraints.entries()),
+			metadata: {
+				version: geometry.metadata.version,
+				created: geometry.metadata.created.toISOString(),
+				modified: geometry.metadata.modified.toISOString(),
+			},
 		},
 	}
-	return JSON.stringify(serializable)
+	return JSON.stringify(storageFormat)
 }
+
 
 const deserializeGeometry = (data: string): Geometry => {
 	try {
 		const parsed = JSON.parse(data)
+		const migrated = migrateStorageFormat(parsed)
+		
 		return {
-			points: new Map(parsed.points || []),
-			lines: new Map(parsed.lines || []),
-			circles: new Map(parsed.circles || []),
-			labels: new Map(parsed.labels || []),
-			constraints: new Map(parsed.constraints || []),
+			points: new Map(migrated.geometry.points || []),
+			lines: new Map(migrated.geometry.lines || []),
+			circles: new Map(migrated.geometry.circles || []),
+			labels: new Map(migrated.geometry.labels || []),
+			constraints: new Map(migrated.geometry.constraints || []),
 			metadata: {
-				version: parsed.metadata?.version || "1.0.0",
-				created: new Date(parsed.metadata?.created || Date.now()),
-				modified: new Date(parsed.metadata?.modified || Date.now()),
+				version: migrated.geometry.metadata?.version || "1.0.0",
+				created: new Date(migrated.geometry.metadata?.created || Date.now()),
+				modified: new Date(migrated.geometry.metadata?.modified || Date.now()),
 			},
 		}
 	} catch (error) {

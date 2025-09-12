@@ -9,13 +9,20 @@ Strategies:
 
 ---
 
+At the bottom left of the page, under the entity panel, add three buttons. Save, load, and reset. Save should export the state to a json file that I can download. Load should load from the file (and handle any migration necessary). And reset should clear the entire canvas of entities and constraints so I can start with something new.
 
+
+Is it possible to persist the model state as a url parameter similar to how typescript playground does it on their website? Maybe if the state is too big we can display a warning somewhere at the bottom left of the canvas that the model is too big for the url param. Lets add some code to persist to the url bar
 
 ---
 
 I want to carefully rework the concept of "scale" in the grid rendering / legend. When I say that the scale is 100, what I mean is that the things I'm going to draw on the canvas are on the order of 10-100 in size. That means the default viewport and grid size shold adjust (which doesnt look good) alongside the line thickness and label size (which looks good already) together. So when I say scale: 100, then the initial grid size should be 10 and the zoom 1x should be able to fit a 100 x 100 square with 10% margin around the object. I should be able to change the scale to 0.001 or 1000000 and the viewport should adjust to make sense for what I'm drawing. To be clear, when I adjust the scale, it changes the meaning of what 1x zoom means. Also, in regards to line thickness and viewport and grid, it should probably scale linearly -- when scale is less than 100, like 10, the size of a point is way too small.
 
 ---
+
+Lets add a migration that persists the viewport scale, zoom, and position so that when you reload, you are looking at the same place in the model.
+
+
 
 I should be able to set the initial scale of the drawing so that all the shapes are an appropriate size.
 
