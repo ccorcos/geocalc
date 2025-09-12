@@ -138,8 +138,8 @@ export class CanvasInteraction {
 
 	private selectBestCandidate(
 		candidates: Array<{ id: string; distance: number; type: string }>,
-		worldX: number,
-		worldY: number
+		_worldX: number,
+		_worldY: number
 	): string {
 		// If only one candidate, return it
 		if (candidates.length === 1) {

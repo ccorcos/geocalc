@@ -1,7 +1,8 @@
 import type { Circle, Constraint, Label, Line, Point } from "../engine/types"
+import { remapEntityIds, remapLineIds, remapCircleIds, remapLabelIds, remapConstraintIds } from "./id-remapping"
 
 // Current storage format version - increment when making breaking changes
-export const CURRENT_STORAGE_VERSION = 1
+export const CURRENT_STORAGE_VERSION = 2
 
 export interface StorageFormat {
 	version: number
@@ -12,6 +13,7 @@ export interface StorageFormat {
 		labels: [string, Label][]
 		constraints: [string, Constraint][]
 	}
+	nextId?: number // Added in version 2
 }
 
 // Migration functions for storage format changes
@@ -30,6 +32,39 @@ export const migrations: Record<number, MigrationFunction> = {
 				labels: data.labels || [],
 				constraints: data.constraints || [],
 			},
+		}
+	},
+	
+	// Migration from version 1 (UUIDs) to version 2 (counter IDs)
+	1: (data: StorageFormat): StorageFormat => {
+		const idMap = new Map<string, string>()
+		let counter = 1
+		
+		// Collect all UUIDs from all entities
+		const allEntities = [
+			...data.geometry.points,
+			...data.geometry.lines,
+			...data.geometry.circles,
+			...data.geometry.labels,
+			...data.geometry.constraints,
+		]
+		
+		// Create mapping from UUIDs to sequential integer strings
+		for (const [oldId] of allEntities) {
+			idMap.set(oldId, String(counter++))
+		}
+		
+		// Apply remapping to all entities
+		return {
+			version: 2,
+			geometry: {
+				points: remapEntityIds(data.geometry.points, idMap),
+				lines: remapLineIds(data.geometry.lines, idMap),
+				circles: remapCircleIds(data.geometry.circles, idMap),
+				labels: remapLabelIds(data.geometry.labels, idMap),
+				constraints: remapConstraintIds(data.geometry.constraints, idMap),
+			},
+			nextId: counter, // Set next available ID
 		}
 	},
 }

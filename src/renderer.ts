@@ -506,8 +506,8 @@ export class CanvasRenderer {
 		p2: Point,
 		labelPosition: { x: number; y: number },
 		viewport: Viewport,
-		isSelected: boolean,
-		isHovered: boolean
+		_isSelected: boolean,
+		_isHovered: boolean
 	): void {
 		const { start, end, extensionLines } = calculateDimensionLineEndpoints(p1, p2, labelPosition)
 		
@@ -584,8 +584,8 @@ export class CanvasRenderer {
 		vertex: Point,
 		p2: Point,
 		viewport: Viewport,
-		isSelected: boolean,
-		isHovered: boolean
+		_isSelected: boolean,
+		_isHovered: boolean
 	): void {
 		const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2)
 		
@@ -771,8 +771,8 @@ export class CanvasRenderer {
 		targetPoint: { x: number; y: number },
 		labelPoint: { x: number; y: number },
 		viewport: Viewport,
-		isSelected: boolean,
-		isHovered: boolean
+		_isSelected: boolean,
+		_isHovered: boolean
 	): void {
 		const baseArrowLength = 8
 		const baseArrowWidth = 4
@@ -824,7 +824,7 @@ export class CanvasRenderer {
 
 	// Moved to InteractiveLegend component
 
-	resize(width: number, height: number): void {
+	resize(_width: number, _height: number): void {
 		// Store logical dimensions for viewport calculations
 		// Physical canvas size is managed by Canvas component for DPI scaling
 	}

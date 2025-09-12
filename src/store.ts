@@ -24,6 +24,7 @@ import {
 	StorageFormat,
 	migrateStorageFormat,
 } from "./migrations/migrations"
+import { getNextId, setNextId } from "./ids"
 
 // localStorage persistence functions
 const STORAGE_KEY = "geocalc-geometry"
@@ -38,6 +39,7 @@ const serializeGeometry = (geometry: Geometry): string => {
 			labels: Array.from(geometry.labels.entries()),
 			constraints: Array.from(geometry.constraints.entries()),
 		},
+		nextId: getNextId(),
 	}
 	return JSON.stringify(storageFormat)
 }
@@ -46,6 +48,11 @@ const deserializeGeometry = (data: string): Geometry => {
 	try {
 		const parsed = JSON.parse(data)
 		const migrated = migrateStorageFormat(parsed)
+
+		// Initialize the counter system from migrated data
+		if (migrated.nextId) {
+			setNextId(migrated.nextId)
+		}
 
 		return {
 			points: new Map(migrated.geometry.points || []),
