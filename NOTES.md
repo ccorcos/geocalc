@@ -10,20 +10,10 @@ Strategies:
 ---
 
 
-blurry, retina distplay
-
----
-
-
-The lines and arrows for labels should be a gray color so they can be more easily distinguished from the actual lines of the drawing.
-
-The distance label line guides extend much farther past the end of the the points theyre pointing to than necessary.
-
-
+zoom fit should include labels and also provide a 10% margin of space.
 
 I should be able to set the initial scale of the drawing so that all the shapes are an appropriate size.
 
-line dimensional drawing line lable goes too far
 
 migration strategy, versioning 1, 2, 3...
 

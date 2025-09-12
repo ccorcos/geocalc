@@ -40,7 +40,7 @@ class ColorSystem {
 			}
 		} else {
 			return {
-				color: isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#6c757d",
+				color: isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#000000",
 				width: isSelected ? 3 : isHovered ? 2 : 1
 			}
 		}
@@ -535,8 +535,8 @@ export class CanvasRenderer {
 	): void {
 		const { start, end, extensionLines } = calculateDimensionLineEndpoints(p1, p2, labelPosition)
 		
-		const color = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#666"
-		const baseWidth = isSelected ? 2 : 1
+		const color = "#bbb"
+		const baseWidth = 1
 		const scaledWidth = baseWidth * (viewport.displayScale / 100)
 
 		this.ctx.strokeStyle = color
@@ -613,8 +613,8 @@ export class CanvasRenderer {
 	): void {
 		const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2)
 		
-		const color = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#666"
-		const baseWidth = isSelected ? 2 : 1
+		const color = "#bbb"
+		const baseWidth = 1
 		const scaledWidth = baseWidth * (viewport.displayScale / 100)
 
 		this.ctx.strokeStyle = color
@@ -711,12 +711,8 @@ export class CanvasRenderer {
 		if (!targetPoint) return
 
 		// Draw leader line from target to label
-		this.ctx.strokeStyle = isSelected 
-			? "#4dabf7" 
-			: isHovered 
-				? "#74c0fc" 
-				: "rgba(0, 0, 0, 0.4)"
-		const baseWidth = isSelected ? 2 : 1
+		this.ctx.strokeStyle = "#bbb"
+		const baseWidth = 1
 		const scaledWidth = baseWidth * (viewport.displayScale / 100)
 		this.ctx.lineWidth = scaledWidth / viewport.zoom
 		const dashSize = (3 * (viewport.displayScale / 100)) / viewport.zoom
@@ -833,11 +829,7 @@ export class CanvasRenderer {
 		const rightY = arrowTipY + unitY * arrowLength - perpY * arrowWidth
 		
 		// Draw filled arrowhead pointing toward target
-		this.ctx.fillStyle = isSelected 
-			? "#4dabf7" 
-			: isHovered 
-				? "#74c0fc" 
-				: "rgba(0, 0, 0, 0.4)"
+		this.ctx.fillStyle = "#bbb"
 		
 		this.ctx.beginPath()
 		this.ctx.moveTo(arrowTipX, arrowTipY)
