@@ -122,12 +122,22 @@ export class CanvasRenderer {
 		this.ctx.save()
 		this.ctx.setTransform(1, 0, 0, 1, 0, 0)
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+		
+		// Re-apply DPI scaling after clearing
+		const devicePixelRatio = window.devicePixelRatio || 1
+		this.ctx.scale(devicePixelRatio, devicePixelRatio)
 		this.ctx.restore()
 	}
 
 	private setupTransform(viewport: Viewport): void {
 		this.ctx.save()
 		this.ctx.setTransform(1, 0, 0, 1, 0, 0)
+		
+		// Apply DPI scaling first
+		const devicePixelRatio = window.devicePixelRatio || 1
+		this.ctx.scale(devicePixelRatio, devicePixelRatio)
+		
+		// Then apply viewport transform
 		this.ctx.translate(viewport.width / 2, viewport.height / 2)
 		this.ctx.scale(viewport.zoom, viewport.zoom)
 		this.ctx.translate(-viewport.x, -viewport.y)
@@ -847,8 +857,8 @@ export class CanvasRenderer {
 	// Moved to InteractiveLegend component
 
 	resize(width: number, height: number): void {
-		this.canvas.width = width
-		this.canvas.height = height
+		// Store logical dimensions for viewport calculations
+		// Physical canvas size is managed by Canvas component for DPI scaling
 	}
 
 	getCanvas(): HTMLCanvasElement {

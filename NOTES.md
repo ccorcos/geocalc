@@ -9,20 +9,29 @@ Strategies:
 
 ---
 
-selecting constraints should highlihgt the elements in the canvas.
-
-red color of line vs circle vs point seem different. Lets consolidate and make sure they're the same.
-
-Lets refactor all the colors into their own files so they can be easily tweaked (or just css variables)
-
 
 blurry, retina distplay
 
- I should be able to set the initial scale of the drawing so that all the shapes are an appropriate size.
+---
 
 
-better ux for label and constraints. line vs two points, etc.
+The lines and arrows for labels should be a gray color so they can be more easily distinguished from the actual lines of the drawing.
+
+The distance label line guides extend much farther past the end of the the points theyre pointing to than necessary.
+
+
+
+I should be able to set the initial scale of the drawing so that all the shapes are an appropriate size.
+
 line dimensional drawing line lable goes too far
+
+migration strategy, versioning 1, 2, 3...
+
+save / load to a file you can keep on your computer. or serialize to a url parameter string for sharing...
+
+
+Extrapolate system architecture into a boilerplate for a project.
+
 
 ---
 
