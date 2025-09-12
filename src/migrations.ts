@@ -1,4 +1,4 @@
-import type { Point, Line, Circle, Label, Constraint } from "./engine/types"
+import type { Circle, Constraint, Label, Line, Point } from "./engine/types"
 
 // Current storage format version - increment when making breaking changes
 export const CURRENT_STORAGE_VERSION = 1
@@ -11,11 +11,6 @@ export interface StorageFormat {
 		circles: [string, Circle][]
 		labels: [string, Label][]
 		constraints: [string, Constraint][]
-		metadata: {
-			version: string
-			created: string
-			modified: string
-		}
 	}
 }
 
@@ -34,11 +29,6 @@ export const migrations: Record<number, MigrationFunction> = {
 				circles: data.circles || [],
 				labels: data.labels || [],
 				constraints: data.constraints || [],
-				metadata: {
-					version: data.metadata?.version || "1.0.0",
-					created: data.metadata?.created || new Date().toISOString(),
-					modified: data.metadata?.modified || new Date().toISOString(),
-				},
 			},
 		}
 	},

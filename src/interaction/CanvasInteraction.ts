@@ -106,7 +106,6 @@ export class CanvasInteraction {
 
 		// Check labels (use larger tolerance since they're rectangular)
 		for (const [id, label] of geometry.labels) {
-			if (!label.visible) continue
 			
 			const position = calculateLabelPosition(label, geometry)
 			if (!position) continue
@@ -247,7 +246,6 @@ export class CanvasInteraction {
 
 		// Check labels (select if label position is in rectangle)
 		for (const [id, label] of geometry.labels) {
-			if (!label.visible) continue
 			
 			const position = calculateLabelPosition(label, geometry)
 			if (!position) continue
@@ -621,7 +619,7 @@ export class CanvasInteraction {
 				store.addPoint(endPoint)
 			}
 
-			const line = createLine(this.tempLineStart.id, endPoint.id, false)
+			const line = createLine(this.tempLineStart.id, endPoint.id)
 			store.addLine(line)
 
 			this.tempLineStart = null

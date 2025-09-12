@@ -693,8 +693,7 @@ export class ConstraintEvaluator {
 			id: constraint.id,
 			type: "distance",
 			entityIds: [circle.centerId, circle.radiusPointId],
-			value: constraint.value,
-			priority: constraint.priority
+			value: constraint.value
 		}
 		
 		return this.evaluateDistance(virtualDistanceConstraint, geometry)

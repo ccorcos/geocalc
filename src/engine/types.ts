@@ -11,7 +11,6 @@ export interface Line {
 	id: string
 	point1Id: string
 	point2Id: string
-	infinite: boolean
 }
 
 export interface Circle {
@@ -23,9 +22,8 @@ export interface Circle {
 export interface Label {
 	id: string
 	type: "coordinate" | "distance" | "angle"
-	entityIds: string[]  // Referenced point IDs
-	offset: { x: number; y: number }  // User-dragged offset from calculated position
-	visible: boolean
+	entityIds: string[] // Referenced point IDs
+	offset: { x: number; y: number } // User-dragged offset from calculated position
 }
 
 export type GeometryEntity = Point | Line | Circle | Label
@@ -37,7 +35,6 @@ export interface Constraint {
 	type: ConstraintType
 	entityIds: string[]
 	value?: number
-	priority: number
 }
 
 export interface Geometry {
@@ -46,11 +43,6 @@ export interface Geometry {
 	circles: Map<string, Circle>
 	labels: Map<string, Label>
 	constraints: Map<string, Constraint>
-	metadata: {
-		version: string
-		created: Date
-		modified: Date
-	}
 }
 
 export interface Viewport {

@@ -18,7 +18,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 	y,
 	onClose,
 }) => {
-	const { geometry, selection, addConstraint, updateLabel, removeEntity } = useStore()
+	const { geometry, selection, addConstraint, removeEntity } = useStore()
 	const [isClosing, setIsClosing] = useState(false)
 	const [showValueDialog, setShowValueDialog] = useState(false)
 	const [pendingConstraint, setPendingConstraint] = useState<{
@@ -36,7 +36,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 	}, [])
 
 	const getAvailableActions = (): {
-		type: ConstraintType | "delete-label" | "toggle-label-visibility"
+		type: ConstraintType | "delete-label"
 		label: string
 		needsValue: boolean
 	}[] => {
@@ -50,7 +50,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 		if (selectedLabels.length > 0) {
 			// Label-specific actions
 			const actions: {
-				type: ConstraintType | "delete-label" | "toggle-label-visibility"
+				type: ConstraintType | "delete-label"
 				label: string
 				needsValue: boolean
 			}[] = [{
@@ -59,17 +59,6 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 				needsValue: false,
 			}]
 			
-			// Add visibility toggle if single label selected
-			if (selectedLabels.length === 1) {
-				const label = selectedLabels[0]
-				if (label) {
-					actions.unshift({
-						type: "toggle-label-visibility" as const,
-						label: label.visible ? "Hide Label" : "Show Label",
-						needsValue: false,
-					})
-				}
-			}
 			
 			return actions
 		}
@@ -193,7 +182,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 		return []
 	}
 
-	const handleAction = (actionType: ConstraintType | "delete-label" | "toggle-label-visibility") => {
+	const handleAction = (actionType: ConstraintType | "delete-label") => {
 		const selectedIds = Array.from(selection.selectedIds)
 
 		// Handle label-specific actions
@@ -207,16 +196,6 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 			return
 		}
 
-		if (actionType === "toggle-label-visibility") {
-			selectedIds.forEach(id => {
-				const label = geometry.labels.get(id)
-				if (label) {
-					updateLabel(id, { visible: !label.visible })
-				}
-			})
-			closeMenu()
-			return
-		}
 
 		// Handle constraint creation
 		const constraintType = actionType as ConstraintType

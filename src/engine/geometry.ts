@@ -8,11 +8,6 @@ export const createEmptyGeometry = (): Geometry => ({
 	circles: new Map(),
 	labels: new Map(),
 	constraints: new Map(),
-	metadata: {
-		version: "1.0.0",
-		created: new Date(),
-		modified: new Date(),
-	},
 })
 
 export const createPoint = (x: number, y: number): Point => ({
@@ -23,13 +18,11 @@ export const createPoint = (x: number, y: number): Point => ({
 
 export const createLine = (
 	point1Id: string,
-	point2Id: string,
-	infinite = false
+	point2Id: string
 ): Line => ({
 	id: generateId(),
 	point1Id,
 	point2Id,
-	infinite,
 })
 
 export const createCircle = (geometry: Geometry, centerId: string, initialRadius: number): { circle: Circle; radiusPoint: Point; updatedGeometry: Geometry } => {
@@ -63,14 +56,12 @@ export const getCircleRadius = (circle: Circle, geometry: Geometry): number => {
 export const createConstraint = (
 	type: Constraint["type"],
 	entityIds: string[],
-	value?: number,
-	priority = 1
+	value?: number
 ): Constraint => ({
 	id: generateId(),
 	type,
 	entityIds,
 	value,
-	priority,
 })
 
 export const addPoint = (geometry: Geometry, point: Point): Geometry => {
@@ -80,10 +71,6 @@ export const addPoint = (geometry: Geometry, point: Point): Geometry => {
 	return {
 		...geometry,
 		points: newPoints,
-		metadata: {
-			...geometry.metadata,
-			modified: new Date(),
-		},
 	}
 }
 
@@ -94,10 +81,6 @@ export const addLine = (geometry: Geometry, line: Line): Geometry => {
 	return {
 		...geometry,
 		lines: newLines,
-		metadata: {
-			...geometry.metadata,
-			modified: new Date(),
-		},
 	}
 }
 
@@ -108,10 +91,6 @@ export const addCircle = (geometry: Geometry, circle: Circle): Geometry => {
 	return {
 		...geometry,
 		circles: newCircles,
-		metadata: {
-			...geometry.metadata,
-			modified: new Date(),
-		},
 	}
 }
 
@@ -125,10 +104,6 @@ export const addConstraint = (
 	return {
 		...geometry,
 		constraints: newConstraints,
-		metadata: {
-			...geometry.metadata,
-			modified: new Date(),
-		},
 	}
 }
 
@@ -141,7 +116,6 @@ export const createLabel = (
 	type,
 	entityIds,
 	offset,
-	visible: true,
 })
 
 export const addLabel = (geometry: Geometry, label: Label): Geometry => {
@@ -151,9 +125,5 @@ export const addLabel = (geometry: Geometry, label: Label): Geometry => {
 	return {
 		...geometry,
 		labels: newLabels,
-		metadata: {
-			...geometry.metadata,
-			modified: new Date(),
-		},
 	}
 }

@@ -9,10 +9,19 @@ Strategies:
 
 ---
 
+
+
+
+
+
+
+
+
 At the bottom left of the page, under the entity panel, add three buttons. Save, load, and reset. Save should export the state to a json file that I can download. Load should load from the file (and handle any migration necessary). And reset should clear the entire canvas of entities and constraints so I can start with something new.
 
+---
 
-Is it possible to persist the model state as a url parameter similar to how typescript playground does it on their website? Maybe if the state is too big we can display a warning somewhere at the bottom left of the canvas that the model is too big for the url param. Lets add some code to persist to the url bar
+Is it possible to persist the model state as a url parameter similar to how typescript playground does it on their website? If the state is small enough to persist as a url parameter, then alongside save/load/reset should be a "share
 
 ---
 

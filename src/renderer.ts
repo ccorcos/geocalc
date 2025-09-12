@@ -392,30 +392,8 @@ export class CanvasRenderer {
 
 		this.ctx.beginPath()
 
-		if (line.infinite) {
-			// Extend line to canvas bounds
-			const dx = point2.x - point1.x
-			const dy = point2.y - point1.y
-			const length = Math.sqrt(dx * dx + dy * dy)
-
-			if (length > 0) {
-				const dirX = dx / length
-				const dirY = dy / length
-				const extension = 10000 // Large extension
-
-				this.ctx.moveTo(
-					point1.x - dirX * extension,
-					point1.y - dirY * extension
-				)
-				this.ctx.lineTo(
-					point2.x + dirX * extension,
-					point2.y + dirY * extension
-				)
-			}
-		} else {
-			this.ctx.moveTo(point1.x, point1.y)
-			this.ctx.lineTo(point2.x, point2.y)
-		}
+		this.ctx.moveTo(point1.x, point1.y)
+		this.ctx.lineTo(point2.x, point2.y)
 
 		this.ctx.stroke()
 		this.ctx.restore()
@@ -473,9 +451,7 @@ export class CanvasRenderer {
 
 	private renderLabels(geometry: Geometry, viewport: Viewport, selection: SelectionState): void {
 		geometry.labels.forEach((label) => {
-			if (label.visible) {
-				this.renderLabel(label, geometry, viewport, selection)
-			}
+			this.renderLabel(label, geometry, viewport, selection)
 		})
 	}
 

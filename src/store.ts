@@ -37,11 +37,6 @@ const serializeGeometry = (geometry: Geometry): string => {
 			circles: Array.from(geometry.circles.entries()),
 			labels: Array.from(geometry.labels.entries()),
 			constraints: Array.from(geometry.constraints.entries()),
-			metadata: {
-				version: geometry.metadata.version,
-				created: geometry.metadata.created.toISOString(),
-				modified: geometry.metadata.modified.toISOString(),
-			},
 		},
 	}
 	return JSON.stringify(storageFormat)
@@ -59,11 +54,6 @@ const deserializeGeometry = (data: string): Geometry => {
 			circles: new Map(migrated.geometry.circles || []),
 			labels: new Map(migrated.geometry.labels || []),
 			constraints: new Map(migrated.geometry.constraints || []),
-			metadata: {
-				version: migrated.geometry.metadata?.version || "1.0.0",
-				created: new Date(migrated.geometry.metadata?.created || Date.now()),
-				modified: new Date(migrated.geometry.metadata?.modified || Date.now()),
-			},
 		}
 	} catch (error) {
 		console.warn("Failed to deserialize geometry from localStorage:", error)
@@ -226,35 +216,30 @@ export const useStore = create<AppState>()(
 		addPoint: (point) =>
 			set((state) => {
 				state.geometry.points.set(point.id, point)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
 		addLine: (line) =>
 			set((state) => {
 				state.geometry.lines.set(line.id, line)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
 		addCircle: (circle) =>
 			set((state) => {
 				state.geometry.circles.set(circle.id, circle)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
 		addLabel: (label) =>
 			set((state) => {
 				state.geometry.labels.set(label.id, label)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
 		addConstraint: (constraint) =>
 			set((state) => {
 				state.geometry.constraints.set(constraint.id, constraint)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
@@ -263,8 +248,7 @@ export const useStore = create<AppState>()(
 				const constraint = state.geometry.constraints.get(id)
 				if (constraint) {
 					Object.assign(constraint, updates)
-					state.geometry.metadata.modified = new Date()
-					saveGeometry(state.geometry)
+						saveGeometry(state.geometry)
 				}
 			}),
 
@@ -273,8 +257,7 @@ export const useStore = create<AppState>()(
 				const point = state.geometry.points.get(id)
 				if (point) {
 					Object.assign(point, updates)
-					state.geometry.metadata.modified = new Date()
-					saveGeometry(state.geometry)
+						saveGeometry(state.geometry)
 				}
 			}),
 
@@ -283,8 +266,7 @@ export const useStore = create<AppState>()(
 				const circle = state.geometry.circles.get(id)
 				if (circle) {
 					Object.assign(circle, updates)
-					state.geometry.metadata.modified = new Date()
-					saveGeometry(state.geometry)
+						saveGeometry(state.geometry)
 				}
 			}),
 
@@ -293,8 +275,7 @@ export const useStore = create<AppState>()(
 				const label = state.geometry.labels.get(id)
 				if (label) {
 					Object.assign(label, updates)
-					state.geometry.metadata.modified = new Date()
-					saveGeometry(state.geometry)
+						saveGeometry(state.geometry)
 				}
 			}),
 
@@ -308,7 +289,6 @@ export const useStore = create<AppState>()(
 					priority: 1,
 				}
 				state.geometry.constraints.set(fixXConstraint.id, fixXConstraint)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
@@ -322,7 +302,6 @@ export const useStore = create<AppState>()(
 					priority: 1,
 				}
 				state.geometry.constraints.set(fixYConstraint.id, fixYConstraint)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
@@ -330,7 +309,6 @@ export const useStore = create<AppState>()(
 			set((state) => {
 				const constraintId = `x-${pointId}`
 				state.geometry.constraints.delete(constraintId)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
@@ -338,7 +316,6 @@ export const useStore = create<AppState>()(
 			set((state) => {
 				const constraintId = `y-${pointId}`
 				state.geometry.constraints.delete(constraintId)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
@@ -369,8 +346,7 @@ export const useStore = create<AppState>()(
 						priority: 1,
 					}
 					state.geometry.constraints.set(lengthConstraint.id, lengthConstraint)
-					state.geometry.metadata.modified = new Date()
-					saveGeometry(state.geometry)
+						saveGeometry(state.geometry)
 				}
 			}),
 
@@ -378,7 +354,6 @@ export const useStore = create<AppState>()(
 			set((state) => {
 				const constraintId = `line-length-${lineId}`
 				state.geometry.constraints.delete(constraintId)
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 
@@ -450,7 +425,6 @@ export const useStore = create<AppState>()(
 					}
 				}
 
-				state.geometry.metadata.modified = new Date()
 				saveGeometry(state.geometry)
 			}),
 

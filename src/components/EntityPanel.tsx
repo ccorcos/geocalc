@@ -2,9 +2,12 @@ import React, { useEffect, useState } from "react"
 
 import { getCircleRadius } from "../engine/geometry"
 import { calculateLabelText } from "../engine/label-positioning"
+import { createEmptyGeometry } from "../engine/geometry"
 import { distance } from "../math"
 import { useStore } from "../store"
 import { ConstraintContextMenu } from "./ConstraintContextMenu"
+import { CURRENT_STORAGE_VERSION, StorageFormat, migrateStorageFormat } from "../migrations"
+import { Geometry } from "../engine/types"
 
 interface EntityPanelProps {
 	className?: string
@@ -25,6 +28,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 		getLineLengthConstraint,
 		addLineLengthConstraint,
 		removeLineLengthConstraint,
+		setGeometry,
 	} = useStore()
 
 	const [editingCoord, setEditingCoord] = useState<{
@@ -339,6 +343,75 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 		return name
 	}
 
+	// Save/Load/Reset handlers
+	const handleSave = () => {
+		if (!geometry) return
+
+		const storageFormat: StorageFormat = {
+			version: CURRENT_STORAGE_VERSION,
+			geometry: {
+				points: Array.from(geometry.points.entries()),
+				lines: Array.from(geometry.lines.entries()),
+				circles: Array.from(geometry.circles.entries()),
+				labels: Array.from(geometry.labels.entries()),
+				constraints: Array.from(geometry.constraints.entries()),
+			},
+		}
+
+		const jsonString = JSON.stringify(storageFormat)
+		const blob = new Blob([jsonString], { type: 'application/json' })
+		const url = URL.createObjectURL(blob)
+		
+		const link = document.createElement('a')
+		link.href = url
+		link.download = `geocalc-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`
+		document.body.appendChild(link)
+		link.click()
+		document.body.removeChild(link)
+		URL.revokeObjectURL(url)
+	}
+
+	const handleLoad = () => {
+		const input = document.createElement('input')
+		input.type = 'file'
+		input.accept = '.json'
+		input.onchange = (event) => {
+			const file = (event.target as HTMLInputElement).files?.[0]
+			if (!file) return
+
+			const reader = new FileReader()
+			reader.onload = (e) => {
+				try {
+					const content = e.target?.result as string
+					const parsed = JSON.parse(content)
+					const migrated = migrateStorageFormat(parsed)
+					
+					const newGeometry: Geometry = {
+						points: new Map(migrated.geometry.points || []),
+						lines: new Map(migrated.geometry.lines || []),
+						circles: new Map(migrated.geometry.circles || []),
+						labels: new Map(migrated.geometry.labels || []),
+						constraints: new Map(migrated.geometry.constraints || []),
+					}
+
+					setGeometry(newGeometry)
+				} catch (error) {
+					alert('Failed to load file. Please check that it is a valid GeoCalc export file.')
+					console.error('Failed to load geometry file:', error)
+				}
+			}
+			reader.readAsText(file)
+		}
+		input.click()
+	}
+
+	const handleReset = () => {
+		if (confirm('Are you sure you want to clear the entire canvas? This cannot be undone.')) {
+			const emptyGeometry = createEmptyGeometry()
+			setGeometry(emptyGeometry)
+		}
+	}
+
 	return (
 		<div
 			data-testid="entity-panel"
@@ -639,11 +712,6 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 									<span style={{ color: "#666", fontSize: "10px" }}>
 										{point1Name}→{point2Name}
 									</span>
-									{line.infinite && (
-										<span style={{ marginLeft: "4px", color: "#007bff" }}>
-											∞
-										</span>
-									)}
 								</div>
 							</div>
 						)
@@ -804,7 +872,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 											: "white",
 									cursor: "pointer",
 									fontSize: "11px",
-									opacity: label.visible ? 1 : 0.5,
+									opacity: 1,
 								}}
 								onClick={(e) =>
 									handleEntityClick(id, e.shiftKey, e.metaKey || e.ctrlKey)
@@ -843,11 +911,6 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 									>
 										{labelText}
 									</span>
-									{!label.visible && (
-										<span style={{ color: "#999", fontSize: "10px" }}>
-											hidden
-										</span>
-									)}
 								</div>
 							</div>
 						)
@@ -871,6 +934,88 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 							<p>Use the toolbar to create points, lines, and circles.</p>
 						</div>
 					)}
+			</div>
+
+			{/* Save/Load/Reset Buttons */}
+			<div
+				style={{
+					padding: "8px",
+					borderTop: "1px solid #e0e0e0",
+					background: "#f8f9fa",
+					display: "flex",
+					gap: "6px",
+					justifyContent: "stretch",
+				}}
+			>
+				<button
+					onClick={handleSave}
+					style={{
+						flex: 1,
+						padding: "8px 12px",
+						fontSize: "11px",
+						fontWeight: 500,
+						backgroundColor: "#007bff",
+						color: "white",
+						border: "none",
+						borderRadius: "4px",
+						cursor: "pointer",
+						transition: "background-color 0.2s",
+					}}
+					onMouseEnter={(e) => {
+						e.currentTarget.style.backgroundColor = "#0056b3"
+					}}
+					onMouseLeave={(e) => {
+						e.currentTarget.style.backgroundColor = "#007bff"
+					}}
+				>
+					Save
+				</button>
+				<button
+					onClick={handleLoad}
+					style={{
+						flex: 1,
+						padding: "8px 12px",
+						fontSize: "11px",
+						fontWeight: 500,
+						backgroundColor: "#28a745",
+						color: "white",
+						border: "none",
+						borderRadius: "4px",
+						cursor: "pointer",
+						transition: "background-color 0.2s",
+					}}
+					onMouseEnter={(e) => {
+						e.currentTarget.style.backgroundColor = "#1e7e34"
+					}}
+					onMouseLeave={(e) => {
+						e.currentTarget.style.backgroundColor = "#28a745"
+					}}
+				>
+					Load
+				</button>
+				<button
+					onClick={handleReset}
+					style={{
+						flex: 1,
+						padding: "8px 12px",
+						fontSize: "11px",
+						fontWeight: 500,
+						backgroundColor: "#dc3545",
+						color: "white",
+						border: "none",
+						borderRadius: "4px",
+						cursor: "pointer",
+						transition: "background-color 0.2s",
+					}}
+					onMouseEnter={(e) => {
+						e.currentTarget.style.backgroundColor = "#c82333"
+					}}
+					onMouseLeave={(e) => {
+						e.currentTarget.style.backgroundColor = "#dc3545"
+					}}
+				>
+					Reset
+				</button>
 			</div>
 
 			{/* Context Menu */}

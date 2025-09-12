@@ -70,15 +70,13 @@ export const calculateDrawingBounds = (geometry: Geometry): DrawingBounds | null
 
 	// Check visible label bounds
 	for (const label of geometry.labels.values()) {
-		if (label.visible) {
-			const bounds = calculateLabelBounds(label, geometry)
-			if (bounds) {
-				minX = Math.min(minX, bounds.minX)
-				maxX = Math.max(maxX, bounds.maxX)
-				minY = Math.min(minY, bounds.minY)
-				maxY = Math.max(maxY, bounds.maxY)
-				hasElements = true
-			}
+		const bounds = calculateLabelBounds(label, geometry)
+		if (bounds) {
+			minX = Math.min(minX, bounds.minX)
+			maxX = Math.max(maxX, bounds.maxX)
+			minY = Math.min(minY, bounds.minY)
+			maxY = Math.max(maxY, bounds.maxY)
+			hasElements = true
 		}
 	}
 

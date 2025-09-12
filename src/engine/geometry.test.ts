@@ -32,9 +32,6 @@ describe("Geometry Operations", () => {
 			expect(geometry.circles.size).toBe(0)
 			expect(geometry.constraints.size).toBe(0)
 
-			expect(geometry.metadata.version).toBe("1.0.0")
-			expect(geometry.metadata.created).toBeInstanceOf(Date)
-			expect(geometry.metadata.modified).toBeInstanceOf(Date)
 		})
 	})
 
@@ -62,13 +59,6 @@ describe("Geometry Operations", () => {
 			expect(line.id).toBeDefined()
 			expect(line.point1Id).toBe("point1")
 			expect(line.point2Id).toBe("point2")
-			expect(line.infinite).toBe(false)
-		})
-
-		it("should create infinite line when specified", () => {
-			const line = createLine("p1", "p2", true)
-
-			expect(line.infinite).toBe(true)
 		})
 	})
 
@@ -90,38 +80,29 @@ describe("Geometry Operations", () => {
 
 	describe("createConstraint", () => {
 		it("should create constraint with specified properties", () => {
-			const constraint = createConstraint("distance", ["p1", "p2"], 100, 2)
+			const constraint = createConstraint("distance", ["p1", "p2"], 100)
 
 			expect(constraint.id).toBeDefined()
 			expect(constraint.type).toBe("distance")
 			expect(constraint.entityIds).toEqual(["p1", "p2"])
 			expect(constraint.value).toBe(100)
-			expect(constraint.priority).toBe(2)
 		})
 
-		it("should use default priority when not specified", () => {
+		it("should create constraint without value when not specified", () => {
 			const constraint = createConstraint("parallel", ["l1", "l2"])
 
-			expect(constraint.priority).toBe(1)
 			expect(constraint.value).toBeUndefined()
 		})
 	})
 
 	describe("addPoint", () => {
-		it("should add point to geometry and update metadata", () => {
+		it("should add point to geometry", () => {
 			const point = createPoint(5, 10)
-			const originalModified = geometry.metadata.modified
 
-			// Wait a tiny bit to ensure different timestamps
-			setTimeout(() => {
-				const updatedDoc = addPoint(geometry, point)
+			const updatedDoc = addPoint(geometry, point)
 
-				expect(updatedDoc.points.has(point.id)).toBe(true)
-				expect(updatedDoc.points.get(point.id)).toBe(point)
-				expect(updatedDoc.metadata.modified.getTime()).toBeGreaterThan(
-					originalModified.getTime()
-				)
-			}, 1)
+			expect(updatedDoc.points.has(point.id)).toBe(true)
+			expect(updatedDoc.points.get(point.id)).toBe(point)
 		})
 
 		it("should not mutate original geometry", () => {
