@@ -26,8 +26,8 @@ import {
 } from "./migrations/migrations"
 import { getNextId, setNextId } from "./ids"
 
-// localStorage persistence functions
-const STORAGE_KEY = "geocalc-geometry"
+// URL parameter persistence functions
+const URL_PARAM_KEY = "state"
 
 const serializeGeometry = (geometry: Geometry): string => {
 	const storageFormat: StorageFormat = {
@@ -62,34 +62,96 @@ const deserializeGeometry = (data: string): Geometry => {
 			constraints: new Map(migrated.geometry.constraints || []),
 		}
 	} catch (error) {
-		console.warn("Failed to deserialize geometry from localStorage:", error)
+		console.warn("Failed to deserialize geometry from URL:", error)
 		return createEmptyGeometry()
+	}
+}
+
+const compressAndEncode = (jsonString: string): string => {
+	try {
+		// Use simple base64 encoding for now to ensure reliability
+		// TODO: Add gzip compression once module loading issues are resolved
+		const base64 = btoa(jsonString)
+		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+	} catch (error) {
+		console.warn("Failed to encode geometry:", error)
+		return ""
+	}
+}
+
+const decodeAndDecompress = (encoded: string): string => {
+	try {
+		// Restore base64 padding and characters
+		let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
+		while (base64.length % 4) {
+			base64 += '='
+		}
+		
+		// Decode from base64
+		return atob(base64)
+	} catch (error) {
+		console.warn("Failed to decode geometry:", error)
+		return ""
 	}
 }
 
 const saveGeometry = (geometry: Geometry) => {
 	try {
-		localStorage.setItem(STORAGE_KEY, serializeGeometry(geometry))
+		// Check if we're in a browser environment
+		if (typeof window === 'undefined') {
+			return
+		}
+		
+		const jsonString = serializeGeometry(geometry)
+		const compressed = compressAndEncode(jsonString)
+		
+		// Update URL without reloading the page
+		const url = new URL(window.location.href)
+		if (compressed) {
+			url.searchParams.set(URL_PARAM_KEY, compressed)
+		} else {
+			url.searchParams.delete(URL_PARAM_KEY)
+		}
+		window.history.replaceState({}, '', url.toString())
 	} catch (error) {
-		console.warn("Failed to save geometry to localStorage:", error)
+		console.warn("Failed to save geometry to URL:", error)
 	}
 }
 
 const loadGeometry = (): Geometry => {
 	try {
-		const data = localStorage.getItem(STORAGE_KEY)
-		return data ? deserializeGeometry(data) : createEmptyGeometry()
+		// Check if we're in a browser environment
+		if (typeof window === 'undefined') {
+			return createEmptyGeometry()
+		}
+		
+		const url = new URL(window.location.href)
+		const compressed = url.searchParams.get(URL_PARAM_KEY)
+		
+		if (!compressed) {
+			return createEmptyGeometry()
+		}
+		
+		const jsonString = decodeAndDecompress(compressed)
+		return jsonString ? deserializeGeometry(jsonString) : createEmptyGeometry()
 	} catch (error) {
-		console.warn("Failed to load geometry from localStorage:", error)
+		console.warn("Failed to load geometry from URL:", error)
 		return createEmptyGeometry()
 	}
 }
 
 export const clearPersistedGeometry = () => {
 	try {
-		localStorage.removeItem(STORAGE_KEY)
+		// Check if we're in a browser environment
+		if (typeof window === 'undefined') {
+			return
+		}
+		
+		const url = new URL(window.location.href)
+		url.searchParams.delete(URL_PARAM_KEY)
+		window.history.replaceState({}, '', url.toString())
 	} catch (error) {
-		console.warn("Failed to clear geometry from localStorage:", error)
+		console.warn("Failed to clear geometry from URL:", error)
 	}
 }
 
