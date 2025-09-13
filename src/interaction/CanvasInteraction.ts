@@ -1,9 +1,13 @@
-import { createLabel, createLine, createPoint, getCircleRadius } from "../engine/geometry"
-import { generateId } from "../ids"
-import { Point } from "../engine/types"
-import { useStore } from "../store"
-import { ViewportCalcs } from "../engine/types"
+import {
+	createLabel,
+	createLine,
+	createPoint,
+	getCircleRadius,
+} from "../engine/geometry"
 import { calculateLabelPosition } from "../engine/label-positioning"
+import { Point, ViewportCalcs } from "../engine/types"
+import { generateId } from "../ids"
+import { useStore } from "../store"
 
 export class CanvasInteraction {
 	private canvas: HTMLCanvasElement
@@ -70,7 +74,7 @@ export class CanvasInteraction {
 		for (const [id, point] of geometry.points) {
 			const dist = Math.sqrt((point.x - worldX) ** 2 + (point.y - worldY) ** 2)
 			if (dist <= tolerance) {
-				candidates.push({ id, distance: dist, type: 'point' })
+				candidates.push({ id, distance: dist, type: "point" })
 			}
 		}
 
@@ -87,7 +91,7 @@ export class CanvasInteraction {
 			)
 
 			if (dist <= tolerance) {
-				candidates.push({ id, distance: dist, type: 'line' })
+				candidates.push({ id, distance: dist, type: "line" })
 			}
 		}
 
@@ -99,23 +103,24 @@ export class CanvasInteraction {
 			const distToCenter = Math.sqrt(
 				(center.x - worldX) ** 2 + (center.y - worldY) ** 2
 			)
-			const distToCircle = Math.abs(distToCenter - getCircleRadius(circle, store.geometry))
+			const distToCircle = Math.abs(
+				distToCenter - getCircleRadius(circle, store.geometry)
+			)
 
 			if (distToCircle <= tolerance) {
-				candidates.push({ id, distance: distToCircle, type: 'circle' })
+				candidates.push({ id, distance: distToCircle, type: "circle" })
 			}
 		}
 
 		// Check labels (use larger tolerance since they're rectangular)
 		for (const [id, label] of geometry.labels) {
-			
 			const position = calculateLabelPosition(label, geometry)
 			if (!position) continue
 
 			// Simple rectangular hit test for label text
 			const textWidth = 60 // Approximate text width
 			const textHeight = 20 // Approximate text height
-			
+
 			if (
 				worldX >= position.x - textWidth / 2 &&
 				worldX <= position.x + textWidth / 2 &&
@@ -126,7 +131,7 @@ export class CanvasInteraction {
 				const distToLabel = Math.sqrt(
 					(worldX - position.x) ** 2 + (worldY - position.y) ** 2
 				)
-				candidates.push({ id, distance: distToLabel, type: 'label' })
+				candidates.push({ id, distance: distToLabel, type: "label" })
 			}
 		}
 
@@ -158,25 +163,34 @@ export class CanvasInteraction {
 		const store = useStore.getState()
 		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport)
 		const significantDistance = 5 / pixelsPerUnit
-		
+
 		if (closest.distance + significantDistance < secondClosest.distance) {
 			return closest.id
 		}
 
 		// For close competitors, apply context rules:
-		
+
 		// 1. Always prefer points over everything else when very close
-		const pointCandidate = candidates.find(c => c.type === 'point')
-		if (pointCandidate && pointCandidate.distance <= closest.distance + significantDistance / 2) {
+		const pointCandidate = candidates.find((c) => c.type === "point")
+		if (
+			pointCandidate &&
+			pointCandidate.distance <= closest.distance + significantDistance / 2
+		) {
 			return pointCandidate.id
 		}
 
 		// 2. Prefer interactive geometry (lines, circles) over labels
-		const geometryCandidate = candidates.find(c => c.type === 'line' || c.type === 'circle')
-		const labelCandidate = candidates.find(c => c.type === 'label')
-		
-		if (geometryCandidate && labelCandidate && 
-			geometryCandidate.distance <= labelCandidate.distance + significantDistance) {
+		const geometryCandidate = candidates.find(
+			(c) => c.type === "line" || c.type === "circle"
+		)
+		const labelCandidate = candidates.find((c) => c.type === "label")
+
+		if (
+			geometryCandidate &&
+			labelCandidate &&
+			geometryCandidate.distance <=
+				labelCandidate.distance + significantDistance
+		) {
 			return geometryCandidate.id
 		}
 
@@ -249,7 +263,6 @@ export class CanvasInteraction {
 
 		// Check labels (select if label position is in rectangle)
 		for (const [id, label] of geometry.labels) {
-			
 			const position = calculateLabelPosition(label, geometry)
 			if (!position) continue
 
@@ -303,7 +316,6 @@ export class CanvasInteraction {
 		return Math.sqrt(dx * dx + dy * dy)
 	}
 
-
 	private handleMouseDown = (e: MouseEvent): void => {
 		const mousePos = this.getMousePos(e)
 		const worldPos = this.getWorldPos(mousePos.x, mousePos.y)
@@ -354,8 +366,6 @@ export class CanvasInteraction {
 		this.isMouseDown = false
 
 		const store = useStore.getState()
-
-
 
 		// Complete rectangular selection
 		if (this.selectionRect) {
@@ -430,7 +440,7 @@ export class CanvasInteraction {
 		// ctrlKey is set during pinch gestures on trackpad
 		if (e.ctrlKey) {
 			// Pinch to zoom
-			const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1
+			const zoomFactor = e.deltaY > 0 ? 0.94 : 1.06
 			store.zoomViewport(zoomFactor, mousePos.x, mousePos.y)
 		} else {
 			// Two-finger scroll to pan
@@ -474,7 +484,6 @@ export class CanvasInteraction {
 				}
 				return // Don't change selection when toggling fixed state
 			}
-
 		}
 
 		if (entityId) {
@@ -657,8 +666,8 @@ export class CanvasInteraction {
 		} else {
 			// Second click - create circle with radius from center to current position
 			const radius = Math.sqrt(
-				(worldPos.x - this.tempCircleCenter.x) ** 2 + 
-				(worldPos.y - this.tempCircleCenter.y) ** 2
+				(worldPos.x - this.tempCircleCenter.x) ** 2 +
+					(worldPos.y - this.tempCircleCenter.y) ** 2
 			)
 
 			// Ensure minimum radius
@@ -670,7 +679,10 @@ export class CanvasInteraction {
 				radiusPointId = existingPoint.id
 			} else {
 				// Create new radius point at the calculated position
-				const angle = Math.atan2(worldPos.y - this.tempCircleCenter.y, worldPos.x - this.tempCircleCenter.x)
+				const angle = Math.atan2(
+					worldPos.y - this.tempCircleCenter.y,
+					worldPos.x - this.tempCircleCenter.x
+				)
 				const radiusPoint = createPoint(
 					this.tempCircleCenter.x + finalRadius * Math.cos(angle),
 					this.tempCircleCenter.y + finalRadius * Math.sin(angle)
@@ -683,7 +695,7 @@ export class CanvasInteraction {
 			const circle = {
 				id: generateId(),
 				centerId: this.tempCircleCenter.id,
-				radiusPointId: radiusPointId
+				radiusPointId: radiusPointId,
 			}
 			store.addCircle(circle)
 
@@ -707,7 +719,10 @@ export class CanvasInteraction {
 		}
 	}
 
-	private handleLabelMouseDown(worldPos: { x: number; y: number }, shiftKey: boolean): void {
+	private handleLabelMouseDown(
+		worldPos: { x: number; y: number },
+		shiftKey: boolean
+	): void {
 		const store = useStore.getState()
 		const selectedIds = Array.from(store.selection.selectedIds)
 
@@ -724,14 +739,14 @@ export class CanvasInteraction {
 			store.addLabel(label)
 		} else if (selectedIds.length === 2) {
 			// Two entities selected -> distance label if both are points
-			const arePoints = selectedIds.every(id => store.geometry.points.has(id))
+			const arePoints = selectedIds.every((id) => store.geometry.points.has(id))
 			if (arePoints) {
 				const label = createLabel("distance", selectedIds)
 				store.addLabel(label)
 			}
 		} else if (selectedIds.length === 3) {
 			// Three points selected -> angle label
-			const arePoints = selectedIds.every(id => store.geometry.points.has(id))
+			const arePoints = selectedIds.every((id) => store.geometry.points.has(id))
 			if (arePoints) {
 				const label = createLabel("angle", selectedIds)
 				store.addLabel(label)
@@ -761,7 +776,6 @@ export class CanvasInteraction {
 		worldPos: { x: number; y: number }
 	): void {
 		const store = useStore.getState()
-
 
 		if (
 			store.currentTool === "select" &&

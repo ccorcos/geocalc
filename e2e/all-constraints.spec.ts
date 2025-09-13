@@ -331,6 +331,9 @@ test.describe("All Constraint Types", () => {
 		await helper.createConstraint("radius", 50)
 		await helper.expectConstraintExists("radius")
 
+		// Run solver to ensure constraint is processed
+		await helper.runSolver()
+
 		// Verify radius constraint is satisfied
 		const radiusSatisfied = await helper.verifyRadiusConstraint(50)
 		expect(radiusSatisfied).toBe(true)

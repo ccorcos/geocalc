@@ -364,7 +364,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 						<div
 							style={{ padding: "6px 12px", color: "#666", fontSize: "12px" }}
 						>
-							No actions available
+							No constraints available
 						</div>
 					)}
 				</div>

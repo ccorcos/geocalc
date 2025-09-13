@@ -9,21 +9,14 @@ Strategies:
 
 ---
 
-
-the grid size can be a little wonky at times.
-
-
 fix the end-to-end tests.
 
-pinch zoom is too sensitive.
-cmd+scroll to zoom (or option?)
 
-
-Lets add a migration that persists the viewport scale, zoom, and position so that when you reload, you are looking at the same place in the model.
+Lets add a migration that persists the scale as part of the geometry. When I save and load a file, it should maintain the same scale.
 
 How hard would it be to support undo/redo?
 
-Create a panel on the far left that lists all the different files ordered by recently viewed. The save/load/reset buttons can go at the bottom of that panel, and I should be able to toggle that panel open and closed.
+Create a panel on the far left that lists all the different files ordered by recently viewed. The save/load/reset functionality can call go in that panel too. I should be able to toggle that panel open and closed.
 
 the same constraints that apply to two points should also apply to a line, like distance.
 
