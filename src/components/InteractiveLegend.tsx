@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from "react"
+import React, { useState } from "react"
 import { useStore } from "../store"
+import { ViewportCalcs } from "../engine/types"
 
 interface InteractiveLegendProps {
 	canvasWidth: number
@@ -13,21 +14,16 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 	const { 
 		viewport, 
 		fitViewportToDrawing,
-		setDisplayScale,
-		setViewport
+		setScale,
+		setZoom
 	} = useStore()
 	
 	const [editingField, setEditingField] = useState<string | null>(null)
 	const [inputValue, setInputValue] = useState("")
 	
-	// Calculate current grid size (matching renderer logic)
-	const calculateOptimalGridSize = useCallback(() => {
-		const targetPixelSpacing = 50
-		const baseGridSize = targetPixelSpacing / viewport.zoom
-		const logValue = Math.log10(baseGridSize)
-		const roundedLog = Math.round(logValue)
-		return Math.pow(10, roundedLog)
-	}, [viewport.zoom])
+	// Calculate current grid size using new unified system
+	const currentGridSize = ViewportCalcs.gridSpacing(viewport)
+	const currentWorldWidth = ViewportCalcs.worldWidth(viewport)
 
 	const formatGridSize = (size: number): string => {
 		if (size >= 1000) {
@@ -47,8 +43,8 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 		}
 	}
 
-	const currentGridSize = calculateOptimalGridSize()
-	const currentPixelSpacing = currentGridSize * viewport.zoom
+	const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
+	const currentPixelSpacing = currentGridSize * pixelsPerUnit
 
 	const handleFieldClick = (field: string, currentValue: string) => {
 		setEditingField(field)
@@ -65,11 +61,11 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 		}
 
 		switch (editingField) {
-			case "displayScale":
-				setDisplayScale(value)
+			case "scale":
+				setScale(value)
 				break
 			case "zoom":
-				setViewport({ zoom: Math.max(0.1, Math.min(100, value)) })
+				setZoom(value)
 				break
 		}
 
@@ -87,7 +83,7 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 	// Legend positioning (matching renderer logic)
 	const scaleLineLength = Math.min(currentPixelSpacing, 100)
 	const legendWidth = 180 // Reduced width, more compact layout
-	const legendHeight = 60 // Two rows with more space
+	const legendHeight = 80 // Three rows to show grid and viewport info
 	const margin = 10
 	const x = canvasWidth - legendWidth - margin
 	const y = canvasHeight - legendHeight - margin
@@ -180,7 +176,7 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "10px" }}>
 				<div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
 					<span>Scale:</span>
-					{editingField === "displayScale" ? (
+					{editingField === "scale" ? (
 						<input
 							style={inputStyle}
 							value={inputValue}
@@ -192,10 +188,10 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 					) : (
 						<button
 							style={buttonStyle}
-							onClick={() => handleFieldClick("displayScale", viewport.displayScale.toString())}
-							title="Click to edit display scale"
+							onClick={() => handleFieldClick("scale", viewport.scale.toString())}
+							title="Click to edit scale (expected drawing size)"
 						>
-							{viewport.displayScale.toFixed(0)}
+							{formatGridSize(viewport.scale)}
 						</button>
 					)}
 				</div>
@@ -220,6 +216,16 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 							{viewport.zoom.toFixed(1)}x
 						</button>
 					)}
+				</div>
+			</div>
+			
+			{/* Row 3: Grid and viewport info */}
+			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "10px", color: "#666" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+					<span>Grid: {formatGridSize(currentGridSize)}</span>
+				</div>
+				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+					<span>View: {formatGridSize(currentWorldWidth)} wide</span>
 				</div>
 			</div>
 		</div>

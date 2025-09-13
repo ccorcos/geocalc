@@ -2,6 +2,7 @@ import { createLabel, createLine, createPoint, getCircleRadius } from "../engine
 import { generateId } from "../ids"
 import { Point } from "../engine/types"
 import { useStore } from "../store"
+import { ViewportCalcs } from "../engine/types"
 import { calculateLabelPosition } from "../engine/label-positioning"
 
 export class CanvasInteraction {
@@ -59,7 +60,8 @@ export class CanvasInteraction {
 	private findEntityAt(worldX: number, worldY: number): string | null {
 		const store = useStore.getState()
 		const { geometry } = store
-		const tolerance = 10 / store.viewport.zoom // Scale tolerance with zoom
+		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport)
+		const tolerance = 10 / pixelsPerUnit // Scale tolerance with zoom
 
 		// Collect all entities within tolerance with their distances
 		const candidates: Array<{ id: string; distance: number; type: string }> = []
@@ -154,7 +156,8 @@ export class CanvasInteraction {
 
 		// If the closest is significantly closer (>5 pixels difference), prefer it
 		const store = useStore.getState()
-		const significantDistance = 5 / store.viewport.zoom
+		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport)
+		const significantDistance = 5 / pixelsPerUnit
 		
 		if (closest.distance + significantDistance < secondClosest.distance) {
 			return closest.id
@@ -432,9 +435,10 @@ export class CanvasInteraction {
 		} else {
 			// Two-finger scroll to pan
 			const panSensitivity = 1.0
+			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport)
 			store.panViewport(
-				(e.deltaX * panSensitivity) / store.viewport.zoom,
-				(e.deltaY * panSensitivity) / store.viewport.zoom
+				(e.deltaX * panSensitivity) / pixelsPerUnit,
+				(e.deltaY * panSensitivity) / pixelsPerUnit
 			)
 		}
 	}

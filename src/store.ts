@@ -19,6 +19,7 @@ import {
 	fitToDrawing,
 	resetViewport,
 } from "./engine/viewport-utils"
+import { ViewportCalcs } from "./engine/types"
 import {
 	CURRENT_STORAGE_VERSION,
 	StorageFormat,
@@ -211,7 +212,8 @@ interface AppState {
 	fitViewportToDrawing: () => void
 	centerViewportOnDrawing: () => void
 	resetViewportToDrawing: () => void
-	setDisplayScale: (scale: number) => void
+	setScale: (scale: number) => void
+	setZoom: (zoom: number) => void
 	screenToWorld: (screenX: number, screenY: number) => { x: number; y: number }
 	worldToScreen: (worldX: number, worldY: number) => { x: number; y: number }
 }
@@ -225,10 +227,10 @@ export const useStore = create<AppState>()(
 		viewport: {
 			x: 0,
 			y: 0,
+			canvasWidth: 800,
+			canvasHeight: 600,
+			scale: 100,
 			zoom: 1,
-			width: 800,
-			height: 600,
-			displayScale: 100,
 		},
 		selection: {
 			selectedIds: new Set(),
@@ -528,28 +530,24 @@ export const useStore = create<AppState>()(
 		zoomViewport: (factor, centerX = 0, centerY = 0) =>
 			set((state) => {
 				const oldZoom = state.viewport.zoom
-				const newZoom = Math.max(0.1, Math.min(100, oldZoom * factor))
+				const newZoom = Math.max(0.1, Math.min(10, oldZoom * factor))
 
 				if (newZoom !== oldZoom) {
 					// Get the world point under the mouse BEFORE zoom change
+					const oldPixelsPerUnit = ViewportCalcs.pixelsPerUnit({ ...state.viewport, zoom: oldZoom })
 					const worldPointBeforeZoom = {
-						x:
-							(centerX - state.viewport.width / 2) / oldZoom + state.viewport.x,
-						y:
-							(centerY - state.viewport.height / 2) / oldZoom +
-							state.viewport.y,
+						x: (centerX - state.viewport.canvasWidth / 2) / oldPixelsPerUnit + state.viewport.x,
+						y: (centerY - state.viewport.canvasHeight / 2) / oldPixelsPerUnit + state.viewport.y,
 					}
 
 					// Change the zoom level
 					state.viewport.zoom = newZoom
 
 					// Calculate where that same world point would be AFTER zoom change
+					const newPixelsPerUnit = ViewportCalcs.pixelsPerUnit(state.viewport)
 					const worldPointAfterZoom = {
-						x:
-							(centerX - state.viewport.width / 2) / newZoom + state.viewport.x,
-						y:
-							(centerY - state.viewport.height / 2) / newZoom +
-							state.viewport.y,
+						x: (centerX - state.viewport.canvasWidth / 2) / newPixelsPerUnit + state.viewport.x,
+						y: (centerY - state.viewport.canvasHeight / 2) / newPixelsPerUnit + state.viewport.y,
 					}
 
 					// Adjust viewport position to keep the world point under the mouse
@@ -560,17 +558,19 @@ export const useStore = create<AppState>()(
 
 		screenToWorld: (screenX, screenY) => {
 			const { viewport } = get()
+			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
 			return {
-				x: (screenX - viewport.width / 2) / viewport.zoom + viewport.x,
-				y: (screenY - viewport.height / 2) / viewport.zoom + viewport.y,
+				x: (screenX - viewport.canvasWidth / 2) / pixelsPerUnit + viewport.x,
+				y: (screenY - viewport.canvasHeight / 2) / pixelsPerUnit + viewport.y,
 			}
 		},
 
 		worldToScreen: (worldX, worldY) => {
 			const { viewport } = get()
+			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
 			return {
-				x: (worldX - viewport.x) * viewport.zoom + viewport.width / 2,
-				y: (worldY - viewport.y) * viewport.zoom + viewport.height / 2,
+				x: (worldX - viewport.x) * pixelsPerUnit + viewport.canvasWidth / 2,
+				y: (worldY - viewport.y) * pixelsPerUnit + viewport.canvasHeight / 2,
 			}
 		},
 
@@ -592,9 +592,14 @@ export const useStore = create<AppState>()(
 				Object.assign(state.viewport, newViewport)
 			}),
 
-		setDisplayScale: (scale) =>
+		setScale: (scale) =>
 			set((state) => {
-				state.viewport.displayScale = Math.max(1, Math.min(10000, scale))
+				state.viewport.scale = Math.max(1, Math.min(100000, scale))
+			}),
+
+		setZoom: (zoom) =>
+			set((state) => {
+				state.viewport.zoom = Math.max(0.1, Math.min(10, zoom))
 			}),
 	}))
 )

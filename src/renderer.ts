@@ -6,6 +6,7 @@ import {
 	Point,
 	SelectionState,
 	Viewport,
+	ViewportCalcs,
 } from "./engine/types"
 import { getCircleRadius } from "./engine/geometry"
 import {
@@ -137,31 +138,27 @@ export class CanvasRenderer {
 		const devicePixelRatio = window.devicePixelRatio || 1
 		this.ctx.scale(devicePixelRatio, devicePixelRatio)
 		
-		// Then apply viewport transform
-		this.ctx.translate(viewport.width / 2, viewport.height / 2)
-		this.ctx.scale(viewport.zoom, viewport.zoom)
+		// Center viewport
+		this.ctx.translate(viewport.canvasWidth / 2, viewport.canvasHeight / 2)
+		
+		// Apply unified world-to-pixel scaling
+		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
+		this.ctx.scale(pixelsPerUnit, pixelsPerUnit)
+		
+		// Translate to viewport center
 		this.ctx.translate(-viewport.x, -viewport.y)
 	}
 
 	private renderGrid(viewport: Viewport): void {
-		const primaryGridSize = this.calculateOptimalGridSize(viewport)
+		const gridSpacing = ViewportCalcs.gridSpacing(viewport)
 
 		// Render primary grid only
-		this.renderGridLayer(viewport, primaryGridSize, '#e0e0e0', 0.5, 1)
+		this.renderGridLayer(viewport, gridSpacing, '#e0e0e0', 0.5, 1)
 
 		// Render axes (bold)
 		this.renderAxes(viewport)
 	}
 
-	private calculateOptimalGridSize(viewport: Viewport): number {
-		const targetPixelSpacing = 50 // Ideal pixel distance between grid lines
-		const baseGridSize = targetPixelSpacing / viewport.zoom
-
-		// Find the appropriate power of 10
-		const logValue = Math.log10(baseGridSize)
-		const roundedLog = Math.round(logValue)
-		return Math.pow(10, roundedLog)
-	}
 
 	private renderGridLayer(
 		viewport: Viewport,
@@ -172,13 +169,11 @@ export class CanvasRenderer {
 	): void {
 		this.ctx.save()
 		this.ctx.strokeStyle = strokeStyle
-		this.ctx.lineWidth = lineWidth / viewport.zoom
+		this.ctx.lineWidth = lineWidth / ViewportCalcs.pixelsPerUnit(viewport)
 		this.ctx.globalAlpha = globalAlpha
 
-		const left = viewport.x - viewport.width / (2 * viewport.zoom)
-		const right = viewport.x + viewport.width / (2 * viewport.zoom)
-		const top = viewport.y - viewport.height / (2 * viewport.zoom)
-		const bottom = viewport.y + viewport.height / (2 * viewport.zoom)
+		const bounds = ViewportCalcs.visibleBounds(viewport)
+		const { left, right, top, bottom } = bounds
 
 		// Vertical lines
 		const startX = Math.floor(left / gridSize) * gridSize
@@ -208,14 +203,12 @@ export class CanvasRenderer {
 	}
 
 	private renderAxes(viewport: Viewport): void {
-		const left = viewport.x - viewport.width / (2 * viewport.zoom)
-		const right = viewport.x + viewport.width / (2 * viewport.zoom)
-		const top = viewport.y - viewport.height / (2 * viewport.zoom)
-		const bottom = viewport.y + viewport.height / (2 * viewport.zoom)
+		const bounds = ViewportCalcs.visibleBounds(viewport)
+		const { left, right, top, bottom } = bounds
 
 		this.ctx.save()
 		this.ctx.strokeStyle = '#999999'
-		this.ctx.lineWidth = 2 / viewport.zoom // Slightly thicker
+		this.ctx.lineWidth = 2 / ViewportCalcs.pixelsPerUnit(viewport) // Slightly thicker
 		this.ctx.globalAlpha = 0.8 // More opaque
 
 		// Y-axis (vertical line at x=0) - only render if visible
@@ -262,11 +255,13 @@ export class CanvasRenderer {
 
 		this.ctx.save()
 
-		// Point circle - scale with displayScale
+		// Point circle - scale with bounded feature scaling
 		this.ctx.beginPath()
 		const baseRadius = isFixed ? 5 : 4 // Fixed points are slightly larger
-		const scaledRadius = baseRadius * (viewport.displayScale / 100)
-		const radius = scaledRadius / viewport.zoom
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
+		const pixelRadius = baseRadius * featureScale
+		const radius = pixelRadius / pixelsPerUnit
 		this.ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI)
 
 		// Use ColorSystem for consistent color handling
@@ -297,8 +292,8 @@ export class CanvasRenderer {
 			this.ctx.strokeStyle = isConstraintHighlighted
 				? "#d97706"
 				: "#c44569"
-			const borderWidth = 2 * (viewport.displayScale / 100)
-			this.ctx.lineWidth = borderWidth / viewport.zoom
+			const borderPixelWidth = 2 * featureScale
+			this.ctx.lineWidth = borderPixelWidth / pixelsPerUnit
 			this.ctx.stroke()
 
 			// Show partial fixing with partial border
@@ -314,8 +309,8 @@ export class CanvasRenderer {
 					this.ctx.lineTo(point.x + radius, point.y)
 				}
 				this.ctx.strokeStyle = "#ffffff"
-				const crossWidth = 2 * (viewport.displayScale / 100)
-				this.ctx.lineWidth = crossWidth / viewport.zoom
+				const crossPixelWidth = 2 * featureScale
+				this.ctx.lineWidth = crossPixelWidth / pixelsPerUnit
 				this.ctx.stroke()
 			}
 		}
@@ -323,7 +318,8 @@ export class CanvasRenderer {
 		// Selection ring or constraint highlight ring
 		if (isSelected || isHovered || isConstraintHighlighted) {
 			this.ctx.beginPath()
-			const ringOffset = 2 * (viewport.displayScale / 100) / viewport.zoom
+			const ringPixelOffset = 2 * featureScale
+			const ringOffset = ringPixelOffset / pixelsPerUnit
 			this.ctx.arc(point.x, point.y, radius + ringOffset, 0, 2 * Math.PI)
 			
 			if (isConstraintHighlighted) {
@@ -343,8 +339,8 @@ export class CanvasRenderer {
 			}
 			
 			const ringWidth = isConstraintHighlighted ? 3 : 2 // Thicker ring for constraint highlighting
-			const scaledRingWidth = ringWidth * (viewport.displayScale / 100)
-			this.ctx.lineWidth = scaledRingWidth / viewport.zoom
+			const ringPixelWidth = ringWidth * featureScale
+			this.ctx.lineWidth = ringPixelWidth / pixelsPerUnit
 			this.ctx.stroke()
 		}
 
@@ -387,8 +383,9 @@ export class CanvasRenderer {
 		})
 		
 		this.ctx.strokeStyle = colors.color
-		const scaledWidth = colors.width * (viewport.displayScale / 100)
-		this.ctx.lineWidth = scaledWidth / viewport.zoom
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const linePixelWidth = colors.width * featureScale
+		this.ctx.lineWidth = linePixelWidth / ViewportCalcs.pixelsPerUnit(viewport)
 
 		this.ctx.beginPath()
 
@@ -436,8 +433,9 @@ export class CanvasRenderer {
 		})
 		
 		this.ctx.strokeStyle = colors.color
-		const scaledWidth = colors.width * (viewport.displayScale / 100)
-		this.ctx.lineWidth = scaledWidth / viewport.zoom
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const linePixelWidth = colors.width * featureScale
+		this.ctx.lineWidth = linePixelWidth / ViewportCalcs.pixelsPerUnit(viewport)
 
 		this.ctx.fillStyle = "transparent"
 
@@ -513,10 +511,11 @@ export class CanvasRenderer {
 		
 		const color = "#bbb"
 		const baseWidth = 1
-		const scaledWidth = baseWidth * (viewport.displayScale / 100)
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const linePixelWidth = baseWidth * featureScale
 
 		this.ctx.strokeStyle = color
-		this.ctx.lineWidth = scaledWidth / viewport.zoom
+		this.ctx.lineWidth = linePixelWidth / ViewportCalcs.pixelsPerUnit(viewport)
 
 		// Draw extension lines
 		this.ctx.beginPath()
@@ -533,18 +532,21 @@ export class CanvasRenderer {
 		this.ctx.stroke()
 
 		// Draw arrowheads/ticks at ends
-		this.renderDimensionArrows(start, end, color, scaledWidth, viewport)
+		this.renderDimensionArrows(start, end, color, linePixelWidth, viewport)
 	}
 
 	private renderDimensionArrows(
 		start: { x: number; y: number },
 		end: { x: number; y: number },
 		color: string,
-		scaledWidth: number,
+		linePixelWidth: number,
 		viewport: Viewport
 	): void {
 		const baseArrowSize = 5
-		const arrowSize = (baseArrowSize * (viewport.displayScale / 100)) / viewport.zoom
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
+		const arrowPixelSize = baseArrowSize * featureScale
+		const arrowSize = arrowPixelSize / pixelsPerUnit
 		
 		// Calculate direction vector
 		const dx = end.x - start.x
@@ -560,7 +562,7 @@ export class CanvasRenderer {
 
 		this.ctx.fillStyle = color
 		this.ctx.strokeStyle = color
-		this.ctx.lineWidth = scaledWidth / viewport.zoom
+		this.ctx.lineWidth = linePixelWidth / pixelsPerUnit
 
 		// Start arrow
 		this.ctx.beginPath()
@@ -591,10 +593,11 @@ export class CanvasRenderer {
 		
 		const color = "#bbb"
 		const baseWidth = 1
-		const scaledWidth = baseWidth * (viewport.displayScale / 100)
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const linePixelWidth = baseWidth * featureScale
 
 		this.ctx.strokeStyle = color
-		this.ctx.lineWidth = scaledWidth / viewport.zoom
+		this.ctx.lineWidth = linePixelWidth / ViewportCalcs.pixelsPerUnit(viewport)
 		this.ctx.fillStyle = "transparent"
 
 		// Draw arc
@@ -612,17 +615,19 @@ export class CanvasRenderer {
 	): void {
 		// Calculate text dimensions for background
 		const baseFontSize = 12
-		const scaledFontSize = baseFontSize * (viewport.displayScale / 100)
-		this.ctx.font = `${scaledFontSize / viewport.zoom}px Arial`
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const fontPixelSize = baseFontSize * featureScale
+		this.ctx.font = `${fontPixelSize / ViewportCalcs.pixelsPerUnit(viewport)}px Arial`
 		this.ctx.textAlign = "center"
 		this.ctx.textBaseline = "middle"
 		
 		const textMetrics = this.ctx.measureText(text)
 		const textWidth = textMetrics.width
-		const textHeight = scaledFontSize / viewport.zoom * 1.2 // Font height with some spacing
+		const textHeight = fontPixelSize / ViewportCalcs.pixelsPerUnit(viewport) * 1.2 // Font height with some spacing
 		
 		const basePadding = 4
-		const padding = (basePadding * (viewport.displayScale / 100)) / viewport.zoom
+		const paddingPixelSize = basePadding * featureScale
+		const padding = paddingPixelSize / ViewportCalcs.pixelsPerUnit(viewport)
 		const bgWidth = textWidth + padding * 2
 		const bgHeight = textHeight + padding * 2
 
@@ -643,8 +648,8 @@ export class CanvasRenderer {
 		// Draw border
 		this.ctx.strokeStyle = isSelected ? "#4dabf7" : isHovered ? "#74c0fc" : "#ccc"
 		const baseBorderWidth = isSelected ? 2 : 1
-		const scaledBorderWidth = baseBorderWidth * (viewport.displayScale / 100)
-		this.ctx.lineWidth = scaledBorderWidth / viewport.zoom
+		const borderPixelWidth = baseBorderWidth * featureScale
+		this.ctx.lineWidth = borderPixelWidth / ViewportCalcs.pixelsPerUnit(viewport)
 		this.ctx.strokeRect(
 			position.x - bgWidth / 2,
 			position.y - bgHeight / 2,
@@ -689,9 +694,11 @@ export class CanvasRenderer {
 		// Draw leader line from target to label
 		this.ctx.strokeStyle = "#bbb"
 		const baseWidth = 1
-		const scaledWidth = baseWidth * (viewport.displayScale / 100)
-		this.ctx.lineWidth = scaledWidth / viewport.zoom
-		const dashSize = (3 * (viewport.displayScale / 100)) / viewport.zoom
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const linePixelWidth = baseWidth * featureScale
+		this.ctx.lineWidth = linePixelWidth / ViewportCalcs.pixelsPerUnit(viewport)
+		const dashPixelSize = 3 * featureScale
+		const dashSize = dashPixelSize / ViewportCalcs.pixelsPerUnit(viewport)
 		this.ctx.setLineDash([dashSize, dashSize]) // Dashed line
 
 		this.ctx.beginPath()
@@ -776,8 +783,11 @@ export class CanvasRenderer {
 	): void {
 		const baseArrowLength = 8
 		const baseArrowWidth = 4
-		const arrowLength = (baseArrowLength * (viewport.displayScale / 100)) / viewport.zoom
-		const arrowWidth = (baseArrowWidth * (viewport.displayScale / 100)) / viewport.zoom
+		const featureScale = ViewportCalcs.featureScale(viewport)
+		const arrowPixelLength = baseArrowLength * featureScale
+		const arrowPixelWidth = baseArrowWidth * featureScale
+		const arrowLength = arrowPixelLength / ViewportCalcs.pixelsPerUnit(viewport)
+		const arrowWidth = arrowPixelWidth / ViewportCalcs.pixelsPerUnit(viewport)
 
 		// Calculate direction vector from target to label
 		const dx = labelPoint.x - targetPoint.x

@@ -67,7 +67,7 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 		canvas.style.width = `${width}px`
 		canvas.style.height = `${height}px`
 
-		setViewport({ width, height })
+		setViewport({ canvasWidth: width, canvasHeight: height })
 		if (rendererRef.current) {
 			rendererRef.current.resize(width, height)
 		}

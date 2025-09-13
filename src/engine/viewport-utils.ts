@@ -115,28 +115,31 @@ export const fitToDrawing = (geometry: Geometry, viewport: Viewport): Viewport =
 	const bounds = calculateDrawingBounds(geometry)
 	
 	if (!bounds) {
-		// Empty drawing - return to origin with default zoom
+		// Empty drawing - return to origin with default settings
 		return {
 			...viewport,
 			x: 0,
 			y: 0,
+			scale: 100,
 			zoom: 1
 		}
 	}
 
-	// Add 10% padding around drawing
-	const padding = 0.1
-	const targetZoomX = (viewport.width * (1 - padding)) / bounds.width
-	const targetZoomY = (viewport.height * (1 - padding)) / bounds.height
-	const targetZoom = Math.min(targetZoomX, targetZoomY)
-
+	// Detect optimal scale for this drawing
+	const optimalScale = detectOptimalDisplayScale(geometry)
+	
+	// Calculate required zoom to fit drawing with 20% padding
+	const requiredWorldWidth = bounds.width * 1.2
+	const requiredZoom = optimalScale / requiredWorldWidth
+	
 	// Clamp zoom to reasonable limits
-	const clampedZoom = Math.max(0.1, Math.min(100, targetZoom))
+	const clampedZoom = Math.max(0.1, Math.min(10, requiredZoom))
 
 	return {
 		...viewport,
 		x: bounds.center.x,
 		y: bounds.center.y,
+		scale: optimalScale,
 		zoom: clampedZoom
 	}
 }
@@ -145,17 +148,19 @@ export const detectOptimalDisplayScale = (geometry: Geometry): number => {
 	const bounds = calculateDrawingBounds(geometry)
 	
 	if (!bounds) {
-		return 100 // Default scale for empty drawings (matches grid baseline)
+		return 100 // Default scale for empty drawings
 	}
 
-	const typicalSize = Math.sqrt(bounds.width * bounds.height)
+	const typicalSize = Math.max(bounds.width, bounds.height)
 	
-	// Heuristic: display scale should make line widths comfortable to work with
-	// Baseline is 100 (matching initial grid scale)
-	if (typicalSize < 1) return 1000    // Micro drawings (0.01 units) -> 1000 scale
-	if (typicalSize < 10) return 100    // Normal drawings (1-10 units) -> 100 scale  
-	if (typicalSize < 1000) return 10   // Large drawings (100-1000 units) -> 10 scale
-	return 1                            // Massive drawings (10k+ units) -> 1 scale
+	// Scale should roughly match the size of the content
+	// This makes the viewport formula viewport_width = scale/zoom * 1.2 intuitive
+	if (typicalSize < 1) return 1
+	if (typicalSize < 10) return 10
+	if (typicalSize < 100) return 100
+	if (typicalSize < 1000) return 1000
+	if (typicalSize < 10000) return 10000
+	return 100000
 }
 
 export const centerViewport = (geometry: Geometry, viewport: Viewport): Viewport => {
@@ -186,8 +191,8 @@ export const resetViewport = (geometry: Geometry, viewport: Viewport): Viewport 
 			...viewport,
 			x: 0,
 			y: 0,
-			zoom: 1,
-			displayScale: 100
+			scale: 100,
+			zoom: 1
 		}
 	}
 
@@ -195,7 +200,7 @@ export const resetViewport = (geometry: Geometry, viewport: Viewport): Viewport 
 		...viewport,
 		x: bounds.center.x,
 		y: bounds.center.y,
-		zoom: 1,
-		displayScale: detectOptimalDisplayScale(geometry)
+		scale: detectOptimalDisplayScale(geometry),
+		zoom: 1
 	}
 }
