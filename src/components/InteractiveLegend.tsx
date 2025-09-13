@@ -23,7 +23,6 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 	
 	// Calculate current grid size using new unified system
 	const currentGridSize = ViewportCalcs.gridSpacing(viewport)
-	const currentWorldWidth = ViewportCalcs.worldWidth(viewport)
 
 	const formatGridSize = (size: number): string => {
 		if (size >= 1000) {
@@ -83,7 +82,7 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 	// Legend positioning (matching renderer logic)
 	const scaleLineLength = Math.min(currentPixelSpacing, 100)
 	const legendWidth = 180 // Reduced width, more compact layout
-	const legendHeight = 80 // Three rows to show grid and viewport info
+	const legendHeight = 60 // Two rows now
 	const margin = 10
 	const x = canvasWidth - legendWidth - margin
 	const y = canvasHeight - legendHeight - margin
@@ -216,16 +215,6 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 							{viewport.zoom.toFixed(1)}x
 						</button>
 					)}
-				</div>
-			</div>
-			
-			{/* Row 3: Grid and viewport info */}
-			<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "10px", color: "#666" }}>
-				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-					<span>Grid: {formatGridSize(currentGridSize)}</span>
-				</div>
-				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-					<span>View: {formatGridSize(currentWorldWidth)} wide</span>
 				</div>
 			</div>
 		</div>

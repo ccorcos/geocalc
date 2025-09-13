@@ -16,7 +16,7 @@ import {
 } from "./engine/types"
 import {
 	centerViewport,
-	fitToDrawing,
+	fitToDrawingZoomOnly,
 	resetViewport,
 } from "./engine/viewport-utils"
 import { ViewportCalcs } from "./engine/types"
@@ -530,7 +530,7 @@ export const useStore = create<AppState>()(
 		zoomViewport: (factor, centerX = 0, centerY = 0) =>
 			set((state) => {
 				const oldZoom = state.viewport.zoom
-				const newZoom = Math.max(0.1, Math.min(10, oldZoom * factor))
+				const newZoom = oldZoom * factor
 
 				if (newZoom !== oldZoom) {
 					// Get the world point under the mouse BEFORE zoom change
@@ -576,7 +576,7 @@ export const useStore = create<AppState>()(
 
 		fitViewportToDrawing: () =>
 			set((state) => {
-				const newViewport = fitToDrawing(state.geometry, state.viewport)
+				const newViewport = fitToDrawingZoomOnly(state.geometry, state.viewport)
 				Object.assign(state.viewport, newViewport)
 			}),
 
@@ -599,7 +599,7 @@ export const useStore = create<AppState>()(
 
 		setZoom: (zoom) =>
 			set((state) => {
-				state.viewport.zoom = Math.max(0.1, Math.min(10, zoom))
+				state.viewport.zoom = zoom
 			}),
 	}))
 )

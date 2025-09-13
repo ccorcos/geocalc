@@ -131,16 +131,37 @@ export const fitToDrawing = (geometry: Geometry, viewport: Viewport): Viewport =
 	// Calculate required zoom to fit drawing with 20% padding
 	const requiredWorldWidth = bounds.width * 1.2
 	const requiredZoom = optimalScale / requiredWorldWidth
-	
-	// Clamp zoom to reasonable limits
-	const clampedZoom = Math.max(0.1, Math.min(10, requiredZoom))
 
 	return {
 		...viewport,
 		x: bounds.center.x,
 		y: bounds.center.y,
 		scale: optimalScale,
-		zoom: clampedZoom
+		zoom: requiredZoom
+	}
+}
+
+export const fitToDrawingZoomOnly = (geometry: Geometry, viewport: Viewport): Viewport => {
+	const bounds = calculateDrawingBounds(geometry)
+	
+	if (!bounds) {
+		// Empty drawing - center on origin, keep current scale and zoom
+		return {
+			...viewport,
+			x: 0,
+			y: 0
+		}
+	}
+
+	// Calculate required zoom to fit drawing with 20% padding using current scale
+	const requiredWorldWidth = bounds.width * 1.2
+	const requiredZoom = viewport.scale / requiredWorldWidth
+
+	return {
+		...viewport,
+		x: bounds.center.x,
+		y: bounds.center.y,
+		zoom: requiredZoom
 	}
 }
 

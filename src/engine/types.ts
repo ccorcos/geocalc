@@ -81,8 +81,10 @@ export class ViewportCalcs {
 	}
 	
 	static gridSpacing(viewport: Viewport): number {
-		const scaleOverZoom = viewport.scale / viewport.zoom
-		const logValue = Math.log10(scaleOverZoom)
+		const viewportWidth = this.worldWidth(viewport)
+		// Target ~10-15 grid divisions across the viewport
+		const targetGridSpacing = viewportWidth / 12
+		const logValue = Math.log10(targetGridSpacing)
 		const roundedLog = Math.round(logValue)
 		return Math.pow(10, roundedLog)
 	}

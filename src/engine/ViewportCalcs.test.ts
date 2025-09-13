@@ -82,39 +82,36 @@ describe('ViewportCalcs', () => {
 	})
 
 	describe('gridSpacing', () => {
-		test('should follow the formula: 10^round(log10(scale/zoom))', () => {
-			// scale=100, zoom=1: 10^round(log10(100)) = 10^2 = 100
-			expect(ViewportCalcs.gridSpacing(createViewport(100, 1))).toBe(100)
+		test('should provide reasonable grid divisions based on viewport width', () => {
+			// scale=100, zoom=1: viewport=120, target=10, grid=10
+			expect(ViewportCalcs.gridSpacing(createViewport(100, 1))).toBe(10)
 			
-			// scale=100, zoom=10: 10^round(log10(10)) = 10^1 = 10  
-			expect(ViewportCalcs.gridSpacing(createViewport(100, 10))).toBe(10)
+			// scale=100, zoom=10: viewport=12, target=1, grid=1  
+			expect(ViewportCalcs.gridSpacing(createViewport(100, 10))).toBe(1)
 			
-			// scale=100, zoom=0.1: 10^round(log10(1000)) = 10^3 = 1000
-			expect(ViewportCalcs.gridSpacing(createViewport(100, 0.1))).toBe(1000)
+			// scale=100, zoom=0.1: viewport=1200, target=100, grid=100
+			expect(ViewportCalcs.gridSpacing(createViewport(100, 0.1))).toBe(100)
 			
-			// scale=10, zoom=1: 10^round(log10(10)) = 10^1 = 10  
-			expect(ViewportCalcs.gridSpacing(createViewport(10, 1))).toBe(10)
+			// scale=10, zoom=1: viewport=12, target=1, grid=1  
+			expect(ViewportCalcs.gridSpacing(createViewport(10, 1))).toBe(1)
 			
-			// scale=10, zoom=10: 10^round(log10(1)) = 10^0 = 1
-			expect(ViewportCalcs.gridSpacing(createViewport(10, 10))).toBe(1)
+			// scale=1000, zoom=1: viewport=1200, target=100, grid=100
+			expect(ViewportCalcs.gridSpacing(createViewport(1000, 1))).toBe(100)
 			
-			// scale=1, zoom=1: 10^round(log10(1)) = 10^0 = 1
-			expect(ViewportCalcs.gridSpacing(createViewport(1, 1))).toBe(1)
-			
-			// scale=1, zoom=10: 10^round(log10(0.1)) = 10^-1 = 0.1
-			expect(ViewportCalcs.gridSpacing(createViewport(1, 10))).toBeCloseTo(0.1, 3)
+			// scale=1, zoom=1: viewport=1.2, target=0.1, grid=0.1
+			expect(ViewportCalcs.gridSpacing(createViewport(1, 1))).toBeCloseTo(0.1, 3)
 		})
 
 		test('should handle edge cases gracefully', () => {
-			// Very small scale/zoom ratios
-			expect(ViewportCalcs.gridSpacing(createViewport(0.01, 1))).toBeCloseTo(0.01, 3)
+			// Very small scale: viewport=0.012, target=0.001, grid=0.001
+			expect(ViewportCalcs.gridSpacing(createViewport(0.01, 1))).toBeCloseTo(0.001, 3)
 			
-			// Very large scale/zoom ratios  
-			expect(ViewportCalcs.gridSpacing(createViewport(10000, 1))).toBe(10000)
+			// Very large scale: viewport=12000, target=1000, grid=1000  
+			expect(ViewportCalcs.gridSpacing(createViewport(10000, 1))).toBe(1000)
 			
-			// Fractional results
-			expect(ViewportCalcs.gridSpacing(createViewport(3, 1))).toBe(1) // 10^round(log10(3)) = 10^0
-			expect(ViewportCalcs.gridSpacing(createViewport(30, 1))).toBe(10) // 10^round(log10(30)) = 10^1
+			// Fractional viewport sizes
+			expect(ViewportCalcs.gridSpacing(createViewport(3, 1))).toBeCloseTo(0.1, 3) // viewport=3.6, target=0.3, grid=0.1
+			expect(ViewportCalcs.gridSpacing(createViewport(30, 1))).toBe(1) // viewport=36, target=3, grid=1
 		})
 	})
 
@@ -146,12 +143,12 @@ describe('ViewportCalcs', () => {
 			
 			// At zoom=1: should see ~1200 units (building + margins)
 			expect(ViewportCalcs.worldWidth(building)).toBeCloseTo(1200, 3)
-			expect(ViewportCalcs.gridSpacing(building)).toBe(1000)
+			expect(ViewportCalcs.gridSpacing(building)).toBe(100) // viewport=1200, target=100, grid=100
 			
 			// Zoom in 4x for room detail: should see ~300 units
 			const roomDetail = createViewport(1000, 4, 800, 600)
 			expect(ViewportCalcs.worldWidth(roomDetail)).toBeCloseTo(300, 3)
-			expect(ViewportCalcs.gridSpacing(roomDetail)).toBe(100) // Room-level grid
+			expect(ViewportCalcs.gridSpacing(roomDetail)).toBe(10) // viewport=300, target=25, grid=10
 		})
 
 		test('PCB design workflow', () => {
@@ -160,12 +157,12 @@ describe('ViewportCalcs', () => {
 			
 			// At zoom=1: should see ~12 units (board + margins)
 			expect(ViewportCalcs.worldWidth(board)).toBeCloseTo(12, 3)
-			expect(ViewportCalcs.gridSpacing(board)).toBe(10)
+			expect(ViewportCalcs.gridSpacing(board)).toBe(1) // viewport=12, target=1, grid=1
 			
 			// Zoom in 20x for trace routing: should see ~0.6 units
 			const traces = createViewport(10, 20, 800, 600)
 			expect(ViewportCalcs.worldWidth(traces)).toBeCloseTo(0.6, 3)
-			expect(ViewportCalcs.gridSpacing(traces)).toBe(1) // 10^round(log10(0.5)) = 10^0 = 1
+			expect(ViewportCalcs.gridSpacing(traces)).toBeCloseTo(0.1, 3) // viewport=0.6, target=0.05, grid=0.1
 		})
 
 		test('math visualization workflow', () => {
@@ -174,12 +171,12 @@ describe('ViewportCalcs', () => {
 			
 			// At zoom=1: should see ~120 units (function domain + margins)
 			expect(ViewportCalcs.worldWidth(function_plot)).toBeCloseTo(120, 3)
-			expect(ViewportCalcs.gridSpacing(function_plot)).toBe(100)
+			expect(ViewportCalcs.gridSpacing(function_plot)).toBe(10) // viewport=120, target=10, grid=10
 			
 			// Zoom in 10x for function detail: should see ~12 units  
 			const detail = createViewport(100, 10, 800, 600)
 			expect(ViewportCalcs.worldWidth(detail)).toBeCloseTo(12, 3)
-			expect(ViewportCalcs.gridSpacing(detail)).toBe(10) // 10^round(log10(10)) = 10^1 = 10
+			expect(ViewportCalcs.gridSpacing(detail)).toBe(1) // viewport=12, target=1, grid=1
 		})
 
 		test('feature scaling consistency across scales', () => {
