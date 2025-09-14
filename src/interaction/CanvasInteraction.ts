@@ -1,5 +1,4 @@
 import {
-	createLabel,
 	createLine,
 	createPoint,
 	getCircleRadius,
@@ -720,54 +719,15 @@ export class CanvasInteraction {
 	}
 
 	private handleLabelMouseDown(
-		worldPos: { x: number; y: number },
-		shiftKey: boolean
+		_worldPos: { x: number; y: number },
+		_shiftKey: boolean
 	): void {
+		// Note: With improved label UX, labels are now created directly from the toolbar
+		// when the label tool is clicked. This method should not be reached in normal usage,
+		// but is kept for backwards compatibility.
 		const store = useStore.getState()
-		const selectedIds = Array.from(store.selection.selectedIds)
-
-		// Check if clicking on an existing point
-		const existingPointId = this.findEntityAt(worldPos.x, worldPos.y)
-		const existingPoint = existingPointId
-			? store.geometry.points.get(existingPointId)
-			: null
-
-		// Determine label type based on selection or click
-		if (selectedIds.length === 1 && store.geometry.points.has(selectedIds[0])) {
-			// One point selected -> coordinate label
-			const label = createLabel("coordinate", [selectedIds[0]])
-			store.addLabel(label)
-		} else if (selectedIds.length === 2) {
-			// Two entities selected -> distance label if both are points
-			const arePoints = selectedIds.every((id) => store.geometry.points.has(id))
-			if (arePoints) {
-				const label = createLabel("distance", selectedIds)
-				store.addLabel(label)
-			}
-		} else if (selectedIds.length === 3) {
-			// Three points selected -> angle label
-			const arePoints = selectedIds.every((id) => store.geometry.points.has(id))
-			if (arePoints) {
-				const label = createLabel("angle", selectedIds)
-				store.addLabel(label)
-			}
-		} else if (existingPoint && !shiftKey) {
-			// Click on a point with no selection -> coordinate label
-			const label = createLabel("coordinate", [existingPoint.id])
-			store.addLabel(label)
-		} else if (shiftKey && existingPoint) {
-			// Shift-click to build up selection for multi-point labels
-			const newSelection = new Set(store.selection.selectedIds)
-			if (newSelection.has(existingPoint.id)) {
-				newSelection.delete(existingPoint.id)
-			} else {
-				newSelection.add(existingPoint.id)
-			}
-			store.setSelection({ selectedIds: newSelection })
-			return // Don't revert to select tool yet
-		}
-
-		// Auto-revert to select tool after creating label
+		
+		// Immediately revert to select tool since labels should be created via toolbar
 		store.setCurrentTool("select")
 	}
 
