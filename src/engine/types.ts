@@ -43,6 +43,7 @@ export interface Geometry {
 	circles: Map<string, Circle>
 	labels: Map<string, Label>
 	constraints: Map<string, Constraint>
+	scale: number // Scale for the geometry
 }
 
 export interface Viewport {
@@ -50,28 +51,27 @@ export interface Viewport {
 	y: number
 	canvasWidth: number
 	canvasHeight: number
-	scale: number
 	zoom: number
 }
 
 // Utility class for computed viewport properties
 export class ViewportCalcs {
-	static worldWidth(viewport: Viewport): number {
-		return viewport.scale / viewport.zoom * 1.2
+	static worldWidth(viewport: Viewport, scale: number): number {
+		return scale / viewport.zoom * 1.2
 	}
 	
-	static worldHeight(viewport: Viewport): number {
+	static worldHeight(viewport: Viewport, scale: number): number {
 		const aspectRatio = viewport.canvasHeight / viewport.canvasWidth
-		return this.worldWidth(viewport) * aspectRatio
+		return this.worldWidth(viewport, scale) * aspectRatio
 	}
 	
-	static pixelsPerUnit(viewport: Viewport): number {
-		return viewport.canvasWidth / this.worldWidth(viewport)
+	static pixelsPerUnit(viewport: Viewport, scale: number): number {
+		return viewport.canvasWidth / this.worldWidth(viewport, scale)
 	}
 	
-	static visibleBounds(viewport: Viewport) {
-		const worldWidth = this.worldWidth(viewport)
-		const worldHeight = this.worldHeight(viewport)
+	static visibleBounds(viewport: Viewport, scale: number) {
+		const worldWidth = this.worldWidth(viewport, scale)
+		const worldHeight = this.worldHeight(viewport, scale)
 		return {
 			left: viewport.x - worldWidth / 2,
 			right: viewport.x + worldWidth / 2,
@@ -80,8 +80,8 @@ export class ViewportCalcs {
 		}
 	}
 	
-	static gridSpacing(viewport: Viewport): number {
-		const viewportWidth = this.worldWidth(viewport)
+	static gridSpacing(viewport: Viewport, scale: number): number {
+		const viewportWidth = this.worldWidth(viewport, scale)
 		// Target ~10-15 grid divisions across the viewport
 		const targetGridSpacing = viewportWidth / 12
 		const logValue = Math.log10(targetGridSpacing)

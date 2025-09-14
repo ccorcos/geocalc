@@ -358,6 +358,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 				circles: Array.from(geometry.circles.entries()),
 				labels: Array.from(geometry.labels.entries()),
 				constraints: Array.from(geometry.constraints.entries()),
+				scale: geometry.scale,
 			},
 		}
 
@@ -395,6 +396,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 						circles: new Map(migrated.geometry.circles || []),
 						labels: new Map(migrated.geometry.labels || []),
 						constraints: new Map(migrated.geometry.constraints || []),
+						scale: migrated.geometry.scale || 100,
 					}
 
 					setGeometry(newGeometry)

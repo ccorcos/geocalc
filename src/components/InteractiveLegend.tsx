@@ -12,7 +12,8 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 	canvasHeight
 }) => {
 	const { 
-		viewport, 
+		viewport,
+		geometry,
 		fitViewportToDrawing,
 		setScale,
 		setZoom
@@ -22,7 +23,7 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 	const [inputValue, setInputValue] = useState("")
 	
 	// Calculate current grid size using new unified system
-	const currentGridSize = ViewportCalcs.gridSpacing(viewport)
+	const currentGridSize = ViewportCalcs.gridSpacing(viewport, geometry.scale)
 
 	const formatGridSize = (size: number): string => {
 		if (size >= 1000) {
@@ -42,7 +43,7 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 		}
 	}
 
-	const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
+	const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport, geometry.scale)
 	const currentPixelSpacing = currentGridSize * pixelsPerUnit
 
 	const handleFieldClick = (field: string, currentValue: string) => {
@@ -187,10 +188,10 @@ export const InteractiveLegend: React.FC<InteractiveLegendProps> = ({
 					) : (
 						<button
 							style={buttonStyle}
-							onClick={() => handleFieldClick("scale", viewport.scale.toString())}
+							onClick={() => handleFieldClick("scale", geometry.scale.toString())}
 							title="Click to edit scale (expected drawing size)"
 						>
-							{formatGridSize(viewport.scale)}
+							{formatGridSize(geometry.scale)}
 						</button>
 					)}
 				</div>

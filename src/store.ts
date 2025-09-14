@@ -39,6 +39,7 @@ const serializeGeometry = (geometry: Geometry): string => {
 			circles: Array.from(geometry.circles.entries()),
 			labels: Array.from(geometry.labels.entries()),
 			constraints: Array.from(geometry.constraints.entries()),
+			scale: geometry.scale,
 		},
 		nextId: getNextId(),
 	}
@@ -61,6 +62,7 @@ const deserializeGeometry = (data: string): Geometry => {
 			circles: new Map(migrated.geometry.circles || []),
 			labels: new Map(migrated.geometry.labels || []),
 			constraints: new Map(migrated.geometry.constraints || []),
+			scale: migrated.geometry.scale,
 		}
 	} catch (error) {
 		console.warn("Failed to deserialize geometry from URL:", error)
@@ -221,17 +223,18 @@ interface AppState {
 const solver = new GradientDescentSolver()
 
 export const useStore = create<AppState>()(
-	immer((set, get) => ({
-		geometry: loadGeometry(),
-		currentTool: "select",
-		viewport: {
-			x: 0,
-			y: 0,
-			canvasWidth: 800,
-			canvasHeight: 600,
-			scale: 100,
-			zoom: 1,
-		},
+	immer((set, get) => {
+		const loadedGeometry = loadGeometry()
+		return {
+			geometry: loadedGeometry,
+			currentTool: "select",
+			viewport: {
+				x: 0,
+				y: 0,
+				canvasWidth: 800,
+				canvasHeight: 600,
+				zoom: 1,
+			},
 		selection: {
 			selectedIds: new Set(),
 			hoveredId: null,
@@ -534,7 +537,7 @@ export const useStore = create<AppState>()(
 
 				if (newZoom !== oldZoom) {
 					// Get the world point under the mouse BEFORE zoom change
-					const oldPixelsPerUnit = ViewportCalcs.pixelsPerUnit({ ...state.viewport, zoom: oldZoom })
+					const oldPixelsPerUnit = ViewportCalcs.pixelsPerUnit({ ...state.viewport, zoom: oldZoom }, state.geometry.scale)
 					const worldPointBeforeZoom = {
 						x: (centerX - state.viewport.canvasWidth / 2) / oldPixelsPerUnit + state.viewport.x,
 						y: (centerY - state.viewport.canvasHeight / 2) / oldPixelsPerUnit + state.viewport.y,
@@ -544,7 +547,7 @@ export const useStore = create<AppState>()(
 					state.viewport.zoom = newZoom
 
 					// Calculate where that same world point would be AFTER zoom change
-					const newPixelsPerUnit = ViewportCalcs.pixelsPerUnit(state.viewport)
+					const newPixelsPerUnit = ViewportCalcs.pixelsPerUnit(state.viewport, state.geometry.scale)
 					const worldPointAfterZoom = {
 						x: (centerX - state.viewport.canvasWidth / 2) / newPixelsPerUnit + state.viewport.x,
 						y: (centerY - state.viewport.canvasHeight / 2) / newPixelsPerUnit + state.viewport.y,
@@ -557,8 +560,8 @@ export const useStore = create<AppState>()(
 			}),
 
 		screenToWorld: (screenX, screenY) => {
-			const { viewport } = get()
-			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
+			const { viewport, geometry } = get()
+			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport, geometry.scale)
 			return {
 				x: (screenX - viewport.canvasWidth / 2) / pixelsPerUnit + viewport.x,
 				y: (screenY - viewport.canvasHeight / 2) / pixelsPerUnit + viewport.y,
@@ -566,8 +569,8 @@ export const useStore = create<AppState>()(
 		},
 
 		worldToScreen: (worldX, worldY) => {
-			const { viewport } = get()
-			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport)
+			const { viewport, geometry } = get()
+			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(viewport, geometry.scale)
 			return {
 				x: (worldX - viewport.x) * pixelsPerUnit + viewport.canvasWidth / 2,
 				y: (worldY - viewport.y) * pixelsPerUnit + viewport.canvasHeight / 2,
@@ -594,12 +597,15 @@ export const useStore = create<AppState>()(
 
 		setScale: (scale) =>
 			set((state) => {
-				state.viewport.scale = Math.max(1, Math.min(100000, scale))
+				const newScale = Math.max(1, Math.min(100000, scale))
+				state.geometry.scale = newScale
+				saveGeometry(state.geometry)
 			}),
 
 		setZoom: (zoom) =>
 			set((state) => {
 				state.viewport.zoom = zoom
 			}),
-	}))
+		}
+	})
 )

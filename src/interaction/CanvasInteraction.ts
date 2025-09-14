@@ -64,7 +64,7 @@ export class CanvasInteraction {
 	private findEntityAt(worldX: number, worldY: number): string | null {
 		const store = useStore.getState()
 		const { geometry } = store
-		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport)
+		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport, store.geometry.scale)
 		const tolerance = 10 / pixelsPerUnit // Scale tolerance with zoom
 
 		// Collect all entities within tolerance with their distances
@@ -161,7 +161,7 @@ export class CanvasInteraction {
 
 		// If the closest is significantly closer (>5 pixels difference), prefer it
 		const store = useStore.getState()
-		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport)
+		const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport, store.geometry.scale)
 		const significantDistance = 5 / pixelsPerUnit
 
 		if (closest.distance + significantDistance < secondClosest.distance) {
@@ -445,7 +445,7 @@ export class CanvasInteraction {
 		} else {
 			// Two-finger scroll to pan
 			const panSensitivity = 1.0
-			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport)
+			const pixelsPerUnit = ViewportCalcs.pixelsPerUnit(store.viewport, store.geometry.scale)
 			store.panViewport(
 				(e.deltaX * panSensitivity) / pixelsPerUnit,
 				(e.deltaY * panSensitivity) / pixelsPerUnit

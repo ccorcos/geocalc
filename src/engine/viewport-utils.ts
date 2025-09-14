@@ -120,7 +120,6 @@ export const fitToDrawing = (geometry: Geometry, viewport: Viewport): Viewport =
 			...viewport,
 			x: 0,
 			y: 0,
-			scale: 100,
 			zoom: 1
 		}
 	}
@@ -136,7 +135,6 @@ export const fitToDrawing = (geometry: Geometry, viewport: Viewport): Viewport =
 		...viewport,
 		x: bounds.center.x,
 		y: bounds.center.y,
-		scale: optimalScale,
 		zoom: requiredZoom
 	}
 }
@@ -155,7 +153,7 @@ export const fitToDrawingZoomOnly = (geometry: Geometry, viewport: Viewport): Vi
 
 	// Calculate required zoom to fit drawing with 20% padding using current scale
 	const requiredWorldWidth = bounds.width * 1.2
-	const requiredZoom = viewport.scale / requiredWorldWidth
+	const requiredZoom = geometry.scale / requiredWorldWidth
 
 	return {
 		...viewport,
@@ -212,7 +210,6 @@ export const resetViewport = (geometry: Geometry, viewport: Viewport): Viewport 
 			...viewport,
 			x: 0,
 			y: 0,
-			scale: 100,
 			zoom: 1
 		}
 	}
@@ -221,7 +218,6 @@ export const resetViewport = (geometry: Geometry, viewport: Viewport): Viewport 
 		...viewport,
 		x: bounds.center.x,
 		y: bounds.center.y,
-		scale: detectOptimalDisplayScale(geometry),
 		zoom: 1
 	}
 }

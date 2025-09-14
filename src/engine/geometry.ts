@@ -8,6 +8,7 @@ export const createEmptyGeometry = (): Geometry => ({
 	circles: new Map(),
 	labels: new Map(),
 	constraints: new Map(),
+	scale: 100, // Default scale
 })
 
 export const createPoint = (x: number, y: number): Point => ({

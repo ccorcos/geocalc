@@ -149,29 +149,30 @@ describe("Store Counter Integration", () => {
 		}
 		
 		const migrated = migrateStorageFormat(v0Data)
-		expect(migrated.version).toBe(2)
+		expect(migrated.version).toBe(3)
 		expect(migrated.nextId).toBe(2) // 1 entity + 1
 		
 		// Test with v1 data (already tested above)
 		const migratedV1 = migrateStorageFormat(v1Data)
 		expect(migratedV1.nextId).toBe(25)
 		
-		// Test with v2 data (should pass through unchanged)
-		const v2Data = {
-			version: 2,
+		// Test with v3 data (should pass through unchanged)
+		const v3Data = {
+			version: 3,
 			geometry: {
 				points: [["1", { id: "1", x: 0, y: 0 }]],
 				lines: [],
 				circles: [],
 				labels: [],
-				constraints: []
+				constraints: [],
+				scale: 100
 			},
 			nextId: 5
 		}
 		
-		const migratedV2 = migrateStorageFormat(v2Data)
-		expect(migratedV2).toEqual(v2Data) // Should be unchanged
-		expect(migratedV2.nextId).toBe(5)
+		const migratedV3 = migrateStorageFormat(v3Data)
+		expect(migratedV3).toEqual(v3Data) // Should be unchanged
+		expect(migratedV3.nextId).toBe(5)
 	})
 
 	it("should work with realistic entity creation workflow", () => {

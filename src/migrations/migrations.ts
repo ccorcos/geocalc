@@ -2,7 +2,7 @@ import type { Circle, Constraint, Label, Line, Point } from "../engine/types"
 import { remapEntityIds, remapLineIds, remapCircleIds, remapLabelIds, remapConstraintIds } from "./id-remapping"
 
 // Current storage format version - increment when making breaking changes
-export const CURRENT_STORAGE_VERSION = 2
+export const CURRENT_STORAGE_VERSION = 3
 
 export interface StorageFormat {
 	version: number
@@ -12,6 +12,7 @@ export interface StorageFormat {
 		circles: [string, Circle][]
 		labels: [string, Label][]
 		constraints: [string, Constraint][]
+		scale: number // Added in version 3
 	}
 	nextId?: number // Added in version 2
 }
@@ -31,6 +32,7 @@ export const migrations: Record<number, MigrationFunction> = {
 				circles: data.circles || [],
 				labels: data.labels || [],
 				constraints: data.constraints || [],
+				scale: 100,
 			},
 		}
 	},
@@ -63,8 +65,21 @@ export const migrations: Record<number, MigrationFunction> = {
 				circles: remapCircleIds(data.geometry.circles, idMap),
 				labels: remapLabelIds(data.geometry.labels, idMap),
 				constraints: remapConstraintIds(data.geometry.constraints, idMap),
+				scale: data.geometry.scale || 100,
 			},
 			nextId: counter, // Set next available ID
+		}
+	},
+	
+	// Migration from version 2 to version 3 (add scale field)
+	2: (data: StorageFormat): StorageFormat => {
+		return {
+			...data,
+			version: 3,
+			geometry: {
+				...data.geometry,
+				scale: 100, // Default scale value
+			}
 		}
 	},
 }
