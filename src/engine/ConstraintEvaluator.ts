@@ -29,10 +29,6 @@ export class ConstraintEvaluator {
 				return this.evaluateFixX(constraint, geometry)
 			case "y":
 				return this.evaluateFixY(constraint, geometry)
-			case "same-x":
-				return this.evaluateSameX(constraint, geometry)
-			case "same-y":
-				return this.evaluateSameY(constraint, geometry)
 			case "angle":
 				return this.evaluateAngle(constraint, geometry)
 			case "radius":
@@ -338,62 +334,158 @@ export class ConstraintEvaluator {
 		constraint: Constraint,
 		geometry: Geometry
 	): ConstraintViolation {
-		if (constraint.entityIds.length !== 1) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		// Case 1: Single line constraint (like old horizontal constraint)
+		if (constraint.entityIds.length === 1) {
+			const line = geometry.lines.get(constraint.entityIds[0])
+			if (!line) {
+				return { constraintId: constraint.id, error: 0, gradient: new Map() }
+			}
+
+			const p1 = geometry.points.get(line.point1Id)
+			const p2 = geometry.points.get(line.point2Id)
+
+			if (!p1 || !p2) {
+				return { constraintId: constraint.id, error: 0, gradient: new Map() }
+			}
+
+			const dy = p2.y - p1.y
+			const error = dy ** 2
+
+			const gradient = new Map<string, { x: number; y: number }>()
+			gradient.set(p1.id, { x: 0, y: -2 * dy })
+			gradient.set(p2.id, { x: 0, y: 2 * dy })
+
+			return { constraintId: constraint.id, error, gradient }
 		}
 
-		const line = geometry.lines.get(constraint.entityIds[0])
-		if (!line) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		// Case 2: Multiple points constraint (like old same-y constraint)
+		if (constraint.entityIds.length >= 2) {
+			// Get all points, filtering out any that don't exist
+			const points = constraint.entityIds
+				.map((id) => ({ id, point: geometry.points.get(id) }))
+				.filter(({ point }) => point !== undefined) as Array<{
+				id: string
+				point: NonNullable<ReturnType<typeof geometry.points.get>>
+			}>
+
+			if (points.length < 2) {
+				return { constraintId: constraint.id, error: 0, gradient: new Map() }
+			}
+
+			// Handle N-point constraints with pairwise evaluation
+			let totalError = 0
+			const totalGradient = new Map<string, { x: number; y: number }>()
+
+			// Initialize gradients for all points
+			for (const { id } of points) {
+				totalGradient.set(id, { x: 0, y: 0 })
+			}
+
+			// Evaluate pairwise constraints between consecutive points (same Y coordinate)
+			for (let i = 0; i < points.length - 1; i++) {
+				const point1 = points[i]
+				const point2 = points[i + 1]
+
+				// Error is the squared difference between y-coordinates
+				const dy = point1.point.y - point2.point.y
+				const pairError = dy ** 2
+				totalError += pairError
+
+				// Accumulate gradients: d/dy1 = 2*(y1-y2), d/dy2 = 2*(y2-y1)
+				const grad1 = totalGradient.get(point1.id)!
+				const grad2 = totalGradient.get(point2.id)!
+
+				grad1.y += 2 * dy
+				grad2.y += -2 * dy
+			}
+
+			return {
+				constraintId: constraint.id,
+				error: totalError,
+				gradient: totalGradient,
+			}
 		}
 
-		const p1 = geometry.points.get(line.point1Id)
-		const p2 = geometry.points.get(line.point2Id)
-
-		if (!p1 || !p2) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		const dy = p2.y - p1.y
-		const error = dy ** 2
-
-		const gradient = new Map<string, { x: number; y: number }>()
-
-		gradient.set(p1.id, { x: 0, y: -2 * dy })
-		gradient.set(p2.id, { x: 0, y: 2 * dy })
-
-		return { constraintId: constraint.id, error, gradient }
+		return { constraintId: constraint.id, error: 0, gradient: new Map() }
 	}
 
 	private evaluateVertical(
 		constraint: Constraint,
 		geometry: Geometry
 	): ConstraintViolation {
-		if (constraint.entityIds.length !== 1) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		// Case 1: Single line constraint (like old vertical constraint)
+		if (constraint.entityIds.length === 1) {
+			const line = geometry.lines.get(constraint.entityIds[0])
+			if (!line) {
+				return { constraintId: constraint.id, error: 0, gradient: new Map() }
+			}
+
+			const p1 = geometry.points.get(line.point1Id)
+			const p2 = geometry.points.get(line.point2Id)
+
+			if (!p1 || !p2) {
+				return { constraintId: constraint.id, error: 0, gradient: new Map() }
+			}
+
+			const dx = p2.x - p1.x
+			const error = dx ** 2
+
+			const gradient = new Map<string, { x: number; y: number }>()
+			gradient.set(p1.id, { x: -2 * dx, y: 0 })
+			gradient.set(p2.id, { x: 2 * dx, y: 0 })
+
+			return { constraintId: constraint.id, error, gradient }
 		}
 
-		const line = geometry.lines.get(constraint.entityIds[0])
-		if (!line) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		// Case 2: Multiple points constraint (like old same-x constraint)
+		if (constraint.entityIds.length >= 2) {
+			// Get all points, filtering out any that don't exist
+			const points = constraint.entityIds
+				.map((id) => ({ id, point: geometry.points.get(id) }))
+				.filter(({ point }) => point !== undefined) as Array<{
+				id: string
+				point: NonNullable<ReturnType<typeof geometry.points.get>>
+			}>
+
+			if (points.length < 2) {
+				return { constraintId: constraint.id, error: 0, gradient: new Map() }
+			}
+
+			// Handle N-point constraints with pairwise evaluation
+			let totalError = 0
+			const totalGradient = new Map<string, { x: number; y: number }>()
+
+			// Initialize gradients for all points
+			for (const { id } of points) {
+				totalGradient.set(id, { x: 0, y: 0 })
+			}
+
+			// Evaluate pairwise constraints between consecutive points (same X coordinate)
+			for (let i = 0; i < points.length - 1; i++) {
+				const point1 = points[i]
+				const point2 = points[i + 1]
+
+				// Error is the squared difference between x-coordinates
+				const dx = point1.point.x - point2.point.x
+				const pairError = dx ** 2
+				totalError += pairError
+
+				// Accumulate gradients: d/dx1 = 2*(x1-x2), d/dx2 = 2*(x2-x1)
+				const grad1 = totalGradient.get(point1.id)!
+				const grad2 = totalGradient.get(point2.id)!
+
+				grad1.x += 2 * dx
+				grad2.x += -2 * dx
+			}
+
+			return {
+				constraintId: constraint.id,
+				error: totalError,
+				gradient: totalGradient,
+			}
 		}
 
-		const p1 = geometry.points.get(line.point1Id)
-		const p2 = geometry.points.get(line.point2Id)
-
-		if (!p1 || !p2) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		const dx = p2.x - p1.x
-		const error = dx ** 2
-
-		const gradient = new Map<string, { x: number; y: number }>()
-
-		gradient.set(p1.id, { x: -2 * dx, y: 0 })
-		gradient.set(p2.id, { x: 2 * dx, y: 0 })
-
-		return { constraintId: constraint.id, error, gradient }
+		return { constraintId: constraint.id, error: 0, gradient: new Map() }
 	}
 
 	private evaluateFixX(
@@ -448,113 +540,6 @@ export class ConstraintEvaluator {
 		return { constraintId: constraint.id, error, gradient }
 	}
 
-	private evaluateSameX(
-		constraint: Constraint,
-		geometry: Geometry
-	): ConstraintViolation {
-		if (constraint.entityIds.length < 2) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		// Get all points, filtering out any that don't exist
-		const points = constraint.entityIds
-			.map((id) => ({ id, point: geometry.points.get(id) }))
-			.filter(({ point }) => point !== undefined) as Array<{
-			id: string
-			point: NonNullable<ReturnType<typeof geometry.points.get>>
-		}>
-
-		if (points.length < 2) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		// Handle N-point constraints with pairwise evaluation
-		let totalError = 0
-		const totalGradient = new Map<string, { x: number; y: number }>()
-
-		// Initialize gradients for all points
-		for (const { id } of points) {
-			totalGradient.set(id, { x: 0, y: 0 })
-		}
-
-		// Evaluate pairwise constraints between consecutive points
-		for (let i = 0; i < points.length - 1; i++) {
-			const point1 = points[i]
-			const point2 = points[i + 1]
-
-			// Error is the squared difference between x-coordinates
-			const dx = point1.point.x - point2.point.x
-			const pairError = dx ** 2
-			totalError += pairError
-
-			// Accumulate gradients: d/dx1 = 2*(x1-x2), d/dx2 = 2*(x2-x1)
-			const grad1 = totalGradient.get(point1.id)!
-			const grad2 = totalGradient.get(point2.id)!
-
-			grad1.x += 2 * dx
-			grad2.x += -2 * dx
-		}
-
-		return {
-			constraintId: constraint.id,
-			error: totalError,
-			gradient: totalGradient,
-		}
-	}
-
-	private evaluateSameY(
-		constraint: Constraint,
-		geometry: Geometry
-	): ConstraintViolation {
-		if (constraint.entityIds.length < 2) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		// Get all points, filtering out any that don't exist
-		const points = constraint.entityIds
-			.map((id) => ({ id, point: geometry.points.get(id) }))
-			.filter(({ point }) => point !== undefined) as Array<{
-			id: string
-			point: NonNullable<ReturnType<typeof geometry.points.get>>
-		}>
-
-		if (points.length < 2) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		// Handle N-point constraints with pairwise evaluation
-		let totalError = 0
-		const totalGradient = new Map<string, { x: number; y: number }>()
-
-		// Initialize gradients for all points
-		for (const { id } of points) {
-			totalGradient.set(id, { x: 0, y: 0 })
-		}
-
-		// Evaluate pairwise constraints between consecutive points
-		for (let i = 0; i < points.length - 1; i++) {
-			const point1 = points[i]
-			const point2 = points[i + 1]
-
-			// Error is the squared difference between y-coordinates
-			const dy = point1.point.y - point2.point.y
-			const pairError = dy ** 2
-			totalError += pairError
-
-			// Accumulate gradients: d/dy1 = 2*(y1-y2), d/dy2 = 2*(y2-y1)
-			const grad1 = totalGradient.get(point1.id)!
-			const grad2 = totalGradient.get(point2.id)!
-
-			grad1.y += 2 * dy
-			grad2.y += -2 * dy
-		}
-
-		return {
-			constraintId: constraint.id,
-			error: totalError,
-			gradient: totalGradient,
-		}
-	}
 
 	private evaluateAngle(
 		constraint: Constraint,

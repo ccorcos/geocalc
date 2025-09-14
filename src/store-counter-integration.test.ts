@@ -149,16 +149,16 @@ describe("Store Counter Integration", () => {
 		}
 		
 		const migrated = migrateStorageFormat(v0Data)
-		expect(migrated.version).toBe(3)
+		expect(migrated.version).toBe(4)
 		expect(migrated.nextId).toBe(2) // 1 entity + 1
 		
 		// Test with v1 data (already tested above)
 		const migratedV1 = migrateStorageFormat(v1Data)
 		expect(migratedV1.nextId).toBe(25)
 		
-		// Test with v3 data (should pass through unchanged)
-		const v3Data = {
-			version: 3,
+		// Test with v4 data (should pass through unchanged)
+		const v4Data = {
+			version: 4,
 			geometry: {
 				points: [["1", { id: "1", x: 0, y: 0 }]],
 				lines: [],
@@ -170,9 +170,9 @@ describe("Store Counter Integration", () => {
 			nextId: 5
 		}
 		
-		const migratedV3 = migrateStorageFormat(v3Data)
-		expect(migratedV3).toEqual(v3Data) // Should be unchanged
-		expect(migratedV3.nextId).toBe(5)
+		const migratedV4 = migrateStorageFormat(v4Data)
+		expect(migratedV4).toEqual(v4Data) // Should be unchanged
+		expect(migratedV4.nextId).toBe(5)
 	})
 
 	it("should work with realistic entity creation workflow", () => {

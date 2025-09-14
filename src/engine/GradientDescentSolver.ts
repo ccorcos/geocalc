@@ -150,10 +150,7 @@ export class GradientDescentSolver {
 				return 1.3 // Distance constraints are important
 			case "horizontal":
 			case "vertical":
-				return 1.2 // Line orientation constraints
-			case "same-x":
-			case "same-y":
-				return 1.1 // Alignment constraints
+				return 1.2 // Line orientation and alignment constraints
 			case "angle":
 				return 1.0 // Angle constraints get base priority
 			case "parallel":

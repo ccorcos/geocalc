@@ -319,7 +319,7 @@ describe("GradientDescentSolver", () => {
 			geometry.constraints.set(fixP1X.id, fixP1X)
 			geometry.constraints.set(fixP1Y.id, fixP1Y)
 
-			const constraint = createConstraint("same-x", [p1.id, p2.id])
+			const constraint = createConstraint("vertical", [p1.id, p2.id])
 			geometry.constraints.set(constraint.id, constraint)
 
 			const result = solver.solve(geometry)
@@ -350,7 +350,7 @@ describe("GradientDescentSolver", () => {
 			geometry.constraints.set(fixP1X.id, fixP1X)
 			geometry.constraints.set(fixP1Y.id, fixP1Y)
 
-			const constraint = createConstraint("same-y", [p1.id, p2.id])
+			const constraint = createConstraint("horizontal", [p1.id, p2.id])
 			geometry.constraints.set(constraint.id, constraint)
 
 			const result = solver.solve(geometry)
@@ -558,7 +558,7 @@ describe("GradientDescentSolver", () => {
 			const anchorY = createConstraint("y", [p1.id], 200)
 			geometry.constraints.set(anchorY.id, anchorY)
 
-			const constraint = createConstraint("same-x", [p1.id, p2.id, p3.id])
+			const constraint = createConstraint("vertical", [p1.id, p2.id, p3.id])
 			geometry.constraints.set(constraint.id, constraint)
 
 			const result = solver.solve(geometry)
@@ -589,7 +589,7 @@ describe("GradientDescentSolver", () => {
 			const anchorX = createConstraint("x", [p1.id], 200)
 			geometry.constraints.set(anchorX.id, anchorX)
 
-			const constraint = createConstraint("same-y", [p1.id, p2.id, p3.id])
+			const constraint = createConstraint("horizontal", [p1.id, p2.id, p3.id])
 			geometry.constraints.set(constraint.id, constraint)
 
 			const result = solver.solve(geometry)

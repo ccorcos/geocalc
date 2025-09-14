@@ -154,7 +154,7 @@ describe("UUID to Counter ID Migration", () => {
 
 		const migrated = migrateStorageFormat(v1Data)
 
-		expect(migrated.version).toBe(3)
+		expect(migrated.version).toBe(4)
 
 		// Total entities in v1.json: 5 points + 3 lines + 2 circles + 4 labels + 10 constraints = 24
 		expect(migrated.nextId).toBe(25) // Next available ID after 24 entities
@@ -326,7 +326,7 @@ describe("UUID to Counter ID Migration", () => {
 
 		const migrated = migrateStorageFormat(v0Data)
 
-		expect(migrated.version).toBe(3)
+		expect(migrated.version).toBe(4)
 		expect(migrated.nextId).toBe(2) // One entity migrated
 		expect(migrated.geometry.points[0][0]).toBe("1") // Counter ID
 		expect(migrated.geometry.points[0][1].id).toBe("1")
@@ -349,7 +349,7 @@ describe("UUID to Counter ID Migration", () => {
 
 		const migrated = migrateStorageFormat(v1Data)
 
-		expect(migrated.version).toBe(3)
+		expect(migrated.version).toBe(4)
 		expect(migrated.nextId).toBe(1) // No entities, so counter starts at 1
 		expect(migrated.geometry.points).toEqual([])
 		expect(migrated.geometry.lines).toEqual([])

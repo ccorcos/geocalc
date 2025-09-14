@@ -44,8 +44,8 @@ export const StatusBar: React.FC = () => {
 			) {
 				return [
 					{ type: "angle", label: "Fixed Angle (degrees)", needsValue: true },
-					{ type: "same-x", label: "Same X Coordinate", needsValue: false },
-					{ type: "same-y", label: "Same Y Coordinate", needsValue: false },
+					{ type: "vertical", label: "Vertical", needsValue: false },
+					{ type: "horizontal", label: "Horizontal", needsValue: false },
 				]
 			}
 		}

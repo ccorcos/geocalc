@@ -8,7 +8,7 @@ describe("Real-world migration test with v1.json", () => {
 		const migrated = migrateStorageFormat(v1Data)
 
 		// Verify version upgrade
-		expect(migrated.version).toBe(3)
+		expect(migrated.version).toBe(4)
 		
 		// Verify counter initialization
 		expect(migrated.nextId).toBeDefined()

@@ -488,7 +488,7 @@ describe("ConstraintEvaluator", () => {
 			geometry.points.set(p1.id, p1)
 			geometry.points.set(p2.id, p2)
 
-			const constraint = createConstraint("same-x", [p1.id, p2.id])
+			const constraint = createConstraint("vertical", [p1.id, p2.id])
 			const initialResult = evaluator.evaluate(constraint, geometry)
 
 			// Verify initial violation
@@ -509,7 +509,7 @@ describe("ConstraintEvaluator", () => {
 			geometry.points.set(p1.id, p1)
 			geometry.points.set(p2.id, p2)
 
-			const constraint = createConstraint("same-x", [p1.id, p2.id])
+			const constraint = createConstraint("vertical", [p1.id, p2.id])
 			const result = evaluator.evaluate(constraint, geometry)
 
 			expect(result.error).toBe(9) // (5-8)² = 9
@@ -522,7 +522,7 @@ describe("ConstraintEvaluator", () => {
 			geometry.points.set(p1.id, p1)
 			geometry.points.set(p2.id, p2)
 
-			const constraint = createConstraint("same-x", [p1.id, p2.id])
+			const constraint = createConstraint("vertical", [p1.id, p2.id])
 			const result = evaluator.evaluate(constraint, geometry)
 
 			expect(result.gradient.has(p1.id)).toBe(true)
@@ -548,7 +548,7 @@ describe("ConstraintEvaluator", () => {
 			geometry.points.set(p2.id, p2)
 			geometry.points.set(p3.id, p3)
 
-			const constraint = createConstraint("same-x", [p1.id, p2.id, p3.id])
+			const constraint = createConstraint("vertical", [p1.id, p2.id, p3.id])
 			const result = evaluator.evaluate(constraint, geometry)
 
 			// Current evaluator expects exactly 2 points - this test reveals the problem
@@ -570,7 +570,7 @@ describe("ConstraintEvaluator", () => {
 			geometry.points.set(p1.id, p1)
 			geometry.points.set(p2.id, p2)
 
-			const constraint = createConstraint("same-y", [p1.id, p2.id])
+			const constraint = createConstraint("horizontal", [p1.id, p2.id])
 			const initialResult = evaluator.evaluate(constraint, geometry)
 
 			// Verify initial violation
@@ -591,7 +591,7 @@ describe("ConstraintEvaluator", () => {
 			geometry.points.set(p1.id, p1)
 			geometry.points.set(p2.id, p2)
 
-			const constraint = createConstraint("same-y", [p1.id, p2.id])
+			const constraint = createConstraint("horizontal", [p1.id, p2.id])
 			const result = evaluator.evaluate(constraint, geometry)
 
 			expect(result.error).toBe(16) // (5-9)² = 16
@@ -604,7 +604,7 @@ describe("ConstraintEvaluator", () => {
 			geometry.points.set(p1.id, p1)
 			geometry.points.set(p2.id, p2)
 
-			const constraint = createConstraint("same-y", [p1.id, p2.id])
+			const constraint = createConstraint("horizontal", [p1.id, p2.id])
 			const result = evaluator.evaluate(constraint, geometry)
 
 			expect(result.gradient.has(p1.id)).toBe(true)
@@ -630,7 +630,7 @@ describe("ConstraintEvaluator", () => {
 			geometry.points.set(p2.id, p2)
 			geometry.points.set(p3.id, p3)
 
-			const constraint = createConstraint("same-y", [p1.id, p2.id, p3.id])
+			const constraint = createConstraint("horizontal", [p1.id, p2.id, p3.id])
 			const result = evaluator.evaluate(constraint, geometry)
 
 			// Current evaluator expects exactly 2 points - this test reveals the problem

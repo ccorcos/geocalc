@@ -22,10 +22,6 @@ export type ConstraintType =
 	| "x" // Note: actual type is 'x', not 'fix-x'
 	| "y" // Note: actual type is 'y', not 'fix-y'
 
-	// Coordinate alignment
-	| "same-x"
-	| "same-y"
-
 	// Angular constraints
 	| "angle"
 
@@ -45,8 +41,6 @@ export const CONSTRAINT_DISPLAY_NAMES: Record<ConstraintType, string> = {
 	vertical: "Vertical",
 	x: "x", // Display name matches actual type for anchoring
 	y: "y", // Display name matches actual type for anchoring
-	"same-x": "vertical",
-	"same-y": "horizontal",
 	angle: "angle",
 	radius: "radius",
 	"point-on-circle": "Point on Circle",
@@ -64,8 +58,6 @@ export const CONSTRAINT_MENU_NAMES: Record<ConstraintType, string> = {
 	vertical: "Vertical",
 	x: "Fix X Coordinate",
 	y: "Fix Y Coordinate",
-	"same-x": "Vertical",
-	"same-y": "Horizontal",
 	angle: "Fixed Angle (degrees)",
 	radius: "Radius",
 	"point-on-circle": "Point on Circle",
@@ -83,8 +75,6 @@ export const ALL_CONSTRAINT_TYPES: ConstraintType[] = [
 	"vertical",
 	"x",
 	"y",
-	"same-x",
-	"same-y",
 	"angle",
 	"radius",
 	"point-on-circle",

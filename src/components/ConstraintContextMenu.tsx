@@ -90,8 +90,8 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 			) {
 				return [
 					{ type: "angle", label: "Fixed Angle (degrees)", needsValue: true },
-					{ type: "same-x", label: "Vertical", needsValue: false },
-					{ type: "same-y", label: "Horizontal", needsValue: false },
+					{ type: "vertical", label: "Vertical", needsValue: false },
+					{ type: "horizontal", label: "Horizontal", needsValue: false },
 				]
 			}
 		}
@@ -104,12 +104,12 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 			if (allPoints) {
 				const constraints = [
 					{
-						type: "same-x" as ConstraintType,
+						type: "vertical" as ConstraintType,
 						label: "Vertical",
 						needsValue: false,
 					},
 					{
-						type: "same-y" as ConstraintType,
+						type: "horizontal" as ConstraintType,
 						label: "Horizontal",
 						needsValue: false,
 					},
@@ -298,14 +298,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 			setShowValueDialog(true)
 		} else {
 			// Create constraint without value
-			// For lines, use the line's point IDs instead of the line ID for certain constraints
 			let entityIds = selectedIds
-			if (selectedIds.length === 1) {
-				const line = geometry.lines.get(selectedIds[0])
-				if (line && (constraintType === "horizontal" || constraintType === "vertical")) {
-					entityIds = [selectedIds[0]] // Keep line ID for horizontal/vertical constraints
-				}
-			}
 			const constraint = createConstraint(
 				constraintType,
 				entityIds,

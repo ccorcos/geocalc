@@ -271,8 +271,8 @@ describe("Geometry Engine Integration Tests", () => {
 				createConstraint("y", [origin.id], 0),
 
 				// Create coordinate axes using same-x and same-y constraints
-				createConstraint("same-y", [origin.id, xAxis.id]), // x-axis is horizontal
-				createConstraint("same-x", [origin.id, yAxis.id]), // y-axis is vertical
+				createConstraint("horizontal", [origin.id, xAxis.id]), // x-axis is horizontal
+				createConstraint("vertical", [origin.id, yAxis.id]), // y-axis is vertical
 
 				// Set specific distances
 				createConstraint("distance", [origin.id, xAxis.id], 4), // x-axis length
@@ -394,10 +394,10 @@ describe("Geometry Engine Integration Tests", () => {
 				const constraints = [
 					createConstraint("x", [p1.id], 0), // anchor
 					createConstraint("y", [p1.id], 0),
-					createConstraint("same-y", [p1.id, p2.id]), // horizontal alignment
-					createConstraint("same-x", [p2.id, p3.id]), // vertical alignment
-					createConstraint("same-y", [p3.id, p4.id]), // horizontal alignment
-					createConstraint("same-x", [p4.id, p1.id]), // vertical alignment (should be satisfied)
+					createConstraint("horizontal", [p1.id, p2.id]), // horizontal alignment
+					createConstraint("vertical", [p2.id, p3.id]), // vertical alignment
+					createConstraint("horizontal", [p3.id, p4.id]), // horizontal alignment
+					createConstraint("vertical", [p4.id, p1.id]), // vertical alignment (should be satisfied)
 					createConstraint("distance", [p1.id, p2.id], 3), // side lengths
 					createConstraint("distance", [p2.id, p3.id], 3),
 					createConstraint("distance", [p3.id, p4.id], 3),
@@ -465,7 +465,7 @@ describe("Geometry Engine Integration Tests", () => {
 				createConstraint("y-distance", [foundation.id, roof.id], 15), // height
 
 				// Door positioned on south wall, 4 feet from SW corner
-				createConstraint("same-y", [foundation.id, door1.id]), // on south wall
+				createConstraint("horizontal", [foundation.id, door1.id]), // on south wall
 				createConstraint("x-distance", [foundation.id, door1.id], 4),
 
 				// Windows positioned precisely

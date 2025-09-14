@@ -2,7 +2,7 @@ import type { Circle, Constraint, Label, Line, Point } from "../engine/types"
 import { remapEntityIds, remapLineIds, remapCircleIds, remapLabelIds, remapConstraintIds } from "./id-remapping"
 
 // Current storage format version - increment when making breaking changes
-export const CURRENT_STORAGE_VERSION = 3
+export const CURRENT_STORAGE_VERSION = 4
 
 export interface StorageFormat {
 	version: number
@@ -79,6 +79,28 @@ export const migrations: Record<number, MigrationFunction> = {
 			geometry: {
 				...data.geometry,
 				scale: 100, // Default scale value
+			}
+		}
+	},
+
+	// Migration from version 3 to version 4 (consolidate same-x/same-y with horizontal/vertical)
+	3: (data: StorageFormat): StorageFormat => {
+		const migratedConstraints = data.geometry.constraints.map(([id, constraint]) => {
+			if ((constraint as any).type === "same-x") {
+				return [id, { ...constraint, type: "vertical" }] as [string, Constraint]
+			}
+			if ((constraint as any).type === "same-y") {
+				return [id, { ...constraint, type: "horizontal" }] as [string, Constraint]
+			}
+			return [id, constraint] as [string, Constraint]
+		})
+
+		return {
+			...data,
+			version: 4,
+			geometry: {
+				...data.geometry,
+				constraints: migratedConstraints,
 			}
 		}
 	},
