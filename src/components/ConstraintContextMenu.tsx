@@ -90,8 +90,8 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 			) {
 				return [
 					{ type: "angle", label: "Fixed Angle (degrees)", needsValue: true },
-					{ type: "same-x", label: "Same X Coordinate", needsValue: false },
-					{ type: "same-y", label: "Same Y Coordinate", needsValue: false },
+					{ type: "same-x", label: "Vertical", needsValue: false },
+					{ type: "same-y", label: "Horizontal", needsValue: false },
 				]
 			}
 		}
@@ -105,12 +105,12 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 				const constraints = [
 					{
 						type: "same-x" as ConstraintType,
-						label: "Same X Coordinate",
+						label: "Vertical",
 						needsValue: false,
 					},
 					{
 						type: "same-y" as ConstraintType,
-						label: "Same Y Coordinate",
+						label: "Horizontal",
 						needsValue: false,
 					},
 				]
@@ -163,9 +163,12 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 		if (selectedIds.length === 1) {
 			const entity = selectedEntities[0]
 
-			// Single line -> horizontal/vertical
+			// Single line -> horizontal/vertical/distance
 			if (entity?.type === "line") {
 				return [
+					{ type: "distance", label: "Distance", needsValue: true },
+					{ type: "x-distance", label: "X Distance", needsValue: true },
+					{ type: "y-distance", label: "Y Distance", needsValue: true },
 					{ type: "horizontal", label: "Horizontal", needsValue: false },
 					{ type: "vertical", label: "Vertical", needsValue: false },
 				]
@@ -215,17 +218,47 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 				if (point1 && point2) {
 					defaultValue = distance(point1, point2)
 				}
+			} else if (constraintType === "distance" && selectedIds.length === 1) {
+				// Single line selected - get its endpoints
+				const line = geometry.lines.get(selectedIds[0])
+				if (line) {
+					const point1 = geometry.points.get(line.point1Id)
+					const point2 = geometry.points.get(line.point2Id)
+					if (point1 && point2) {
+						defaultValue = distance(point1, point2)
+					}
+				}
 			} else if (constraintType === "x-distance" && selectedIds.length === 2) {
 				const point1 = geometry.points.get(selectedIds[0])
 				const point2 = geometry.points.get(selectedIds[1])
 				if (point1 && point2) {
 					defaultValue = point2.x - point1.x // Preserve direction
 				}
+			} else if (constraintType === "x-distance" && selectedIds.length === 1) {
+				// Single line selected - get its endpoints
+				const line = geometry.lines.get(selectedIds[0])
+				if (line) {
+					const point1 = geometry.points.get(line.point1Id)
+					const point2 = geometry.points.get(line.point2Id)
+					if (point1 && point2) {
+						defaultValue = point2.x - point1.x // Preserve direction
+					}
+				}
 			} else if (constraintType === "y-distance" && selectedIds.length === 2) {
 				const point1 = geometry.points.get(selectedIds[0])
 				const point2 = geometry.points.get(selectedIds[1])
 				if (point1 && point2) {
 					defaultValue = point2.y - point1.y // Preserve direction
+				}
+			} else if (constraintType === "y-distance" && selectedIds.length === 1) {
+				// Single line selected - get its endpoints
+				const line = geometry.lines.get(selectedIds[0])
+				if (line) {
+					const point1 = geometry.points.get(line.point1Id)
+					const point2 = geometry.points.get(line.point2Id)
+					if (point1 && point2) {
+						defaultValue = point2.y - point1.y // Preserve direction
+					}
 				}
 			} else if (constraintType === "angle" && selectedIds.length === 3) {
 				const point1 = geometry.points.get(selectedIds[0])
@@ -265,9 +298,17 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 			setShowValueDialog(true)
 		} else {
 			// Create constraint without value
+			// For lines, use the line's point IDs instead of the line ID for certain constraints
+			let entityIds = selectedIds
+			if (selectedIds.length === 1) {
+				const line = geometry.lines.get(selectedIds[0])
+				if (line && (constraintType === "horizontal" || constraintType === "vertical")) {
+					entityIds = [selectedIds[0]] // Keep line ID for horizontal/vertical constraints
+				}
+			}
 			const constraint = createConstraint(
 				constraintType,
-				selectedIds,
+				entityIds,
 				undefined
 			)
 			addConstraint(constraint)
@@ -283,9 +324,18 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 
 		if (isNaN(value)) return
 
+		// For line distance constraints, use the line's point IDs instead of the line ID
+		let entityIds = selectedIds
+		if (selectedIds.length === 1 && (pendingConstraint.type === "distance" || pendingConstraint.type === "x-distance" || pendingConstraint.type === "y-distance")) {
+			const line = geometry.lines.get(selectedIds[0])
+			if (line) {
+				entityIds = [line.point1Id, line.point2Id]
+			}
+		}
+
 		const constraint = createConstraint(
 			pendingConstraint.type,
-			selectedIds,
+			entityIds,
 			value
 		)
 		addConstraint(constraint)

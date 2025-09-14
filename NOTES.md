@@ -7,12 +7,10 @@ Notes
 Strategies:
 - make a plan in plans/yada.md.
 
+
+? Claude.md Never stop short of completing a task. If there are reamining tasks, keep going.
+
 ---
-
-Claude.md Never stop short of completing a task. If there are reamining tasks, keep going.
-
-
-Lets add a migration that persists the scale as part of the geometry. When I save and load a file, it should maintain the same scale.
 
 Support undo/redo, just for state changes to geometry.
 
