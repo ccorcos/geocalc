@@ -18,9 +18,23 @@ I want you to as some new constraints. Write them down as a task list in a markd
 - same-length (2+ lines)
 - same-radius (2+ circles)
 
-bug: Selecting all and moving it moves the labels wrong. moving a label with its corresponding point should not move the label exactly...
+Also, the following new constraints didnt work for me in the browser.
+-
 
-Tooltip hover takes to long to appear.
+
+Colinear didnt work. is there an e2e test? create 3 points, select, colinear, solve. positions are all N/A. If I anchor one point, things kind of work but the points run off way far away.
+
+
+
+
+
+
+bug: Selecting all and moving it moves the labels wrong. moving a label with its corresponding point should not move the label exactly...
+bug: angle label problems.
+bug: Tooltip hover takes to long to appear.
+bug: the page shouldn't error if its too narrow. it doesnt have to work well on mobile but it shouldnt crash either. a nice warning would be nice along with attempting to show things however possible.
+
+
 
 Give everything a little more of an Ivan Sutherland Sketchpad feel. I don't want to make my eyes bleed though so make it tasteful.
 
@@ -28,8 +42,6 @@ Contact / Issues -> Github.
 
 Deploy to github pages npm command (don't use github actions ci.)
 
-
-angle label problems.
 
 ---
 

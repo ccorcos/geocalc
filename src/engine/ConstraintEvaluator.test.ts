@@ -1492,6 +1492,530 @@ describe("ConstraintEvaluator", () => {
 		})
 	})
 
+	describe("Colinear Constraints", () => {
+		it("should evaluate colinear constraint with zero error when points are colinear", () => {
+			// Start with points that are NOT colinear
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(2, 0) // Defines horizontal reference line
+			const p3 = createPoint(1, 1) // Off the line initially
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			
+			const constraint = createConstraint("colinear", [p1.id, p2.id, p3.id])
+			const initialResult = evaluator.evaluate(constraint, geometry)
+			
+			// Verify initial violation exists (p3 is 1 unit away from line)
+			expect(initialResult.error).toBe(1) // distance² = 1² = 1
+			
+			// Move p3 to be on the line
+			p3.y = 0 // Now all points have y=0 (colinear)
+			
+			const finalResult = evaluator.evaluate(constraint, geometry)
+			expect(finalResult.constraintId).toBe(constraint.id)
+			expect(finalResult.error).toBeCloseTo(0, 10)
+		})
+
+		it("should evaluate colinear constraint with positive error when points are not colinear", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(2, 0) // Horizontal reference line
+			const p3 = createPoint(1, 3) // 3 units above the line
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			
+			const constraint = createConstraint("colinear", [p1.id, p2.id, p3.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(9) // distance² = 3² = 9
+		})
+
+		it("should handle 4-point colinear constraint", () => {
+			// Test with more than 3 points
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(2, 0) // Reference line
+			const p3 = createPoint(1, 1) // 1 unit off line
+			const p4 = createPoint(3, 2) // 2 units off line
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			geometry.points.set(p4.id, p4)
+			
+			const constraint = createConstraint("colinear", [p1.id, p2.id, p3.id, p4.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			// Total error = 1² + 2² = 1 + 4 = 5
+			expect(result.error).toBe(5)
+			expect(result.gradient.size).toBe(4) // All points should have gradients
+		})
+
+		it("should compute correct gradients for colinear constraint", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(2, 0) // Horizontal reference line
+			const p3 = createPoint(1, 1) // 1 unit perpendicular from line
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			
+			const constraint = createConstraint("colinear", [p1.id, p2.id, p3.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			// Should have gradients for all three points
+			expect(result.gradient.has(p1.id)).toBe(true)
+			expect(result.gradient.has(p2.id)).toBe(true)
+			expect(result.gradient.has(p3.id)).toBe(true)
+			
+			const grad1 = result.gradient.get(p1.id)!
+			const grad2 = result.gradient.get(p2.id)!
+			const grad3 = result.gradient.get(p3.id)!
+			
+			// p3 should have gradient pointing toward the line (negative y direction)
+			expect(grad3.x).toBe(0) // No x component needed
+			expect(grad3.y).toBeLessThan(0) // Should move toward line (down)
+			
+			// Line points (p1, p2) should have gradients that move line toward p3
+			expect(Math.abs(grad1.x) + Math.abs(grad1.y)).toBeGreaterThan(0)
+			expect(Math.abs(grad2.x) + Math.abs(grad2.y)).toBeGreaterThan(0)
+		})
+
+		it("should handle degenerate colinear cases gracefully", () => {
+			// First two points are coincident (degenerate line)
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(0, 0) // Same as p1
+			const p3 = createPoint(1, 1)
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			
+			const constraint = createConstraint("colinear", [p1.id, p2.id, p3.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(0) // Should handle gracefully
+			expect(result.gradient.size).toBe(0) // No gradients for degenerate case
+		})
+
+		it("should provide non-zero gradients for solvable colinear constraints", () => {
+			// Simple test: verify that gradients point in correct directions for solving
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(2, 0) // Horizontal reference line  
+			const p3 = createPoint(1, 1) // 1 unit off the line
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			
+			const constraint = createConstraint("colinear", [p1.id, p2.id, p3.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			// Should have reasonable gradient magnitudes (not too small, not too large)
+			const grad1 = result.gradient.get(p1.id)!
+			const grad2 = result.gradient.get(p2.id)!
+			const grad3 = result.gradient.get(p3.id)!
+			
+			const totalGradMagnitude = Math.abs(grad1.x) + Math.abs(grad1.y) + 
+			                          Math.abs(grad2.x) + Math.abs(grad2.y) +
+			                          Math.abs(grad3.x) + Math.abs(grad3.y)
+			
+			expect(totalGradMagnitude).toBeGreaterThan(0.1) // Non-trivial gradients
+			expect(totalGradMagnitude).toBeLessThan(100) // Not excessive gradients
+			
+			// p3 should have negative y gradient (move toward line)
+			expect(grad3.y).toBeLessThan(0)
+		})
+
+		it("should handle insufficient points for colinear constraint", () => {
+			// Less than 3 points
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(1, 1)
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			
+			const constraint = createConstraint("colinear", [p1.id, p2.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(0) // Should handle gracefully
+			expect(result.gradient.size).toBe(0)
+		})
+	})
+
+	describe("Orthogonal-Distance Constraints", () => {
+		it("should evaluate orthogonal-distance constraint with zero error when satisfied", () => {
+			// Start with point that doesn't satisfy the distance constraint
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(4, 0) // Horizontal line
+			const point = createPoint(2, 1) // 1 unit above line, want 3 units
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(point.id, point)
+			
+			const line = createLine(p1.id, p2.id)
+			geometry.lines.set(line.id, line)
+			
+			const constraint = createConstraint("orthogonal-distance", [point.id, line.id], 3)
+			const initialResult = evaluator.evaluate(constraint, geometry)
+			
+			// Verify initial violation (distance 1 vs target 3)
+			expect(initialResult.error).toBe(4) // (1-3)² = 4
+			
+			// Move point to satisfy constraint (3 units from line)
+			point.y = 3 // Distance from horizontal line y=0 to point (2,3) = 3
+			
+			const finalResult = evaluator.evaluate(constraint, geometry)
+			expect(finalResult.constraintId).toBe(constraint.id)
+			expect(finalResult.error).toBeCloseTo(0, 10)
+		})
+
+		it("should evaluate orthogonal-distance constraint with positive error when not satisfied", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(3, 0) // Horizontal line
+			const point = createPoint(1, 5) // 5 units above line, want 2 units
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(point.id, point)
+			
+			const line = createLine(p1.id, p2.id)
+			geometry.lines.set(line.id, line)
+			
+			const constraint = createConstraint("orthogonal-distance", [point.id, line.id], 2)
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(9) // (5-2)² = 9
+		})
+
+		it("should handle point on line case", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(4, 0) // Horizontal line
+			const point = createPoint(2, 0) // Point on the line, want 2 units away
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(point.id, point)
+			
+			const line = createLine(p1.id, p2.id)
+			geometry.lines.set(line.id, line)
+			
+			const constraint = createConstraint("orthogonal-distance", [point.id, line.id], 2)
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(4) // (0-2)² = 4
+			
+			// Should have gradients to move point perpendicular to line
+			const pointGrad = result.gradient.get(point.id)!
+			expect(Math.abs(pointGrad.x) + Math.abs(pointGrad.y)).toBeGreaterThan(0)
+		})
+
+		it("should compute correct gradients for orthogonal-distance constraint", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(2, 0) // Horizontal line
+			const point = createPoint(1, 1) // 1 unit above line, want 0.5 units
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(point.id, point)
+			
+			const line = createLine(p1.id, p2.id)
+			geometry.lines.set(line.id, line)
+			
+			const constraint = createConstraint("orthogonal-distance", [point.id, line.id], 0.5)
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			// Should have gradients for all entities
+			expect(result.gradient.has(point.id)).toBe(true)
+			expect(result.gradient.has(p1.id)).toBe(true)
+			expect(result.gradient.has(p2.id)).toBe(true)
+			
+			const pointGrad = result.gradient.get(point.id)!
+			const grad1 = result.gradient.get(p1.id)!
+			const grad2 = result.gradient.get(p2.id)!
+			
+			// Point gradient should move toward line (negative y for this case)
+			// current distance = 1, target = 0.5, so error = (1-0.5)² = 0.25
+			// errorDerivative = 2 * (1-0.5) = 1
+			expect(pointGrad.x).toBe(0) // No x component for horizontal line
+			expect(pointGrad.y).toBe(1) // Should move away from line since current > target
+			
+			// Line gradients should be non-zero
+			expect(Math.abs(grad1.x) + Math.abs(grad1.y)).toBeGreaterThan(0)
+			expect(Math.abs(grad2.x) + Math.abs(grad2.y)).toBeGreaterThan(0)
+		})
+
+		it("should handle degenerate line case gracefully", () => {
+			// Line with zero length (coincident points)
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(0, 0) // Same as p1
+			const point = createPoint(1, 1)
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(point.id, point)
+			
+			const line = createLine(p1.id, p2.id)
+			geometry.lines.set(line.id, line)
+			
+			const constraint = createConstraint("orthogonal-distance", [point.id, line.id], 2)
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(0) // Should handle gracefully
+			expect(result.gradient.size).toBe(0)
+		})
+
+		it("should handle missing entities gracefully", () => {
+			const constraint = createConstraint("orthogonal-distance", ["non-existent-point", "non-existent-line"], 5)
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(0)
+			expect(result.gradient.size).toBe(0)
+		})
+	})
+
+	describe("Same-Length Constraints", () => {
+		it("should evaluate same-length constraint with zero error when satisfied", () => {
+			// Start with lines of different lengths
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(3, 0) // Length 3
+			const p3 = createPoint(0, 2)
+			const p4 = createPoint(2, 2) // Length 2, should become 3
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			geometry.points.set(p4.id, p4)
+			
+			const line1 = createLine(p1.id, p2.id)
+			const line2 = createLine(p3.id, p4.id)
+			
+			geometry.lines.set(line1.id, line1)
+			geometry.lines.set(line2.id, line2)
+			
+			const constraint = createConstraint("same-length", [line1.id, line2.id])
+			const initialResult = evaluator.evaluate(constraint, geometry)
+			
+			// Verify initial violation (length 3 vs length 2)
+			expect(initialResult.error).toBe(1) // (3-2)² = 1
+			
+			// Move p4 to make line2 have length 3
+			p4.x = 3 // Distance from (0,2) to (3,2) = 3
+			
+			const finalResult = evaluator.evaluate(constraint, geometry)
+			expect(finalResult.constraintId).toBe(constraint.id)
+			expect(finalResult.error).toBeCloseTo(0, 10)
+		})
+
+		it("should evaluate same-length constraint with positive error when not satisfied", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(5, 0) // Length 5
+			const p3 = createPoint(0, 2)
+			const p4 = createPoint(2, 2) // Length 2
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			geometry.points.set(p4.id, p4)
+			
+			const line1 = createLine(p1.id, p2.id)
+			const line2 = createLine(p3.id, p4.id)
+			
+			geometry.lines.set(line1.id, line1)
+			geometry.lines.set(line2.id, line2)
+			
+			const constraint = createConstraint("same-length", [line1.id, line2.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(9) // (5-2)² = 9
+		})
+
+		it("should handle 3-line same-length constraint", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(4, 0) // Length 4
+			const p3 = createPoint(0, 1)
+			const p4 = createPoint(2, 1) // Length 2
+			const p5 = createPoint(0, 2)
+			const p6 = createPoint(1, 2) // Length 1
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			geometry.points.set(p4.id, p4)
+			geometry.points.set(p5.id, p5)
+			geometry.points.set(p6.id, p6)
+			
+			const line1 = createLine(p1.id, p2.id)
+			const line2 = createLine(p3.id, p4.id)
+			const line3 = createLine(p5.id, p6.id)
+			
+			geometry.lines.set(line1.id, line1)
+			geometry.lines.set(line2.id, line2)
+			geometry.lines.set(line3.id, line3)
+			
+			const constraint = createConstraint("same-length", [line1.id, line2.id, line3.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			// Total error = (4-2)² + (4-1)² = 4 + 9 = 13
+			expect(result.error).toBe(13)
+			expect(result.gradient.size).toBe(6) // All 6 points should have gradients
+		})
+
+		it("should compute correct gradients for same-length constraint", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(3, 0) // Length 3
+			const p3 = createPoint(0, 1)
+			const p4 = createPoint(1, 1) // Length 1
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(p3.id, p3)
+			geometry.points.set(p4.id, p4)
+			
+			const line1 = createLine(p1.id, p2.id)
+			const line2 = createLine(p3.id, p4.id)
+			
+			geometry.lines.set(line1.id, line1)
+			geometry.lines.set(line2.id, line2)
+			
+			const constraint = createConstraint("same-length", [line1.id, line2.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			// Should have gradients for all four points
+			expect(result.gradient.has(p1.id)).toBe(true)
+			expect(result.gradient.has(p2.id)).toBe(true)
+			expect(result.gradient.has(p3.id)).toBe(true)
+			expect(result.gradient.has(p4.id)).toBe(true)
+			
+			// All gradients should be non-zero (lengths are different)
+			const grad1 = result.gradient.get(p1.id)!
+			const grad2 = result.gradient.get(p2.id)!
+			const grad3 = result.gradient.get(p3.id)!
+			const grad4 = result.gradient.get(p4.id)!
+			
+			const totalGradMagnitude = Math.abs(grad1.x) + Math.abs(grad1.y) + 
+			                          Math.abs(grad2.x) + Math.abs(grad2.y) +
+			                          Math.abs(grad3.x) + Math.abs(grad3.y) +
+			                          Math.abs(grad4.x) + Math.abs(grad4.y)
+			
+			expect(totalGradMagnitude).toBeGreaterThan(0)
+		})
+	})
+
+	describe("Same-Radius Constraints", () => {
+		it("should evaluate same-radius constraint with zero error when satisfied", () => {
+			// Start with circles of different radii
+			const center1 = createPoint(0, 0)
+			const center2 = createPoint(5, 5)
+			
+			geometry.points.set(center1.id, center1)
+			geometry.points.set(center2.id, center2)
+			
+			const circle1 = createCircleWithRadius(geometry, center1.id, 3) // Radius 3
+			const circle2 = createCircleWithRadius(geometry, center2.id, 2) // Radius 2
+			
+			geometry.circles.set(circle1.id, circle1)
+			geometry.circles.set(circle2.id, circle2)
+			
+			const constraint = createConstraint("same-radius", [circle1.id, circle2.id])
+			const initialResult = evaluator.evaluate(constraint, geometry)
+			
+			// Verify initial violation (radius 3 vs radius 2)
+			expect(initialResult.error).toBe(1) // (3-2)² = 1
+			
+			// Adjust circle2's radius point to make radius 3
+			const radiusPoint2 = geometry.points.get(circle2.radiusPointId)!
+			radiusPoint2.x = center2.x + 3 // Set radius to 3
+			radiusPoint2.y = center2.y
+			
+			const finalResult = evaluator.evaluate(constraint, geometry)
+			expect(finalResult.constraintId).toBe(constraint.id)
+			expect(finalResult.error).toBeCloseTo(0, 10)
+		})
+
+		it("should evaluate same-radius constraint with positive error when not satisfied", () => {
+			const center1 = createPoint(0, 0)
+			const center2 = createPoint(5, 5)
+			
+			geometry.points.set(center1.id, center1)
+			geometry.points.set(center2.id, center2)
+			
+			const circle1 = createCircleWithRadius(geometry, center1.id, 5) // Radius 5
+			const circle2 = createCircleWithRadius(geometry, center2.id, 2) // Radius 2
+			
+			geometry.circles.set(circle1.id, circle1)
+			geometry.circles.set(circle2.id, circle2)
+			
+			const constraint = createConstraint("same-radius", [circle1.id, circle2.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			expect(result.error).toBe(9) // (5-2)² = 9
+		})
+
+		it("should handle 3-circle same-radius constraint", () => {
+			const center1 = createPoint(0, 0)
+			const center2 = createPoint(3, 3)
+			const center3 = createPoint(6, 6)
+			
+			geometry.points.set(center1.id, center1)
+			geometry.points.set(center2.id, center2)
+			geometry.points.set(center3.id, center3)
+			
+			const circle1 = createCircleWithRadius(geometry, center1.id, 4) // Radius 4
+			const circle2 = createCircleWithRadius(geometry, center2.id, 2) // Radius 2
+			const circle3 = createCircleWithRadius(geometry, center3.id, 1) // Radius 1
+			
+			geometry.circles.set(circle1.id, circle1)
+			geometry.circles.set(circle2.id, circle2)
+			geometry.circles.set(circle3.id, circle3)
+			
+			const constraint = createConstraint("same-radius", [circle1.id, circle2.id, circle3.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			// Total error = (4-2)² + (4-1)² = 4 + 9 = 13
+			expect(result.error).toBe(13)
+			expect(result.gradient.size).toBe(6) // All centers and radius points
+		})
+
+		it("should compute correct gradients for same-radius constraint", () => {
+			const center1 = createPoint(0, 0)
+			const center2 = createPoint(5, 5)
+			
+			geometry.points.set(center1.id, center1)
+			geometry.points.set(center2.id, center2)
+			
+			const circle1 = createCircleWithRadius(geometry, center1.id, 3) // Radius 3
+			const circle2 = createCircleWithRadius(geometry, center2.id, 1) // Radius 1
+			
+			geometry.circles.set(circle1.id, circle1)
+			geometry.circles.set(circle2.id, circle2)
+			
+			const constraint = createConstraint("same-radius", [circle1.id, circle2.id])
+			const result = evaluator.evaluate(constraint, geometry)
+			
+			// Should have gradients for both centers and radius points
+			expect(result.gradient.has(center1.id)).toBe(true)
+			expect(result.gradient.has(center2.id)).toBe(true)
+			expect(result.gradient.has(circle1.radiusPointId)).toBe(true)
+			expect(result.gradient.has(circle2.radiusPointId)).toBe(true)
+			
+			// All gradients should be non-zero (radii are different)
+			const gradCenter1 = result.gradient.get(center1.id)!
+			const gradCenter2 = result.gradient.get(center2.id)!
+			const gradRadius1 = result.gradient.get(circle1.radiusPointId)!
+			const gradRadius2 = result.gradient.get(circle2.radiusPointId)!
+			
+			const totalGradMagnitude = Math.abs(gradCenter1.x) + Math.abs(gradCenter1.y) + 
+			                          Math.abs(gradCenter2.x) + Math.abs(gradCenter2.y) +
+			                          Math.abs(gradRadius1.x) + Math.abs(gradRadius1.y) +
+			                          Math.abs(gradRadius2.x) + Math.abs(gradRadius2.y)
+			
+			expect(totalGradMagnitude).toBeGreaterThan(0)
+		})
+	})
+
 	describe("Error Handling", () => {
 		it("should return zero error for constraint with missing entities", () => {
 			const constraint = createConstraint(

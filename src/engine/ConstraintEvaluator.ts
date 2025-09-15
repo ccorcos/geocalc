@@ -37,6 +37,14 @@ export class ConstraintEvaluator {
 				return this.evaluatePointOnCircle(constraint, geometry)
 			case "line-tangent-to-circle":
 				return this.evaluateLineTangentToCircle(constraint, geometry)
+			case "colinear":
+				return this.evaluateColinear(constraint, geometry)
+			case "orthogonal-distance":
+				return this.evaluateOrthogonalDistance(constraint, geometry)
+			case "same-length":
+				return this.evaluateSameLength(constraint, geometry)
+			case "same-radius":
+				return this.evaluateSameRadius(constraint, geometry)
 			default:
 				return {
 					constraintId: constraint.id,
@@ -901,5 +909,431 @@ export class ConstraintEvaluator {
 		}
 
 		return { constraintId: constraint.id, error, gradient }
+	}
+
+	private evaluateColinear(
+		constraint: Constraint,
+		geometry: Geometry
+	): ConstraintViolation {
+		if (constraint.entityIds.length < 3) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Get all points, filtering out any that don't exist
+		const points = constraint.entityIds
+			.map((id) => ({ id, point: geometry.points.get(id) }))
+			.filter(({ point }) => point !== undefined) as Array<{
+			id: string
+			point: NonNullable<ReturnType<typeof geometry.points.get>>
+		}>
+
+		if (points.length < 3) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Use first two points to define the reference line
+		const p1 = points[0].point
+		const p2 = points[1].point
+
+		// Line direction vector
+		const dx = p2.x - p1.x
+		const dy = p2.y - p1.y
+		const lineLength = Math.sqrt(dx * dx + dy * dy)
+
+		if (lineLength < 1e-10) {
+			// Degenerate case: first two points are coincident
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Normalized line direction
+		const nx = dx / lineLength
+		const ny = dy / lineLength
+
+		let totalError = 0
+		const totalGradient = new Map<string, { x: number; y: number }>()
+
+		// Initialize gradients for all points
+		for (const { id } of points) {
+			totalGradient.set(id, { x: 0, y: 0 })
+		}
+
+		// For each point after the first two, calculate distance to line
+		for (let i = 2; i < points.length; i++) {
+			const point = points[i].point
+			const pointId = points[i].id
+
+			// Vector from line start to point
+			const cx = point.x - p1.x
+			const cy = point.y - p1.y
+
+			// Project point onto line
+			const projLength = cx * nx + cy * ny
+			const closestX = p1.x + projLength * nx
+			const closestY = p1.y + projLength * ny
+
+			// Distance from point to line (perpendicular distance)
+			const distX = point.x - closestX
+			const distY = point.y - closestY
+			const distanceToLine = Math.sqrt(distX * distX + distY * distY)
+
+			// Error is squared distance to line
+			const pointError = distanceToLine ** 2
+			totalError += pointError
+
+			// Calculate gradients
+			if (distanceToLine > 1e-10) {
+				// Unit vector from closest point on line to the point
+				const unitDistX = distX / distanceToLine
+				const unitDistY = distY / distanceToLine
+
+				// Error derivative factor (for minimizing distance²)
+				const errorDerivative = 2 * distanceToLine
+
+				// Gradient for the point (move toward line - negative direction)
+				const pointGrad = totalGradient.get(pointId)!
+				pointGrad.x += -errorDerivative * unitDistX
+				pointGrad.y += -errorDerivative * unitDistY
+
+				// Gradients for line points (p1 and p2)
+				// Use conservative scaling to prevent solver instability
+				const scaleFactor = Math.max(0.1, Math.min(1.0, lineLength / 50.0))
+
+				// Perpendicular to line direction
+				const perpX = -ny
+				const perpY = nx
+
+				// Determine which side of the line the point is on
+				const crossProduct = distX * perpX + distY * perpY
+				const sideSign = crossProduct >= 0 ? 1 : -1
+
+				// Gradients for line endpoints (move line toward the point)
+				const p1Grad = totalGradient.get(points[0].id)!
+				const p2Grad = totalGradient.get(points[1].id)!
+
+				p1Grad.x += -errorDerivative * perpX * sideSign * scaleFactor
+				p1Grad.y += -errorDerivative * perpY * sideSign * scaleFactor
+
+				p2Grad.x += -errorDerivative * perpX * sideSign * scaleFactor
+				p2Grad.y += -errorDerivative * perpY * sideSign * scaleFactor
+			}
+		}
+
+		return {
+			constraintId: constraint.id,
+			error: totalError,
+			gradient: totalGradient,
+		}
+	}
+
+	private evaluateOrthogonalDistance(
+		constraint: Constraint,
+		geometry: Geometry
+	): ConstraintViolation {
+		if (constraint.entityIds.length !== 2 || constraint.value === undefined) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// First entity should be a point, second should be a line
+		const point = geometry.points.get(constraint.entityIds[0])
+		const line = geometry.lines.get(constraint.entityIds[1])
+
+		if (!point || !line) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		const p1 = geometry.points.get(line.point1Id)
+		const p2 = geometry.points.get(line.point2Id)
+
+		if (!p1 || !p2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Line direction vector
+		const dx = p2.x - p1.x
+		const dy = p2.y - p1.y
+		const lineLength = Math.sqrt(dx * dx + dy * dy)
+
+		if (lineLength < 1e-10) {
+			// Degenerate case: line has zero length
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Normalized line direction
+		const nx = dx / lineLength
+		const ny = dy / lineLength
+
+		// Vector from line start to point
+		const cx = point.x - p1.x
+		const cy = point.y - p1.y
+
+		// Project point onto line
+		const projLength = cx * nx + cy * ny
+		const closestX = p1.x + projLength * nx
+		const closestY = p1.y + projLength * ny
+
+		// Distance from point to line (perpendicular distance)
+		const distX = point.x - closestX
+		const distY = point.y - closestY
+		const currentDistance = Math.sqrt(distX * distX + distY * distY)
+
+		// Error is squared difference between current distance and target
+		const targetDistance = constraint.value
+		const error = (currentDistance - targetDistance) ** 2
+
+		// Calculate gradients
+		const gradient = new Map<string, { x: number; y: number }>()
+
+		if (currentDistance > 1e-10) {
+			// Unit vector from closest point on line to the point
+			const unitDistX = distX / currentDistance
+			const unitDistY = distY / currentDistance
+
+			// Error derivative factor
+			const errorDerivative = 2 * (currentDistance - targetDistance)
+
+			// Gradient for the point (move to maintain target distance)
+			gradient.set(point.id, {
+				x: errorDerivative * unitDistX,
+				y: errorDerivative * unitDistY,
+			})
+
+			// Gradients for line points (p1 and p2)
+			const scaleFactor = Math.max(0.1, Math.min(1.0, lineLength / 50.0))
+
+			// Perpendicular to line direction
+			const perpX = -ny
+			const perpY = nx
+
+			// Determine which side of the line the point is on
+			const crossProduct = distX * perpX + distY * perpY
+			const sideSign = crossProduct >= 0 ? 1 : -1
+
+			// Gradients for line endpoints
+			gradient.set(p1.id, {
+				x: -errorDerivative * perpX * sideSign * scaleFactor,
+				y: -errorDerivative * perpY * sideSign * scaleFactor,
+			})
+
+			gradient.set(p2.id, {
+				x: -errorDerivative * perpX * sideSign * scaleFactor,
+				y: -errorDerivative * perpY * sideSign * scaleFactor,
+			})
+		} else {
+			// Point is exactly on the line - need to move perpendicular to it
+			// to achieve the target distance
+			const perpX = -ny
+			const perpY = nx
+			const errorDerivative = 2 * (0 - targetDistance) // current distance = 0
+
+			gradient.set(point.id, {
+				x: errorDerivative * perpX, // Move perpendicular to line
+				y: errorDerivative * perpY,
+			})
+
+			gradient.set(p1.id, { x: 0, y: 0 })
+			gradient.set(p2.id, { x: 0, y: 0 })
+		}
+
+		return { constraintId: constraint.id, error, gradient }
+	}
+
+	private evaluateSameLength(
+		constraint: Constraint,
+		geometry: Geometry
+	): ConstraintViolation {
+		if (constraint.entityIds.length < 2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Get all lines, filtering out any that don't exist
+		const lines = constraint.entityIds
+			.map((id) => ({ id, line: geometry.lines.get(id) }))
+			.filter(({ line }) => line !== undefined) as Array<{
+			id: string
+			line: NonNullable<ReturnType<typeof geometry.lines.get>>
+		}>
+
+		if (lines.length < 2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Get all line endpoints
+		const lineData = lines.map(({ id, line }) => {
+			const p1 = geometry.points.get(line.point1Id)
+			const p2 = geometry.points.get(line.point2Id)
+			if (!p1 || !p2) return null
+			
+			const length = distance(p1, p2)
+			return { id, line, p1, p2, length }
+		}).filter((data) => data !== null)
+
+		if (lineData.length < 2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Use first line as reference length
+		const referenceLength = lineData[0]!.length
+		let totalError = 0
+		const totalGradient = new Map<string, { x: number; y: number }>()
+
+		// Initialize gradients for all points
+		for (const data of lineData) {
+			if (data) {
+				totalGradient.set(data.p1.id, { x: 0, y: 0 })
+				totalGradient.set(data.p2.id, { x: 0, y: 0 })
+			}
+		}
+
+		// For each line after the first, constrain its length to match the reference
+		for (let i = 1; i < lineData.length; i++) {
+			const data = lineData[i]!
+			const currentLength = data.length
+			const lengthError = currentLength - referenceLength
+			const pairError = lengthError ** 2
+			totalError += pairError
+
+			// Calculate gradients for this line pair
+			if (currentLength > 1e-10) {
+				// Gradient factor for length constraint
+				const factor = (2 * lengthError) / currentLength
+
+				// Direction vector for current line
+				const dx = data.p2.x - data.p1.x
+				const dy = data.p2.y - data.p1.y
+
+				// Gradients for current line endpoints
+				const grad1 = totalGradient.get(data.p1.id)!
+				const grad2 = totalGradient.get(data.p2.id)!
+
+				grad1.x += factor * (-dx)
+				grad1.y += factor * (-dy)
+				grad2.x += factor * dx
+				grad2.y += factor * dy
+
+				// Counter-gradients for reference line (first line)
+				const refData = lineData[0]!
+				const refLength = refData.length
+				
+				if (refLength > 1e-10) {
+					const refFactor = (-2 * lengthError) / refLength
+					const refDx = refData.p2.x - refData.p1.x
+					const refDy = refData.p2.y - refData.p1.y
+
+					const refGrad1 = totalGradient.get(refData.p1.id)!
+					const refGrad2 = totalGradient.get(refData.p2.id)!
+
+					refGrad1.x += refFactor * (-refDx)
+					refGrad1.y += refFactor * (-refDy)
+					refGrad2.x += refFactor * refDx
+					refGrad2.y += refFactor * refDy
+				}
+			}
+		}
+
+		return {
+			constraintId: constraint.id,
+			error: totalError,
+			gradient: totalGradient,
+		}
+	}
+
+	private evaluateSameRadius(
+		constraint: Constraint,
+		geometry: Geometry
+	): ConstraintViolation {
+		if (constraint.entityIds.length < 2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Get all circles, filtering out any that don't exist
+		const circles = constraint.entityIds
+			.map((id) => ({ id, circle: geometry.circles.get(id) }))
+			.filter(({ circle }) => circle !== undefined) as Array<{
+			id: string
+			circle: NonNullable<ReturnType<typeof geometry.circles.get>>
+		}>
+
+		if (circles.length < 2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Get all circle data (center and radius point)
+		const circleData = circles.map(({ id, circle }) => {
+			const center = geometry.points.get(circle.centerId)
+			const radiusPoint = geometry.points.get(circle.radiusPointId)
+			if (!center || !radiusPoint) return null
+			
+			const radius = distance(center, radiusPoint)
+			return { id, circle, center, radiusPoint, radius }
+		}).filter((data) => data !== null)
+
+		if (circleData.length < 2) {
+			return { constraintId: constraint.id, error: 0, gradient: new Map() }
+		}
+
+		// Use first circle as reference radius
+		const referenceRadius = circleData[0]!.radius
+		let totalError = 0
+		const totalGradient = new Map<string, { x: number; y: number }>()
+
+		// Initialize gradients for all points
+		for (const data of circleData) {
+			if (data) {
+				totalGradient.set(data.center.id, { x: 0, y: 0 })
+				totalGradient.set(data.radiusPoint.id, { x: 0, y: 0 })
+			}
+		}
+
+		// For each circle after the first, constrain its radius to match the reference
+		for (let i = 1; i < circleData.length; i++) {
+			const data = circleData[i]!
+			const currentRadius = data.radius
+			const radiusError = currentRadius - referenceRadius
+			const pairError = radiusError ** 2
+			totalError += pairError
+
+			// Calculate gradients for this circle pair (same as distance constraint)
+			if (currentRadius > 1e-10) {
+				// Gradient factor for radius constraint
+				const factor = (2 * radiusError) / currentRadius
+
+				// Direction vector from center to radius point
+				const dx = data.radiusPoint.x - data.center.x
+				const dy = data.radiusPoint.y - data.center.y
+
+				// Gradients for current circle
+				const centerGrad = totalGradient.get(data.center.id)!
+				const radiusPointGrad = totalGradient.get(data.radiusPoint.id)!
+
+				centerGrad.x += factor * (-dx)
+				centerGrad.y += factor * (-dy)
+				radiusPointGrad.x += factor * dx
+				radiusPointGrad.y += factor * dy
+
+				// Counter-gradients for reference circle (first circle)
+				const refData = circleData[0]!
+				const refRadius = refData.radius
+				
+				if (refRadius > 1e-10) {
+					const refFactor = (-2 * radiusError) / refRadius
+					const refDx = refData.radiusPoint.x - refData.center.x
+					const refDy = refData.radiusPoint.y - refData.center.y
+
+					const refCenterGrad = totalGradient.get(refData.center.id)!
+					const refRadiusPointGrad = totalGradient.get(refData.radiusPoint.id)!
+
+					refCenterGrad.x += refFactor * (-refDx)
+					refCenterGrad.y += refFactor * (-refDy)
+					refRadiusPointGrad.x += refFactor * refDx
+					refRadiusPointGrad.y += refFactor * refDy
+				}
+			}
+		}
+
+		return {
+			constraintId: constraint.id,
+			error: totalError,
+			gradient: totalGradient,
+		}
 	}
 }

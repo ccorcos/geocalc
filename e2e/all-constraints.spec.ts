@@ -106,7 +106,9 @@ test.describe("All Constraint Types", () => {
 		expect(yDistanceSatisfied).toBe(true)
 	})
 
-	test("same-x constraint for multiple points", async ({ page }) => {
+	test("vertical constraint for multiple points (same-x alignment)", async ({
+		page,
+	}) => {
 		const helper = new TestHarness(page)
 		await helper.goto()
 
@@ -120,9 +122,9 @@ test.describe("All Constraint Types", () => {
 		await helper.selectTool("select")
 		await helper.selectPointsInPanel([0, 1, 2], true)
 
-		// Create same-x constraint
-		await helper.createConstraint("same-x")
-		await helper.expectConstraintExists("same x")
+		// Create vertical constraint (aligns points along same x-coordinate)
+		await helper.createConstraint("vertical")
+		await helper.expectConstraintExists("vertical")
 
 		await helper.runSolver()
 
@@ -135,7 +137,9 @@ test.describe("All Constraint Types", () => {
 		}
 	})
 
-	test("same-y constraint for multiple points", async ({ page }) => {
+	test("horizontal constraint for multiple points (same-y alignment)", async ({
+		page,
+	}) => {
 		const helper = new TestHarness(page)
 		await helper.goto()
 
@@ -147,8 +151,8 @@ test.describe("All Constraint Types", () => {
 		await helper.selectTool("select")
 		await helper.selectPointsInPanel([0, 1, 2], true)
 
-		await helper.createConstraint("same-y")
-		await helper.expectConstraintExists("same y")
+		await helper.createConstraint("horizontal")
+		await helper.expectConstraintExists("horizontal")
 
 		await helper.runSolver()
 
@@ -262,8 +266,9 @@ test.describe("All Constraint Types", () => {
 		// Create second line using helper
 		await helper.createLine({ x: 150, y: 250 }, { x: 300, y: 350 })
 
-		// Use helper to select both lines
-		await helper.selectTwoLinesInPanel()
+		// Select both lines in entity panel (using same pattern as same-length test)
+		await helper.selectTool("select")
+		await helper.selectMultipleLinesInPanel([0, 1])
 
 		// Create parallel constraint
 		await helper.createConstraint("parallel")
@@ -294,8 +299,9 @@ test.describe("All Constraint Types", () => {
 		// Create second line using helper
 		await helper.createLine({ x: 150, y: 250 }, { x: 250, y: 300 })
 
-		// Use helper to select both lines
-		await helper.selectTwoLinesInPanel()
+		// Select both lines in entity panel (using same pattern as same-length test)
+		await helper.selectTool("select")
+		await helper.selectMultipleLinesInPanel([0, 1])
 
 		// Create perpendicular constraint
 		await helper.createConstraint("perpendicular")
@@ -310,7 +316,7 @@ test.describe("All Constraint Types", () => {
 		const slope1 = (points[1].y - points[0].y) / (points[1].x - points[0].x)
 		const slope2 = (points[3].y - points[2].y) / (points[3].x - points[2].x)
 
-		// More realistic tolerance (much better than 1.5 but allows for solver convergence)  
+		// More realistic tolerance (much better than 1.5 but allows for solver convergence)
 		expect(Math.abs(slope1 * slope2 + 1)).toBeLessThan(1.3)
 	})
 
@@ -339,9 +345,7 @@ test.describe("All Constraint Types", () => {
 		expect(radiusSatisfied).toBe(true)
 
 		// Test constraint editing by clicking on the value
-		await page.click(
-			'[data-testid="constraint-panel"] span:has-text("50.000")'
-		)
+		await page.click('[data-testid="constraint-panel"] span:has-text("50.000")')
 		await page.fill('input[type="number"]', "75")
 		await page.keyboard.press("Enter")
 
@@ -416,14 +420,14 @@ test.describe("All Constraint Types", () => {
 
 		// Create a point away from the circle
 		const pointOnCircle = await helper.createPointAt(400, 400) // Far from circle
-		
+
 		// Select point and circle using helper method
 		await helper.selectTool("select")
 		await helper.selectPointAndCircleInPanel(2, 0) // Third point (index 2) and first circle (index 0)
 
 		// Create point-on-circle constraint
 		await helper.createConstraint("point-on-circle")
-		
+
 		await helper.expectConstraintExists("point-on-circle")
 
 		// Run solver multiple times for difficult constraints
@@ -439,9 +443,10 @@ test.describe("All Constraint Types", () => {
 		const center = positions[pointIds[0]] // First point created (center)
 		const radiusPointPos = positions[pointIds[1]] // Second point created (radius point)
 		const pointPos = positions[pointIds[2]] // Third point created (point to constrain)
-		
+
 		const actualRadius = Math.sqrt(
-			Math.pow(radiusPointPos.x - center.x, 2) + Math.pow(radiusPointPos.y - center.y, 2)
+			Math.pow(radiusPointPos.x - center.x, 2) +
+				Math.pow(radiusPointPos.y - center.y, 2)
 		)
 		const actualDistance = Math.sqrt(
 			Math.pow(pointPos.x - center.x, 2) + Math.pow(pointPos.y - center.y, 2)
@@ -461,14 +466,14 @@ test.describe("All Constraint Types", () => {
 		// Let the solver work without additional constraints
 
 		// Create a line that intersects the circle
-		const lineStart = await helper.createPointAt(250, 280) 
+		const lineStart = await helper.createPointAt(250, 280)
 		const lineEnd = await helper.createPointAt(350, 320)
 		await helper.createLine(lineStart, lineEnd)
-		
+
 		// Select line and circle using helper method
 		await helper.selectTool("select")
 		await helper.selectLineAndCircleInPanel(0, 0) // First line and first circle
-		
+
 		// Create line-tangent-to-circle constraint
 		await helper.createConstraint("line-tangent-to-circle")
 		await helper.expectConstraintExists("line-tangent-to-circle")
@@ -482,36 +487,217 @@ test.describe("All Constraint Types", () => {
 		const positions = await helper.getPointPositions()
 
 		// Verify line is tangent to circle by checking distance from center to line equals radius
-		// Get final positions  
+		// Get final positions
 		const pointIds = Object.keys(positions)
-		const center = positions[pointIds[0]]      // Center point
-		const radiusPointPos = positions[pointIds[1]]  // Radius point
-		const p1 = positions[pointIds[2]]          // Line start point
-		const p2 = positions[pointIds[3]]          // Line end point
+		const center = positions[pointIds[0]] // Center point
+		const radiusPointPos = positions[pointIds[1]] // Radius point
+		const p1 = positions[pointIds[2]] // Line start point
+		const p2 = positions[pointIds[3]] // Line end point
 
 		// Calculate actual circle radius
 		const actualRadius = Math.sqrt(
-			Math.pow(radiusPointPos.x - center.x, 2) + Math.pow(radiusPointPos.y - center.y, 2)
+			Math.pow(radiusPointPos.x - center.x, 2) +
+				Math.pow(radiusPointPos.y - center.y, 2)
 		)
 
 		// Calculate distance from center to line
 		const vx = p2.x - p1.x
 		const vy = p2.y - p1.y
 		const lineLength = Math.sqrt(vx * vx + vy * vy)
-		
+
 		const cx = center.x - p1.x
 		const cy = center.y - p1.y
 		const crossProduct = Math.abs(vx * cy - vy * cx)
 		const distanceToLine = crossProduct / lineLength
-		
+
 		// Line-tangent-to-circle constraint: distance from center to line should equal radius
 		// Note: The solver currently finds degenerate solutions (line through center) for this constraint
 		// This is a known issue with the current constraint implementation/solver convergence
 		// The constraint is technically defined correctly, but the solver settles into local minima
 		const error = Math.abs(distanceToLine - actualRadius)
-		
+
 		// For now, we'll verify that the constraint exists and the solver runs
 		// rather than verifying perfect geometric correctness
 		expect(error).toBeLessThanOrEqual(actualRadius) // Solver ran and found some solution
+	})
+
+	test("colinear constraint with three points", async ({ page }) => {
+		const helper = new TestHarness(page)
+		await helper.goto()
+
+		// Create three points that are NOT colinear
+		const point1 = await helper.createPointAt(200, 200)
+		const point2 = await helper.createPointAt(400, 200) // Horizontal reference line
+		const point3 = await helper.createPointAt(300, 300) // Off the line
+
+		await helper.expectPointCount(3)
+
+		// Select all three points in entity panel
+		await helper.selectTool("select")
+		await helper.selectThreePointsInPanel([0, 1, 2])
+
+		// Create colinear constraint
+		await helper.createConstraint("colinear")
+		await helper.expectConstraintExists("colinear")
+
+		// Run solver
+		await helper.runSolver()
+
+		// Verify colinear constraint is satisfied
+		const isColinear = await helper.verifyColinearConstraint()
+		expect(isColinear).toBe(true)
+	})
+
+	test("orthogonal-distance constraint between point and line", async ({
+		page,
+	}) => {
+		const helper = new TestHarness(page)
+		await helper.goto()
+
+		// Create a line
+		const lineStart = await helper.createPointAt(200, 200)
+		const lineEnd = await helper.createPointAt(400, 200) // Horizontal line
+		await helper.createLine(lineStart, lineEnd)
+
+		// Create a point away from the line
+		const point = await helper.createPointAt(300, 350) // 150 units above the line
+
+		// Select point and line in entity panel
+		await helper.selectTool("select")
+		await helper.selectPointAndLineInPanel(2, 0) // Third point and first line
+
+		// Create orthogonal-distance constraint with target distance of 100
+		await helper.createConstraint("orthogonal-distance", 100)
+		await helper.expectConstraintExists("orthogonal-distance")
+
+		// Run solver
+		await helper.runSolver()
+
+		// Verify orthogonal distance constraint is satisfied
+		const isConstraintSatisfied =
+			await helper.verifyOrthogonalDistanceConstraint(100)
+		expect(isConstraintSatisfied).toBe(true)
+	})
+
+	test("same-length constraint between two lines", async ({ page }) => {
+		const helper = new TestHarness(page)
+		await helper.goto()
+
+		// Create first line (length 100)
+		const line1Start = await helper.createPointAt(200, 200)
+		const line1End = await helper.createPointAt(300, 200)
+		await helper.createLine(line1Start, line1End)
+
+		// Create second line (different length 150)
+		const line2Start = await helper.createPointAt(200, 300)
+		const line2End = await helper.createPointAt(350, 300)
+		await helper.createLine(line2Start, line2End)
+
+		// Select both lines in entity panel
+		await helper.selectTool("select")
+		await helper.selectMultipleLinesInPanel([0, 1])
+
+		// Create same-length constraint
+		await helper.createConstraint("same-length")
+		await helper.expectConstraintExists("same-length")
+
+		// Run solver
+		await helper.runSolver()
+
+		// Verify same-length constraint is satisfied
+		const hasSameLength = await helper.verifySameLengthConstraint()
+		expect(hasSameLength).toBe(true)
+	})
+
+	test("same-radius constraint between two circles", async ({ page }) => {
+		const helper = new TestHarness(page)
+		await helper.goto()
+
+		// Create first circle (radius ~50)
+		const center1 = await helper.createPointAt(250, 250)
+		const radius1 = await helper.createPointAt(300, 250)
+		await helper.createCircle(center1, radius1)
+
+		// Create second circle (different radius ~75)
+		const center2 = await helper.createPointAt(450, 250)
+		const radius2 = await helper.createPointAt(525, 250)
+		await helper.createCircle(center2, radius2)
+
+		// Select both circles in entity panel
+		await helper.selectTool("select")
+		await helper.selectMultipleCirclesInPanel([0, 1])
+
+		// Create same-radius constraint
+		await helper.createConstraint("same-radius")
+		await helper.expectConstraintExists("same-radius")
+
+		// Run solver
+		await helper.runSolver()
+
+		// Verify same-radius constraint is satisfied
+		const hasSameRadius = await helper.verifySameRadiusConstraint()
+		expect(hasSameRadius).toBe(true)
+	})
+
+	test("colinear constraint with four points", async ({ page }) => {
+		const helper = new TestHarness(page)
+		await helper.goto()
+
+		// Create four points in various positions (not colinear)
+		const point1 = await helper.createPointAt(150, 200)
+		const point2 = await helper.createPointAt(350, 200) // Reference line
+		const point3 = await helper.createPointAt(250, 300) // Off the line
+		const point4 = await helper.createPointAt(400, 150) // Different position
+
+		await helper.expectPointCount(4)
+
+		// Select all four points in entity panel
+		await helper.selectTool("select")
+		await helper.selectPointsInPanel([0, 1, 2, 3])
+
+		// Create colinear constraint
+		await helper.createConstraint("colinear")
+		await helper.expectConstraintExists("colinear")
+
+		// Run solver
+		await helper.runSolver()
+
+		// Verify colinear constraint is satisfied for all points
+		const isColinear = await helper.verifyColinearConstraint()
+		expect(isColinear).toBe(true)
+	})
+
+	test("same-length constraint with three lines", async ({ page }) => {
+		const helper = new TestHarness(page)
+		await helper.goto()
+
+		// Create three lines with different lengths
+		await helper.createLine(
+			await helper.createPointAt(100, 100),
+			await helper.createPointAt(200, 100) // Length 100
+		)
+		await helper.createLine(
+			await helper.createPointAt(100, 200),
+			await helper.createPointAt(250, 200) // Length 150
+		)
+		await helper.createLine(
+			await helper.createPointAt(100, 300),
+			await helper.createPointAt(175, 300) // Length 75
+		)
+
+		// Select all three lines in entity panel
+		await helper.selectTool("select")
+		await helper.selectMultipleLinesInPanel([0, 1, 2])
+
+		// Create same-length constraint
+		await helper.createConstraint("same-length")
+		await helper.expectConstraintExists("same-length")
+
+		// Run solver
+		await helper.runSolver()
+
+		// Verify same-length constraint is satisfied
+		const hasSameLength = await helper.verifySameLengthConstraint()
+		expect(hasSameLength).toBe(true)
 	})
 })

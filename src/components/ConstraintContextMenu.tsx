@@ -42,6 +42,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 	}[] => {
 		const selectedIds = Array.from(selection.selectedIds)
 		
+		
 		// Check if any selected entities are labels
 		const selectedLabels = selectedIds
 			.map(id => geometry.labels.get(id))
@@ -78,11 +79,62 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 			})
 			.filter(Boolean)
 
+		// Check specific cases first - exact count cases before >= cases
+		if (selectedIds.length === 2) {
+			const [entity1, entity2] = selectedEntities
+
+			// Two lines -> parallel/perpendicular/same-length constraints
+			if (entity1?.type === "line" && entity2?.type === "line") {
+				return [
+					{ type: "parallel", label: "Parallel", needsValue: false },
+					{ type: "perpendicular", label: "Perpendicular", needsValue: false },
+					{ type: "same-length", label: "Same Length", needsValue: false },
+				]
+			}
+
+			// Point + Line -> orthogonal-distance constraint
+			if (
+				(entity1?.type === "point" && entity2?.type === "line") ||
+				(entity1?.type === "line" && entity2?.type === "point")
+			) {
+				return [
+					{ type: "orthogonal-distance", label: "Orthogonal Distance", needsValue: true },
+				]
+			}
+
+			// Point + Circle -> point-on-circle constraint
+			if (
+				(entity1?.type === "point" && entity2?.type === "circle") ||
+				(entity1?.type === "circle" && entity2?.type === "point")
+			) {
+				return [
+					{ type: "point-on-circle", label: "Point on Circle", needsValue: false },
+				]
+			}
+
+			// Two circles -> same-radius constraint
+			if (entity1?.type === "circle" && entity2?.type === "circle") {
+				return [
+					{ type: "same-radius", label: "Same Radius", needsValue: false },
+				]
+			}
+
+			// Line + Circle -> line-tangent-to-circle constraint
+			if (
+				(entity1?.type === "line" && entity2?.type === "circle") ||
+				(entity1?.type === "circle" && entity2?.type === "line")
+			) {
+				return [
+					{ type: "line-tangent-to-circle", label: "Line Tangent to Circle", needsValue: false },
+				]
+			}
+		}
+
 		// Check specific cases first (3 points for angle) before general multi-point logic
 		if (selectedIds.length === 3) {
 			const [entity1, entity2, entity3] = selectedEntities
 
-			// Three points -> offer both angle constraint AND same-x/same-y constraints
+			// Three points -> offer both angle constraint AND same-x/same-y constraints AND colinear
 			if (
 				entity1?.type === "point" &&
 				entity2?.type === "point" &&
@@ -92,15 +144,24 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					{ type: "angle", label: "Fixed Angle (degrees)", needsValue: true },
 					{ type: "vertical", label: "Vertical", needsValue: false },
 					{ type: "horizontal", label: "Horizontal", needsValue: false },
+					{ type: "colinear", label: "Colinear Points", needsValue: false },
 				]
 			}
 		}
 
-		// Multiple points (2+) -> same-x, same-y constraints
+		// Multiple entities of the same type (must come after exact count cases)
 		if (selectedIds.length >= 2) {
 			const allPoints = selectedEntities.every(
 				(entity) => entity?.type === "point"
 			)
+			const allLines = selectedEntities.every(
+				(entity) => entity?.type === "line"
+			)
+			const allCircles = selectedEntities.every(
+				(entity) => entity?.type === "circle"
+			)
+
+			// Multiple points -> same-x, same-y, colinear constraints
 			if (allPoints) {
 				const constraints = [
 					{
@@ -115,6 +176,15 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					},
 				]
 
+				// Add colinear constraint for 3+ points
+				if (selectedIds.length >= 3) {
+					constraints.push({
+						type: "colinear" as ConstraintType,
+						label: "Colinear Points",
+						needsValue: false,
+					})
+				}
+
 				// Add distance constraints only for exactly 2 points
 				if (selectedIds.length === 2) {
 					constraints.unshift(
@@ -126,36 +196,18 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 
 				return constraints
 			}
-		}
 
-		if (selectedIds.length === 2) {
-			const [entity1, entity2] = selectedEntities
-
-			// Two lines -> parallel/perpendicular constraints
-			if (entity1?.type === "line" && entity2?.type === "line") {
+			// Multiple lines -> same-length constraint
+			if (allLines) {
 				return [
-					{ type: "parallel", label: "Parallel", needsValue: false },
-					{ type: "perpendicular", label: "Perpendicular", needsValue: false },
+					{ type: "same-length", label: "Same Length", needsValue: false },
 				]
 			}
 
-			// Point + Circle -> point-on-circle constraint
-			if (
-				(entity1?.type === "point" && entity2?.type === "circle") ||
-				(entity1?.type === "circle" && entity2?.type === "point")
-			) {
+			// Multiple circles -> same-radius constraint
+			if (allCircles) {
 				return [
-					{ type: "point-on-circle", label: "Point on Circle", needsValue: false },
-				]
-			}
-
-			// Line + Circle -> line-tangent-to-circle constraint
-			if (
-				(entity1?.type === "line" && entity2?.type === "circle") ||
-				(entity1?.type === "circle" && entity2?.type === "line")
-			) {
-				return [
-					{ type: "line-tangent-to-circle", label: "Line Tangent to Circle", needsValue: false },
+					{ type: "same-radius", label: "Same Radius", needsValue: false },
 				]
 			}
 		}
@@ -289,6 +341,46 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 				const circle = geometry.circles.get(selectedIds[0])
 				if (circle) {
 					defaultValue = getCircleRadius(circle, geometry)
+				}
+			} else if (constraintType === "orthogonal-distance" && selectedIds.length === 2) {
+				// Calculate current orthogonal distance between point and line
+				let point = null as any
+				let line = null as any
+				
+				const entity1 = geometry.points.get(selectedIds[0]) || geometry.lines.get(selectedIds[0])
+				const entity2 = geometry.points.get(selectedIds[1]) || geometry.lines.get(selectedIds[1])
+				
+				if (entity1 && geometry.points.has(selectedIds[0]) && entity2 && geometry.lines.has(selectedIds[1])) {
+					point = geometry.points.get(selectedIds[0])!
+					line = geometry.lines.get(selectedIds[1])!
+				} else if (entity1 && geometry.lines.has(selectedIds[0]) && entity2 && geometry.points.has(selectedIds[1])) {
+					line = geometry.lines.get(selectedIds[0])!
+					point = geometry.points.get(selectedIds[1])!
+				}
+
+				if (point && line) {
+					const p1 = geometry.points.get(line.point1Id)
+					const p2 = geometry.points.get(line.point2Id)
+					
+					if (p1 && p2) {
+						// Calculate perpendicular distance from point to line
+						const dx = p2.x - p1.x
+						const dy = p2.y - p1.y
+						const lineLength = Math.sqrt(dx * dx + dy * dy)
+						
+						if (lineLength > 1e-10) {
+							const nx = dx / lineLength
+							const ny = dy / lineLength
+							const cx = point.x - p1.x
+							const cy = point.y - p1.y
+							const projLength = cx * nx + cy * ny
+							const closestX = p1.x + projLength * nx
+							const closestY = p1.y + projLength * ny
+							const distX = point.x - closestX
+							const distY = point.y - closestY
+							defaultValue = Math.sqrt(distX * distX + distY * distY)
+						}
+					}
 				}
 			}
 

@@ -126,13 +126,29 @@ export class TestHarness {
 	async createConstraint(type: string, value?: number) {
 		// New UI: Use the + button in toolbar for creating constraints
 		await this.page.click('[data-testid="add-constraint"]')
+		
+		// Wait for context menu to appear
+		await this.page.waitForSelector('[data-context-menu]', { timeout: 5000 })
 
 		// Use centralized constraint type mapping
 		const constraintType = type as ConstraintType
 		const menuText = CONSTRAINT_MENU_NAMES[constraintType] || type
 
+		// Check if the button exists and provide helpful error message if not
+		const constraintButton = this.page.getByRole("button", { name: menuText, exact: true })
+		const buttonExists = await constraintButton.count() > 0
+		
+		if (!buttonExists) {
+			// Get available options for error message
+			const availableOptions = await this.page.evaluate(() => {
+				const buttons = Array.from(document.querySelectorAll('[data-context-menu] button'))
+				return buttons.map(button => button.textContent?.trim()).filter(Boolean)
+			})
+			throw new Error(`Constraint "${menuText}" not available. Available options: ${JSON.stringify(availableOptions)}. This suggests the required entities are not properly selected.`)
+		}
+
 		// Click the constraint type in context menu using more precise locator
-		await this.page.getByRole("button", { name: menuText, exact: true }).click()
+		await constraintButton.click()
 
 		// Enter value if needed (in input dialog)
 		if (value !== undefined) {
@@ -156,7 +172,7 @@ export class TestHarness {
 		return await this.page.evaluate(() => {
 			const store = (window as any).__GEOCALC_STORE__
 			if (!store) return null
-			
+
 			const state = store.getState()
 			return state.solverStatistics || null
 		})
@@ -222,52 +238,62 @@ export class TestHarness {
 	async createCircle(centerPoint: TestPoint, radiusPoint: TestPoint) {
 		await this.selectTool("circle")
 		// Click to place center
-		await this.canvas.click({ position: { x: centerPoint.x, y: centerPoint.y } })
+		await this.canvas.click({
+			position: { x: centerPoint.x, y: centerPoint.y },
+		})
 		// Click to set radius (drag to radius point)
-		await this.canvas.click({ position: { x: radiusPoint.x, y: radiusPoint.y } })
+		await this.canvas.click({
+			position: { x: radiusPoint.x, y: radiusPoint.y },
+		})
 	}
 
 	async selectCircleInPanel(circleIndex: number = 0) {
 		// Click on the name span within the circle row (this is where the onClick handler is)
 		const circleRow = this.entityList
-			.locator('div')
+			.locator("div")
 			.filter({ hasText: "circle" })
 			.nth(circleIndex)
-		const nameSpan = circleRow.locator('span').first() // The name span is the first span
+		const nameSpan = circleRow.locator("span").first() // The name span is the first span
 		await nameSpan.click()
 		await this.waitForConstraintUI(1)
 	}
 
-	async selectPointAndCircleInPanel(pointIndex: number = 0, circleIndex: number = 0) {
+	async selectPointAndCircleInPanel(
+		pointIndex: number = 0,
+		circleIndex: number = 0
+	) {
 		const pointInPanel = this.entityList
 			.locator("div")
 			.filter({ hasText: "point" })
 			.nth(pointIndex)
 		await pointInPanel.click()
-		
+
 		// Use corrected circle selection - click on the name span
 		const circleRow = this.entityList
-			.locator('div')
+			.locator("div")
 			.filter({ hasText: "circle" })
 			.nth(circleIndex)
-		const nameSpan = circleRow.locator('span').first()
+		const nameSpan = circleRow.locator("span").first()
 		await nameSpan.click({ modifiers: ["Shift"] })
 		await this.waitForConstraintUI(2)
 	}
 
-	async selectLineAndCircleInPanel(lineIndex: number = 0, circleIndex: number = 0) {
+	async selectLineAndCircleInPanel(
+		lineIndex: number = 0,
+		circleIndex: number = 0
+	) {
 		const lineInPanel = this.entityList
 			.locator("div")
 			.filter({ hasText: "line" })
 			.nth(lineIndex)
 		await lineInPanel.click()
-		
+
 		// Use corrected circle selection - click on the name span
 		const circleRow = this.entityList
-			.locator('div')
+			.locator("div")
 			.filter({ hasText: "circle" })
 			.nth(circleIndex)
-		const nameSpan = circleRow.locator('span').first()
+		const nameSpan = circleRow.locator("span").first()
 		await nameSpan.click({ modifiers: ["Shift"] })
 		await this.waitForConstraintUI(2)
 	}
@@ -430,30 +456,30 @@ export class TestHarness {
 		const actualRadius = await this.page.evaluate(() => {
 			const diagnostics = (window as any).__GEOCALC_DIAGNOSTICS__
 			if (!diagnostics) return null
-			
+
 			const circles = diagnostics.getCircles()
 			if (circles.length === 0) return null
-			
+
 			// Get the first circle
 			const circle = circles[0]
 			if (!circle) return null
-			
+
 			// Get geometry to access points
 			const store = (window as any).__GEOCALC_STORE__
 			if (!store) return null
-			
+
 			const state = store.getState()
 			const centerPoint = state.geometry.points.get(circle.centerId)
 			const radiusPoint = state.geometry.points.get(circle.radiusPointId)
-			
+
 			if (!centerPoint || !radiusPoint) return null
-			
+
 			// Calculate radius as distance between center and radius point
 			const dx = radiusPoint.x - centerPoint.x
 			const dy = radiusPoint.y - centerPoint.y
 			return Math.sqrt(dx * dx + dy * dy)
 		})
-		
+
 		if (actualRadius === null) return false
 		return Math.abs(actualRadius - expectedRadius) <= tolerance
 	}
@@ -504,5 +530,357 @@ export class TestHarness {
 
 	async takeScreenshot(name: string) {
 		await this.page.screenshot({ path: `test-results/screenshot-${name}.png` })
+	}
+
+	// New constraint verification methods
+	async verifyColinearConstraint(tolerance = 0.001): Promise<boolean> {
+		const points = await this.getPointPositions()
+		const pointValues = Object.values(points)
+
+		if (pointValues.length < 3) return false
+
+		// Use first two points to define the reference line
+		const p1 = pointValues[0]
+		const p2 = pointValues[1]
+
+		// Calculate line direction
+		const dx = p2.x - p1.x
+		const dy = p2.y - p1.y
+		const lineLength = Math.sqrt(dx * dx + dy * dy)
+
+		if (lineLength < 1e-10) return false
+
+		const nx = dx / lineLength
+		const ny = dy / lineLength
+
+		// Check if all other points lie on the line
+		for (let i = 2; i < pointValues.length; i++) {
+			const point = pointValues[i]
+			const cx = point.x - p1.x
+			const cy = point.y - p1.y
+
+			// Project point onto line
+			const projLength = cx * nx + cy * ny
+			const closestX = p1.x + projLength * nx
+			const closestY = p1.y + projLength * ny
+
+			// Calculate distance from point to line
+			const distX = point.x - closestX
+			const distY = point.y - closestY
+			const distanceToLine = Math.sqrt(distX * distX + distY * distY)
+
+			if (distanceToLine > tolerance) {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	async verifyOrthogonalDistanceConstraint(
+		expectedDistance: number,
+		tolerance = 0.001
+	): Promise<boolean> {
+		// Get points and lines to calculate orthogonal distance
+		return await this.page.evaluate(
+			({ expectedDistance, tolerance }) => {
+				const store = (window as any).__GEOCALC_STORE__
+				if (!store) return false
+
+				const state = store.getState()
+				const points = Array.from(state.geometry.points.values())
+				const lines = Array.from(state.geometry.lines.values())
+
+				if (points.length === 0 || lines.length === 0) return false
+
+				// Find the line and the standalone point (not part of the line)
+				const line = lines[0]
+				const p1 = state.geometry.points.get(line.point1Id)
+				const p2 = state.geometry.points.get(line.point2Id)
+
+				// Find the standalone point (not the line endpoints)
+				const point = points.find(
+					(p) => p.id !== line.point1Id && p.id !== line.point2Id
+				)
+
+				if (!p1 || !p2 || !point) return false
+
+				// Calculate orthogonal distance from point to line
+				const dx = p2.x - p1.x
+				const dy = p2.y - p1.y
+				const lineLength = Math.sqrt(dx * dx + dy * dy)
+
+				if (lineLength < 1e-10) return false
+
+				const nx = dx / lineLength
+				const ny = dy / lineLength
+				const cx = point.x - p1.x
+				const cy = point.y - p1.y
+				const projLength = cx * nx + cy * ny
+				const closestX = p1.x + projLength * nx
+				const closestY = p1.y + projLength * ny
+				const distX = point.x - closestX
+				const distY = point.y - closestY
+				const actualDistance = Math.sqrt(distX * distX + distY * distY)
+
+				return Math.abs(actualDistance - expectedDistance) <= tolerance
+			},
+			{ expectedDistance, tolerance }
+		)
+	}
+
+	async verifySameLengthConstraint(tolerance = 0.001): Promise<boolean> {
+		// Get all lines and verify they have the same length
+		return await this.page.evaluate(
+			({ tolerance }) => {
+				const store = (window as any).__GEOCALC_STORE__
+				if (!store) return false
+
+				const state = store.getState()
+				const lines = Array.from(state.geometry.lines.values())
+
+				if (lines.length < 2) return false
+
+				// Calculate length of first line as reference
+				const firstLine = lines[0]
+				const p1 = state.geometry.points.get(firstLine.point1Id)
+				const p2 = state.geometry.points.get(firstLine.point2Id)
+
+				if (!p1 || !p2) return false
+
+				const referenceLength = Math.sqrt(
+					(p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2
+				)
+
+				// Check all other lines have the same length
+				for (let i = 1; i < lines.length; i++) {
+					const line = lines[i]
+					const lineP1 = state.geometry.points.get(line.point1Id)
+					const lineP2 = state.geometry.points.get(line.point2Id)
+
+					if (!lineP1 || !lineP2) return false
+
+					const lineLength = Math.sqrt(
+						(lineP2.x - lineP1.x) ** 2 + (lineP2.y - lineP1.y) ** 2
+					)
+
+					if (Math.abs(lineLength - referenceLength) > tolerance) {
+						return false
+					}
+				}
+
+				return true
+			},
+			{ tolerance }
+		)
+	}
+
+	async verifySameRadiusConstraint(tolerance = 0.001): Promise<boolean> {
+		// Get all circles and verify they have the same radius
+		return await this.page.evaluate(
+			({ tolerance }) => {
+				const store = (window as any).__GEOCALC_STORE__
+				if (!store) return false
+
+				const state = store.getState()
+				const circles = Array.from(state.geometry.circles.values())
+
+				if (circles.length < 2) return false
+
+				// Calculate radius of first circle as reference
+				const firstCircle = circles[0]
+				const center1 = state.geometry.points.get(firstCircle.centerId)
+				const radius1Point = state.geometry.points.get(
+					firstCircle.radiusPointId
+				)
+
+				if (!center1 || !radius1Point) return false
+
+				const referenceRadius = Math.sqrt(
+					(radius1Point.x - center1.x) ** 2 + (radius1Point.y - center1.y) ** 2
+				)
+
+				// Check all other circles have the same radius
+				for (let i = 1; i < circles.length; i++) {
+					const circle = circles[i]
+					const center = state.geometry.points.get(circle.centerId)
+					const radiusPoint = state.geometry.points.get(circle.radiusPointId)
+
+					if (!center || !radiusPoint) return false
+
+					const circleRadius = Math.sqrt(
+						(radiusPoint.x - center.x) ** 2 + (radiusPoint.y - center.y) ** 2
+					)
+
+					if (Math.abs(circleRadius - referenceRadius) > tolerance) {
+						return false
+					}
+				}
+
+				return true
+			},
+			{ tolerance }
+		)
+	}
+
+	// Enhanced selection methods for new constraints
+	async selectThreePointsInPanel(indices: number[] = [0, 1, 2]) {
+		if (indices.length !== 3) {
+			throw new Error("selectThreePointsInPanel requires exactly 3 indices")
+		}
+		await this.selectPointsInPanel(indices, true)
+		await this.waitForConstraintUI(3)
+	}
+
+	async selectMultipleLinesInPanel(indices: number[]) {
+		// Clear any existing selection first
+		await this.page.click('body')
+		await this.page.waitForTimeout(100)
+
+		const lines = this.entityList.locator("div").filter({ hasText: "line" })
+
+		// Verify we have enough lines
+		const lineCount = await lines.count()
+		const maxIndex = Math.max(...indices)
+		if (lineCount <= maxIndex) {
+			console.log(`Not enough lines found: got ${lineCount}, need at least ${maxIndex + 1}`)
+			throw new Error(`Not enough lines: expected at least ${maxIndex + 1}, found ${lineCount}`)
+		}
+
+		// Select each line with proper modifier keys
+		for (let i = 0; i < indices.length; i++) {
+			const modifiers = i > 0 ? ["Shift"] : []
+			await lines.nth(indices[i]).click({ modifiers: modifiers as any[] })
+		}
+
+		await this.waitForConstraintUI(indices.length)
+		// Add extra wait to ensure selection state is fully registered
+		await this.page.waitForTimeout(100)
+	}
+
+	async selectMultipleCirclesInPanel(indices: number[]) {
+		for (let i = 0; i < indices.length; i++) {
+			const circleRow = this.entityList
+				.locator("div")
+				.filter({ hasText: "circle" })
+				.nth(indices[i])
+			const nameSpan = circleRow.locator("span").first()
+			const modifiers = i > 0 ? ["Shift"] : []
+			await nameSpan.click({ modifiers: modifiers as any[] })
+		}
+
+		await this.waitForConstraintUI(indices.length)
+	}
+
+	async selectPointAndLineInPanel(
+		pointIndex: number = 0,
+		lineIndex: number = 0
+	) {
+		const pointInPanel = this.entityList
+			.locator("div")
+			.filter({ hasText: "point" })
+			.nth(pointIndex)
+		await pointInPanel.click()
+
+		const lineInPanel = this.entityList
+			.locator("div")
+			.filter({ hasText: "line" })
+			.nth(lineIndex)
+		await lineInPanel.click({ modifiers: ["Shift"] })
+		await this.waitForConstraintUI(2)
+	}
+
+	// Debugging methods
+	async debugSelection(): Promise<string> {
+		const result = await this.page.evaluate(() => {
+			const store = (window as any).__GEOCALC_STORE__
+			if (!store) return { error: "Store not available", selectionIds: [], entities: {} }
+			if (!store.selection) return { error: "Selection not available", selectionIds: [], entities: {} }
+			
+			try {
+				return {
+					selectionIds: Array.from(store.selection.selectedIds),
+					entities: {
+						points: Array.from(store.geometry.points.keys()),
+						lines: Array.from(store.geometry.lines.keys()),
+						circles: Array.from(store.geometry.circles.keys())
+					}
+				}
+			} catch (e) {
+				return { error: `Error accessing store: ${e.message}`, selectionIds: [], entities: {} }
+			}
+		})
+		
+		if (result.error) {
+			return `Error: ${result.error}`
+		}
+		
+		return `Selection: ${JSON.stringify(result.selectionIds)}, Entities: ${JSON.stringify(result.entities)}`
+	}
+
+	async debugConstraintMenu(): Promise<string> {
+		// Click the constraint button to open menu
+		await this.page.click('[data-testid="add-constraint"]')
+		await this.page.waitForTimeout(100)
+		
+		// Get all available constraint options
+		const options = await this.page.evaluate(() => {
+			const buttons = Array.from(document.querySelectorAll('[data-context-menu] button'))
+			return buttons.map(button => button.textContent?.trim())
+		})
+		
+		// Close the menu by clicking outside
+		await this.page.click('body')
+		await this.page.waitForTimeout(100)
+		
+		return `Available constraint options: ${JSON.stringify(options)}`
+	}
+
+	async verifySelectionState(expectedCount: number, expectedTypes: string[]): Promise<boolean> {
+		const debugInfo = await this.debugSelection()
+		console.log('Selection debug info:', debugInfo)
+		
+		const result = await this.page.evaluate(() => {
+			const store = (window as any).__GEOCALC_STORE__
+			if (!store || !store.selection) return { selectionIds: [], selectedTypes: [] }
+			
+			try {
+				const selectionIds = Array.from(store.selection.selectedIds)
+				const selectedTypes = selectionIds.map(id => {
+					if (store.geometry.points.has(id)) return 'point'
+					if (store.geometry.lines.has(id)) return 'line'
+					if (store.geometry.circles.has(id)) return 'circle'
+					return 'unknown'
+				})
+				return { selectionIds, selectedTypes }
+			} catch (e) {
+				console.log('Error in verifySelectionState:', e.message)
+				return { selectionIds: [], selectedTypes: [] }
+			}
+		})
+		
+		if (result.selectionIds.length !== expectedCount) {
+			console.log(`Expected ${expectedCount} selected items, got ${result.selectionIds.length}`)
+			return false
+		}
+		
+		const typeCounts = expectedTypes.reduce((acc, type) => {
+			acc[type] = (acc[type] || 0) + 1
+			return acc
+		}, {} as Record<string, number>)
+		
+		const actualTypeCounts = result.selectedTypes.reduce((acc, type) => {
+			acc[type] = (acc[type] || 0) + 1
+			return acc
+		}, {} as Record<string, number>)
+		
+		for (const [type, count] of Object.entries(typeCounts)) {
+			if (actualTypeCounts[type] !== count) {
+				console.log(`Expected ${count} ${type}s, got ${actualTypeCounts[type] || 0}`)
+				return false
+			}
+		}
+		
+		return true
 	}
 }
