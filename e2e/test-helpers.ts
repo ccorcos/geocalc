@@ -533,49 +533,6 @@ export class TestHarness {
 	}
 
 	// New constraint verification methods
-	async verifyColinearConstraint(tolerance = 0.001): Promise<boolean> {
-		const points = await this.getPointPositions()
-		const pointValues = Object.values(points)
-
-		if (pointValues.length < 3) return false
-
-		// Use first two points to define the reference line
-		const p1 = pointValues[0]
-		const p2 = pointValues[1]
-
-		// Calculate line direction
-		const dx = p2.x - p1.x
-		const dy = p2.y - p1.y
-		const lineLength = Math.sqrt(dx * dx + dy * dy)
-
-		if (lineLength < 1e-10) return false
-
-		const nx = dx / lineLength
-		const ny = dy / lineLength
-
-		// Check if all other points lie on the line
-		for (let i = 2; i < pointValues.length; i++) {
-			const point = pointValues[i]
-			const cx = point.x - p1.x
-			const cy = point.y - p1.y
-
-			// Project point onto line
-			const projLength = cx * nx + cy * ny
-			const closestX = p1.x + projLength * nx
-			const closestY = p1.y + projLength * ny
-
-			// Calculate distance from point to line
-			const distX = point.x - closestX
-			const distY = point.y - closestY
-			const distanceToLine = Math.sqrt(distX * distX + distY * distY)
-
-			if (distanceToLine > tolerance) {
-				return false
-			}
-		}
-
-		return true
-	}
 
 	async verifyOrthogonalDistanceConstraint(
 		expectedDistance: number,

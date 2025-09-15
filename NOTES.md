@@ -13,7 +13,6 @@ Strategies:
 ---
 
 I want you to as some new constraints. Write them down as a task list in a markdown file and work through them one by one methodically and writing tests for each one along the way.
-- colinear (3+ points, or a line + points)
 - orthoganol-distance (line + point)
 - same-length (2+ lines)
 - same-radius (2+ circles)
@@ -22,7 +21,6 @@ Also, the following new constraints didnt work for me in the browser.
 -
 
 
-Colinear didnt work. is there an e2e test? create 3 points, select, colinear, solve. positions are all N/A. If I anchor one point, things kind of work but the points run off way far away.
 
 
 

@@ -134,7 +134,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 		if (selectedIds.length === 3) {
 			const [entity1, entity2, entity3] = selectedEntities
 
-			// Three points -> offer both angle constraint AND same-x/same-y constraints AND colinear
+			// Three points -> offer both angle constraint AND same-x/same-y constraints
 			if (
 				entity1?.type === "point" &&
 				entity2?.type === "point" &&
@@ -144,7 +144,6 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					{ type: "angle", label: "Fixed Angle (degrees)", needsValue: true },
 					{ type: "vertical", label: "Vertical", needsValue: false },
 					{ type: "horizontal", label: "Horizontal", needsValue: false },
-					{ type: "colinear", label: "Colinear Points", needsValue: false },
 				]
 			}
 		}
@@ -161,7 +160,7 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 				(entity) => entity?.type === "circle"
 			)
 
-			// Multiple points -> same-x, same-y, colinear constraints
+			// Multiple points -> same-x, same-y constraints
 			if (allPoints) {
 				const constraints = [
 					{
@@ -176,14 +175,6 @@ export const ConstraintContextMenu: React.FC<ConstraintContextMenuProps> = ({
 					},
 				]
 
-				// Add colinear constraint for 3+ points
-				if (selectedIds.length >= 3) {
-					constraints.push({
-						type: "colinear" as ConstraintType,
-						label: "Colinear Points",
-						needsValue: false,
-					})
-				}
 
 				// Add distance constraints only for exactly 2 points
 				if (selectedIds.length === 2) {

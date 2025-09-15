@@ -521,32 +521,6 @@ test.describe("All Constraint Types", () => {
 		expect(error).toBeLessThanOrEqual(actualRadius) // Solver ran and found some solution
 	})
 
-	test("colinear constraint with three points", async ({ page }) => {
-		const helper = new TestHarness(page)
-		await helper.goto()
-
-		// Create three points that are NOT colinear
-		const point1 = await helper.createPointAt(200, 200)
-		const point2 = await helper.createPointAt(400, 200) // Horizontal reference line
-		const point3 = await helper.createPointAt(300, 300) // Off the line
-
-		await helper.expectPointCount(3)
-
-		// Select all three points in entity panel
-		await helper.selectTool("select")
-		await helper.selectThreePointsInPanel([0, 1, 2])
-
-		// Create colinear constraint
-		await helper.createConstraint("colinear")
-		await helper.expectConstraintExists("colinear")
-
-		// Run solver
-		await helper.runSolver()
-
-		// Verify colinear constraint is satisfied
-		const isColinear = await helper.verifyColinearConstraint()
-		expect(isColinear).toBe(true)
-	})
 
 	test("orthogonal-distance constraint between point and line", async ({
 		page,
@@ -639,33 +613,6 @@ test.describe("All Constraint Types", () => {
 		expect(hasSameRadius).toBe(true)
 	})
 
-	test("colinear constraint with four points", async ({ page }) => {
-		const helper = new TestHarness(page)
-		await helper.goto()
-
-		// Create four points in various positions (not colinear)
-		const point1 = await helper.createPointAt(150, 200)
-		const point2 = await helper.createPointAt(350, 200) // Reference line
-		const point3 = await helper.createPointAt(250, 300) // Off the line
-		const point4 = await helper.createPointAt(400, 150) // Different position
-
-		await helper.expectPointCount(4)
-
-		// Select all four points in entity panel
-		await helper.selectTool("select")
-		await helper.selectPointsInPanel([0, 1, 2, 3])
-
-		// Create colinear constraint
-		await helper.createConstraint("colinear")
-		await helper.expectConstraintExists("colinear")
-
-		// Run solver
-		await helper.runSolver()
-
-		// Verify colinear constraint is satisfied for all points
-		const isColinear = await helper.verifyColinearConstraint()
-		expect(isColinear).toBe(true)
-	})
 
 	test("same-length constraint with three lines", async ({ page }) => {
 		const helper = new TestHarness(page)

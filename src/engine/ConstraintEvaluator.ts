@@ -37,8 +37,6 @@ export class ConstraintEvaluator {
 				return this.evaluatePointOnCircle(constraint, geometry)
 			case "line-tangent-to-circle":
 				return this.evaluateLineTangentToCircle(constraint, geometry)
-			case "colinear":
-				return this.evaluateColinear(constraint, geometry)
 			case "orthogonal-distance":
 				return this.evaluateOrthogonalDistance(constraint, geometry)
 			case "same-length":
@@ -911,119 +909,6 @@ export class ConstraintEvaluator {
 		return { constraintId: constraint.id, error, gradient }
 	}
 
-	private evaluateColinear(
-		constraint: Constraint,
-		geometry: Geometry
-	): ConstraintViolation {
-		if (constraint.entityIds.length < 3) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		// Get all points, filtering out any that don't exist
-		const points = constraint.entityIds
-			.map((id) => ({ id, point: geometry.points.get(id) }))
-			.filter(({ point }) => point !== undefined) as Array<{
-			id: string
-			point: NonNullable<ReturnType<typeof geometry.points.get>>
-		}>
-
-		if (points.length < 3) {
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		// Use first two points to define the reference line
-		const p1 = points[0].point
-		const p2 = points[1].point
-
-		// Line direction vector
-		const dx = p2.x - p1.x
-		const dy = p2.y - p1.y
-		const lineLength = Math.sqrt(dx * dx + dy * dy)
-
-		if (lineLength < 1e-10) {
-			// Degenerate case: first two points are coincident
-			return { constraintId: constraint.id, error: 0, gradient: new Map() }
-		}
-
-		// Normalized line direction
-		const nx = dx / lineLength
-		const ny = dy / lineLength
-
-		let totalError = 0
-		const totalGradient = new Map<string, { x: number; y: number }>()
-
-		// Initialize gradients for all points
-		for (const { id } of points) {
-			totalGradient.set(id, { x: 0, y: 0 })
-		}
-
-		// For each point after the first two, calculate distance to line
-		for (let i = 2; i < points.length; i++) {
-			const point = points[i].point
-			const pointId = points[i].id
-
-			// Vector from line start to point
-			const cx = point.x - p1.x
-			const cy = point.y - p1.y
-
-			// Project point onto line
-			const projLength = cx * nx + cy * ny
-			const closestX = p1.x + projLength * nx
-			const closestY = p1.y + projLength * ny
-
-			// Distance from point to line (perpendicular distance)
-			const distX = point.x - closestX
-			const distY = point.y - closestY
-			const distanceToLine = Math.sqrt(distX * distX + distY * distY)
-
-			// Error is squared distance to line
-			const pointError = distanceToLine ** 2
-			totalError += pointError
-
-			// Calculate gradients
-			if (distanceToLine > 1e-10) {
-				// Unit vector from closest point on line to the point
-				const unitDistX = distX / distanceToLine
-				const unitDistY = distY / distanceToLine
-
-				// Error derivative factor (for minimizing distance²)
-				const errorDerivative = 2 * distanceToLine
-
-				// Gradient for the point (move toward line - negative direction)
-				const pointGrad = totalGradient.get(pointId)!
-				pointGrad.x += -errorDerivative * unitDistX
-				pointGrad.y += -errorDerivative * unitDistY
-
-				// Gradients for line points (p1 and p2)
-				// Use conservative scaling to prevent solver instability
-				const scaleFactor = Math.max(0.1, Math.min(1.0, lineLength / 50.0))
-
-				// Perpendicular to line direction
-				const perpX = -ny
-				const perpY = nx
-
-				// Determine which side of the line the point is on
-				const crossProduct = distX * perpX + distY * perpY
-				const sideSign = crossProduct >= 0 ? 1 : -1
-
-				// Gradients for line endpoints (move line toward the point)
-				const p1Grad = totalGradient.get(points[0].id)!
-				const p2Grad = totalGradient.get(points[1].id)!
-
-				p1Grad.x += -errorDerivative * perpX * sideSign * scaleFactor
-				p1Grad.y += -errorDerivative * perpY * sideSign * scaleFactor
-
-				p2Grad.x += -errorDerivative * perpX * sideSign * scaleFactor
-				p2Grad.y += -errorDerivative * perpY * sideSign * scaleFactor
-			}
-		}
-
-		return {
-			constraintId: constraint.id,
-			error: totalError,
-			gradient: totalGradient,
-		}
-	}
 
 	private evaluateOrthogonalDistance(
 		constraint: Constraint,

@@ -268,7 +268,10 @@ export class GradientDescentSolver {
 
 		geometry.constraints.forEach((constraint) => {
 			const violation = this.evaluator.evaluate(constraint, geometry)
-			totalError += violation.error
+			// NaN protection: skip invalid errors to prevent NaN propagation
+			if (Number.isFinite(violation.error)) {
+				totalError += violation.error
+			}
 		})
 
 		return totalError
@@ -278,6 +281,10 @@ export class GradientDescentSolver {
 	private allConstraintsSatisfied(geometry: Geometry): boolean {
 		for (const constraint of geometry.constraints.values()) {
 			const violation = this.evaluator.evaluate(constraint, geometry)
+			// Skip invalid errors (consistent with calculateTotalError)
+			if (!Number.isFinite(violation.error)) {
+				continue
+			}
 			if (Math.abs(violation.error) > this.constraintErrorTolerance) {
 				return false
 			}

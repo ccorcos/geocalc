@@ -31,7 +31,6 @@ export type ConstraintType =
 	| "line-tangent-to-circle"
 
 	// Geometric relationship constraints
-	| "colinear"
 	| "orthogonal-distance"
 	| "same-length"
 	| "same-radius"
@@ -51,7 +50,6 @@ export const CONSTRAINT_DISPLAY_NAMES: Record<ConstraintType, string> = {
 	radius: "radius",
 	"point-on-circle": "Point on Circle",
 	"line-tangent-to-circle": "Line Tangent to Circle",
-	colinear: "Colinear",
 	"orthogonal-distance": "Orthogonal Distance",
 	"same-length": "Same Length",
 	"same-radius": "Same Radius",
@@ -72,7 +70,6 @@ export const CONSTRAINT_MENU_NAMES: Record<ConstraintType, string> = {
 	radius: "Radius",
 	"point-on-circle": "Point on Circle",
 	"line-tangent-to-circle": "Line Tangent to Circle",
-	colinear: "Colinear Points",
 	"orthogonal-distance": "Orthogonal Distance",
 	"same-length": "Same Length",
 	"same-radius": "Same Radius",
@@ -93,7 +90,6 @@ export const ALL_CONSTRAINT_TYPES: ConstraintType[] = [
 	"radius",
 	"point-on-circle",
 	"line-tangent-to-circle",
-	"colinear",
 	"orthogonal-distance",
 	"same-length",
 	"same-radius",
