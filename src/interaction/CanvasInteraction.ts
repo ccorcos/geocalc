@@ -746,44 +746,81 @@ export class CanvasInteraction {
 			const dx = worldPos.x - store.dragStartPoint.x
 			const dy = worldPos.y - store.dragStartPoint.y
 
-			for (const entityId of store.selection.selectedIds) {
-				// Move points directly
-				const point = store.geometry.points.get(entityId)
-				if (point) {
-					store.updatePoint(entityId, {
-						x: point.x + dx,
-						y: point.y + dy,
-					})
-				}
+			// Determine what types of entities are selected
+			const hasEntities = Array.from(store.selection.selectedIds).some(id => 
+				store.geometry.points.has(id) || 
+				store.geometry.lines.has(id) || 
+				store.geometry.circles.has(id)
+			)
+			const hasLabels = Array.from(store.selection.selectedIds).some(id => 
+				store.geometry.labels.has(id)
+			)
 
-				// Move labels by updating their offset
-				const label = store.geometry.labels.get(entityId)
-				if (label) {
-					store.updateLabel(entityId, {
-						offset: {
-							x: label.offset.x + dx,
-							y: label.offset.y + dy,
-						},
-					})
-				}
-
-				// Move lines by moving their endpoint points
-				const line = store.geometry.lines.get(entityId)
-				if (line) {
-					const point1 = store.geometry.points.get(line.point1Id)
-					const point2 = store.geometry.points.get(line.point2Id)
-
-					if (point1) {
-						store.updatePoint(line.point1Id, {
-							x: point1.x + dx,
-							y: point1.y + dy,
+			// Selection filtering: move entities OR labels, never both
+			if (hasEntities) {
+				// If any entities are selected, only move entities (not labels)
+				for (const entityId of store.selection.selectedIds) {
+					// Move points directly
+					const point = store.geometry.points.get(entityId)
+					if (point) {
+						store.updatePoint(entityId, {
+							x: point.x + dx,
+							y: point.y + dy,
 						})
 					}
 
-					if (point2) {
-						store.updatePoint(line.point2Id, {
-							x: point2.x + dx,
-							y: point2.y + dy,
+					// Move lines by moving their endpoint points
+					const line = store.geometry.lines.get(entityId)
+					if (line) {
+						const point1 = store.geometry.points.get(line.point1Id)
+						const point2 = store.geometry.points.get(line.point2Id)
+
+						if (point1) {
+							store.updatePoint(line.point1Id, {
+								x: point1.x + dx,
+								y: point1.y + dy,
+							})
+						}
+
+						if (point2) {
+							store.updatePoint(line.point2Id, {
+								x: point2.x + dx,
+								y: point2.y + dy,
+							})
+						}
+					}
+
+					// Move circles by moving their center and radius points
+					const circle = store.geometry.circles.get(entityId)
+					if (circle) {
+						const center = store.geometry.points.get(circle.centerId)
+						const radiusPoint = store.geometry.points.get(circle.radiusPointId)
+
+						if (center) {
+							store.updatePoint(circle.centerId, {
+								x: center.x + dx,
+								y: center.y + dy,
+							})
+						}
+
+						if (radiusPoint) {
+							store.updatePoint(circle.radiusPointId, {
+								x: radiusPoint.x + dx,
+								y: radiusPoint.y + dy,
+							})
+						}
+					}
+				}
+			} else if (hasLabels) {
+				// If only labels are selected, move labels
+				for (const entityId of store.selection.selectedIds) {
+					const label = store.geometry.labels.get(entityId)
+					if (label) {
+						store.updateLabel(entityId, {
+							offset: {
+								x: label.offset.x + dx,
+								y: label.offset.y + dy,
+							},
 						})
 					}
 				}

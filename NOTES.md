@@ -11,15 +11,11 @@ Strategies:
 
 ---
 
-"[Warning] Failed to save geometry to URL: – SecurityError: Attempt to use history.replaceState() more than 100 times per 10 seconds (store.ts, line 88)
-SecurityError: Attempt to use history.replaceState() more than 100 times per 10 seconds"
+
+I found a bug: if I create a line, then create a distance label for that line, when I select everything to move it around, the label offset changes, but it probably shouldn't. I think a simple and robust solution is that we only move entities or labels, never both. So if any of the selection is an entity, then we only move the entities. But if all the selection are labels, then we move the labels.
 
 
-
-If the model is too big for a URL, then add a warning above the save/load/reset buttons.
-
-
-bug: Selecting all and moving it moves the labels wrong. moving a label with its corresponding point should not move the label exactly...
+When creating a new label, the label is created too far away from the entity. We should use the scale of the drawing for rendering where they go. For coordinates, it should be scale / 20 units away. Same with distance. And for angle rendering, the arc it shows should be scale/20 units from the origin of the angle.
 
 
 bug: angle label problems.
