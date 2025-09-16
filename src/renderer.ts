@@ -591,7 +591,7 @@ export class CanvasRenderer {
 		_isSelected: boolean,
 		_isHovered: boolean
 	): void {
-		const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2)
+		const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2, this.currentGeometry.scale)
 		
 		const color = "#bbb"
 		const baseWidth = 1
@@ -717,12 +717,14 @@ export class CanvasRenderer {
 
 	private calculateBasePosition(label: Label, geometry: Geometry): { x: number; y: number } | null {
 		// Calculate where the label would be positioned without user offset
+		const scaleUnit = geometry.scale / 20
+		
 		switch (label.type) {
 			case "coordinate": {
 				const [pointId] = label.entityIds
 				const point = geometry.points.get(pointId)
 				if (!point) return null
-				return { x: point.x + 15, y: point.y - 15 } // Default offset
+				return { x: point.x + scaleUnit, y: point.y - scaleUnit } // Default offset using scale
 			}
 			case "distance": {
 				const [point1Id, point2Id] = label.entityIds
@@ -735,7 +737,7 @@ export class CanvasRenderer {
 				const [, vertexId] = label.entityIds
 				const vertex = geometry.points.get(vertexId)
 				if (!vertex) return null
-				return { x: vertex.x + 25, y: vertex.y - 25 } // Near vertex
+				return { x: vertex.x + scaleUnit * 1.25, y: vertex.y - scaleUnit * 1.25 } // Near vertex using scale
 			}
 		}
 		return null
@@ -764,7 +766,7 @@ export class CanvasRenderer {
 				if (!p1 || !vertex || !p2) return null
 				
 				// Calculate the arc and point to its midpoint
-				const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2)
+				const { centerX, centerY, radius, startAngle, endAngle } = calculateAngleArc(p1, vertex, p2, this.currentGeometry.scale)
 				const midAngle = (startAngle + endAngle) / 2
 				
 				return {

@@ -11,9 +11,11 @@ export interface Position {
  */
 export function calculateCoordinatePosition(
 	point: Point,
-	offset: { x: number; y: number }
+	offset: { x: number; y: number },
+	scale: number
 ): Position {
-	const defaultOffset = { x: 15, y: -15 } // Upper-right of point
+	const scaleUnit = scale / 20
+	const defaultOffset = { x: scaleUnit, y: -scaleUnit } // Upper-right of point
 	return {
 		x: point.x + (offset.x || defaultOffset.x),
 		y: point.y + (offset.y || defaultOffset.y),
@@ -26,9 +28,11 @@ export function calculateCoordinatePosition(
 export function calculateDistancePosition(
 	p1: Point,
 	p2: Point,
-	offset: { x: number; y: number }
+	offset: { x: number; y: number },
+	scale: number
 ): Position {
 	const midpoint = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
+	const scaleUnit = scale / 20
 
 	// Calculate perpendicular offset for dimension line
 	const dx = p2.x - p1.x
@@ -39,12 +43,12 @@ export function calculateDistancePosition(
 		// Fallback for coincident points
 		return {
 			x: midpoint.x + (offset.x || 0),
-			y: midpoint.y + (offset.y || -20),
+			y: midpoint.y + (offset.y || -scaleUnit),
 		}
 	}
 
-	const perpX = (-dy / length) * 20 // 20px default perpendicular distance
-	const perpY = (dx / length) * 20
+	const perpX = (-dy / length) * scaleUnit // scale/20 units default perpendicular distance
+	const perpY = (dx / length) * scaleUnit
 
 	return {
 		x: midpoint.x + perpX + (offset.x || 0),
@@ -59,8 +63,11 @@ export function calculateAnglePosition(
 	p1: Point,
 	vertex: Point,
 	p2: Point,
-	offset: { x: number; y: number }
+	offset: { x: number; y: number },
+	scale: number
 ): Position {
+	const scaleUnit = scale / 20
+	
 	// Calculate vectors from vertex to each point
 	const v1 = { x: p1.x - vertex.x, y: p1.y - vertex.y }
 	const v2 = { x: p2.x - vertex.x, y: p2.y - vertex.y }
@@ -72,8 +79,8 @@ export function calculateAnglePosition(
 	if (len1 === 0 || len2 === 0) {
 		// Fallback for coincident points
 		return {
-			x: vertex.x + 30 + (offset.x || 0),
-			y: vertex.y - 15 + (offset.y || 0),
+			x: vertex.x + scaleUnit * 1.5 + (offset.x || 0),
+			y: vertex.y - scaleUnit * 0.75 + (offset.y || 0),
 		}
 	}
 
@@ -90,13 +97,13 @@ export function calculateAnglePosition(
 	if (bisectorLen === 0) {
 		// Vectors are opposite - place label perpendicular to one vector
 		return {
-			x: vertex.x + v1.y * 30 + (offset.x || 0),
-			y: vertex.y - v1.x * 30 + (offset.y || 0),
+			x: vertex.x + v1.y * scaleUnit * 1.5 + (offset.x || 0),
+			y: vertex.y - v1.x * scaleUnit * 1.5 + (offset.y || 0),
 		}
 	}
 
-	// Position along bisector, 30px from vertex
-	const distance = 30
+	// Position along bisector, scale/20 units from vertex
+	const distance = scaleUnit * 1.5
 	return {
 		x: vertex.x + (bisectorX / bisectorLen) * distance + (offset.x || 0),
 		y: vertex.y + (bisectorY / bisectorLen) * distance + (offset.y || 0),
@@ -115,7 +122,7 @@ export function calculateLabelPosition(
 			const [pointId] = label.entityIds
 			const point = geometry.points.get(pointId)
 			if (!point) return null
-			return calculateCoordinatePosition(point, label.offset)
+			return calculateCoordinatePosition(point, label.offset, geometry.scale)
 		}
 
 		case "distance": {
@@ -123,7 +130,7 @@ export function calculateLabelPosition(
 			const p1 = geometry.points.get(point1Id)
 			const p2 = geometry.points.get(point2Id)
 			if (!p1 || !p2) return null
-			return calculateDistancePosition(p1, p2, label.offset)
+			return calculateDistancePosition(p1, p2, label.offset, geometry.scale)
 		}
 
 		case "angle": {
@@ -132,7 +139,7 @@ export function calculateLabelPosition(
 			const vertex = geometry.points.get(vertexId)
 			const p2 = geometry.points.get(point2Id)
 			if (!p1 || !vertex || !p2) return null
-			return calculateAnglePosition(p1, vertex, p2, label.offset)
+			return calculateAnglePosition(p1, vertex, p2, label.offset, geometry.scale)
 		}
 
 		default:
@@ -286,7 +293,8 @@ export function calculateAngleArc(
 	p1: Point,
 	vertex: Point,
 	p2: Point,
-	radius: number = 25
+	scale: number,
+	radius?: number
 ): {
 	centerX: number
 	centerY: number
@@ -294,6 +302,9 @@ export function calculateAngleArc(
 	startAngle: number
 	endAngle: number
 } {
+	// Use scale/20 units as default radius if not specified
+	const defaultRadius = scale / 20
+	const arcRadius = radius !== undefined ? radius : defaultRadius
 	// Calculate angles of both rays from vertex
 	const angle1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x)
 	const angle2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x)
@@ -319,7 +330,7 @@ export function calculateAngleArc(
 	return {
 		centerX: vertex.x,
 		centerY: vertex.y,
-		radius,
+		radius: arcRadius,
 		startAngle,
 		endAngle,
 	}
