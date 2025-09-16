@@ -758,8 +758,19 @@ export class ConstraintEvaluator {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
 		}
 
-		const point = geometry.points.get(constraint.entityIds[0])
-		const circle = geometry.circles.get(constraint.entityIds[1])
+		// Find the point and circle entities regardless of order
+		let point: any = null
+		let circle: any = null
+		
+		if (geometry.points.has(constraint.entityIds[0]) && geometry.circles.has(constraint.entityIds[1])) {
+			// Order: point, circle
+			point = geometry.points.get(constraint.entityIds[0])
+			circle = geometry.circles.get(constraint.entityIds[1])
+		} else if (geometry.circles.has(constraint.entityIds[0]) && geometry.points.has(constraint.entityIds[1])) {
+			// Order: circle, point
+			point = geometry.points.get(constraint.entityIds[1])
+			circle = geometry.circles.get(constraint.entityIds[0])
+		}
 
 		if (!point || !circle) {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
@@ -814,8 +825,19 @@ export class ConstraintEvaluator {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
 		}
 
-		const line = geometry.lines.get(constraint.entityIds[0])
-		const circle = geometry.circles.get(constraint.entityIds[1])
+		// Find the line and circle entities regardless of order
+		let line: any = null
+		let circle: any = null
+		
+		if (geometry.lines.has(constraint.entityIds[0]) && geometry.circles.has(constraint.entityIds[1])) {
+			// Order: line, circle
+			line = geometry.lines.get(constraint.entityIds[0])
+			circle = geometry.circles.get(constraint.entityIds[1])
+		} else if (geometry.circles.has(constraint.entityIds[0]) && geometry.lines.has(constraint.entityIds[1])) {
+			// Order: circle, line
+			line = geometry.lines.get(constraint.entityIds[1])
+			circle = geometry.circles.get(constraint.entityIds[0])
+		}
 
 		if (!line || !circle) {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
@@ -918,9 +940,19 @@ export class ConstraintEvaluator {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }
 		}
 
-		// First entity should be a point, second should be a line
-		const point = geometry.points.get(constraint.entityIds[0])
-		const line = geometry.lines.get(constraint.entityIds[1])
+		// Find the point and line entities regardless of order
+		let point: any = null
+		let line: any = null
+		
+		if (geometry.points.has(constraint.entityIds[0]) && geometry.lines.has(constraint.entityIds[1])) {
+			// Order: point, line
+			point = geometry.points.get(constraint.entityIds[0])
+			line = geometry.lines.get(constraint.entityIds[1])
+		} else if (geometry.lines.has(constraint.entityIds[0]) && geometry.points.has(constraint.entityIds[1])) {
+			// Order: line, point
+			point = geometry.points.get(constraint.entityIds[1])
+			line = geometry.lines.get(constraint.entityIds[0])
+		}
 
 		if (!point || !line) {
 			return { constraintId: constraint.id, error: 0, gradient: new Map() }

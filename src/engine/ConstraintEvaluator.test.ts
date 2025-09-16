@@ -1622,6 +1622,29 @@ describe("ConstraintEvaluator", () => {
 			expect(result.error).toBe(0)
 			expect(result.gradient.size).toBe(0)
 		})
+		
+		it("should work with both entity orderings (point-line and line-point)", () => {
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(4, 0) // Horizontal line
+			const point = createPoint(2, 1) // 1 unit above line
+			
+			geometry.points.set(p1.id, p1)
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(point.id, point)
+			
+			const line = createLine(p1.id, p2.id)
+			geometry.lines.set(line.id, line)
+			
+			// Test point-first ordering
+			const constraint1 = createConstraint("orthogonal-distance", [point.id, line.id], 3)
+			const result1 = evaluator.evaluate(constraint1, geometry)
+			expect(result1.error).toBe(4) // (1-3)² = 4
+			
+			// Test line-first ordering (should give same result)
+			const constraint2 = createConstraint("orthogonal-distance", [line.id, point.id], 3)
+			const result2 = evaluator.evaluate(constraint2, geometry)
+			expect(result2.error).toBe(4) // (1-3)² = 4
+		})
 	})
 
 	describe("Same-Length Constraints", () => {
@@ -1861,6 +1884,74 @@ describe("ConstraintEvaluator", () => {
 			                          Math.abs(gradRadius2.x) + Math.abs(gradRadius2.y)
 			
 			expect(totalGradMagnitude).toBeGreaterThan(0)
+		})
+	})
+
+	describe("Entity Ordering Robustness", () => {
+		it("should handle orthogonal-distance with both entity orderings", () => {
+			// Create a point 1 unit above a horizontal line, target distance = 3
+			const p1 = createPoint(0, 0)
+			const p2 = createPoint(4, 0)
+			const point = createPoint(2, 1)
+			geometry.points.set(p1.id, p1) // Add points to geometry
+			geometry.points.set(p2.id, p2)
+			geometry.points.set(point.id, point)
+			const line = createLine(p1.id, p2.id)
+			geometry.lines.set(line.id, line)
+
+			// Test point-first ordering
+			const constraint1 = createConstraint("orthogonal-distance", [point.id, line.id], 3)
+			const result1 = evaluator.evaluate(constraint1, geometry)
+			expect(result1.error).toBe(4) // (1-3)² = 4
+
+			// Test line-first ordering (should give same result)
+			const constraint2 = createConstraint("orthogonal-distance", [line.id, point.id], 3)
+			const result2 = evaluator.evaluate(constraint2, geometry)
+			expect(result2.error).toBe(4) // (1-3)² = 4
+		})
+
+		it("should handle point-on-circle with both entity orderings", () => {
+			// Create a circle with radius 5 and a point 3 units from center
+			const center = createPoint(0, 0)
+			geometry.points.set(center.id, center)
+			const circle = createCircleWithRadius(geometry, center.id, 5)
+			geometry.circles.set(circle.id, circle) // Add circle to geometry
+			const point = createPoint(3, 0) // Distance = 3, target = 5
+			geometry.points.set(point.id, point) // Add point to geometry
+
+			// Test point-first ordering
+			const constraint1 = createConstraint("point-on-circle", [point.id, circle.id], undefined)
+			const result1 = evaluator.evaluate(constraint1, geometry)
+			expect(result1.error).toBe(4) // (3-5)² = 4
+
+			// Test circle-first ordering (should give same result)
+			const constraint2 = createConstraint("point-on-circle", [circle.id, point.id], undefined)
+			const result2 = evaluator.evaluate(constraint2, geometry)
+			expect(result2.error).toBe(4) // (3-5)² = 4
+		})
+
+		it("should handle line-tangent-to-circle with both entity orderings", () => {
+			// Create a circle with radius 2 and a horizontal line 1 unit away (should be tangent at distance 2)
+			const center = createPoint(0, 0)
+			geometry.points.set(center.id, center)
+			const circle = createCircleWithRadius(geometry, center.id, 2)
+			geometry.circles.set(circle.id, circle) // Add circle to geometry
+			const p1 = createPoint(-3, 1) // Horizontal line y=1
+			const p2 = createPoint(3, 1)
+			geometry.points.set(p1.id, p1) // Add points to geometry
+			geometry.points.set(p2.id, p2)
+			const line = createLine(p1.id, p2.id)
+			geometry.lines.set(line.id, line)
+
+			// Test line-first ordering
+			const constraint1 = createConstraint("line-tangent-to-circle", [line.id, circle.id], undefined)
+			const result1 = evaluator.evaluate(constraint1, geometry)
+			expect(result1.error).toBe(1) // (1-2)² = 1
+
+			// Test circle-first ordering (should give same result)
+			const constraint2 = createConstraint("line-tangent-to-circle", [circle.id, line.id], undefined)
+			const result2 = evaluator.evaluate(constraint2, geometry)
+			expect(result2.error).toBe(1) // (1-2)² = 1
 		})
 	})
 

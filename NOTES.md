@@ -7,7 +7,6 @@ Notes
 Strategies:
 - make a plan in plans/yada.md.
 
-
 ? Claude.md Never stop short of completing a task. If there are reamining tasks, keep going.
 
 ---
@@ -17,19 +16,21 @@ I want you to as some new constraints. Write them down as a task list in a markd
 - same-length (2+ lines)
 - same-radius (2+ circles)
 
-Also, the following new constraints didnt work for me in the browser.
--
+
+"[Warning] Failed to save geometry to URL: – SecurityError: Attempt to use history.replaceState() more than 100 times per 10 seconds (store.ts, line 88)
+SecurityError: Attempt to use history.replaceState() more than 100 times per 10 seconds"
 
 
-
-
-
-
+If the model is too big for a URL, then add a warning above the save/load/reset buttons.
 
 
 bug: Selecting all and moving it moves the labels wrong. moving a label with its corresponding point should not move the label exactly...
+
+
 bug: angle label problems.
 bug: Tooltip hover takes to long to appear.
+
+
 bug: the page shouldn't error if its too narrow. it doesnt have to work well on mobile but it shouldnt crash either. a nice warning would be nice along with attempting to show things however possible.
 
 
