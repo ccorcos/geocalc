@@ -119,6 +119,7 @@ function App() {
 						backgroundColor: "#f8f9fa",
 						display: "flex",
 						alignItems: "stretch",
+						height: "100vh",
 					}}
 				>
 					<EntityPanel />
@@ -156,6 +157,7 @@ function App() {
 						backgroundColor: "#f8f9fa",
 						display: "flex",
 						alignItems: "stretch",
+						height: "100vh",
 					}}
 				>
 					<ConstraintPanel />

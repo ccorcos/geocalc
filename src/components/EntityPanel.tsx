@@ -9,7 +9,7 @@ import {
 	StorageFormat,
 	migrateStorageFormat,
 } from "../migrations/migrations"
-import { useStore } from "../store"
+import { checkModelSizeForUrl, useStore } from "../store"
 import { ConstraintContextMenu } from "./ConstraintContextMenu"
 
 interface EntityPanelProps {
@@ -473,6 +473,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 					flex: 1,
 					overflowY: "auto",
 					padding: "8px",
+					minHeight: 0,
 				}}
 			>
 				{geometry &&
@@ -952,6 +953,46 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 					)}
 			</div>
 
+			{/* URL Size Warning */}
+			{geometry && (() => {
+				const sizeCheck = checkModelSizeForUrl(geometry)
+				if (!sizeCheck.shouldWarn && !sizeCheck.isTooBig) return null
+				
+				return (
+					<div
+						style={{
+							padding: "8px 12px",
+							borderTop: "1px solid #e0e0e0",
+							backgroundColor: sizeCheck.isTooBig ? "#fff3cd" : "#d1ecf1",
+							borderLeft: sizeCheck.isTooBig ? "3px solid #ffc107" : "3px solid #bee5eb",
+							fontSize: "11px",
+							color: sizeCheck.isTooBig ? "#856404" : "#0c5460",
+							flexShrink: 0,
+						}}
+					>
+						<div style={{ fontWeight: 600, marginBottom: "4px" }}>
+							{sizeCheck.isTooBig ? "⚠️ Model Too Large for URL" : "📏 Large Model"}
+						</div>
+						<div style={{ lineHeight: "1.3" }}>
+							{sizeCheck.isTooBig ? (
+								<>
+									Your model ({sizeCheck.estimatedSize > 0 ? `${Math.round(sizeCheck.estimatedSize / 1000 * 10) / 10}KB` : "large"}) exceeds browser URL limits.
+									<br />
+									Use Save/Load buttons for sharing instead.
+								</>
+							) : (
+								<>
+									Model size: {sizeCheck.estimatedSize > 0 ? `${Math.round(sizeCheck.estimatedSize / 1000 * 10) / 10}KB` : "large"} 
+									of {Math.round(sizeCheck.limit / 1000)}KB limit.
+									<br />
+									Consider saving to file for sharing.
+								</>
+							)}
+						</div>
+					</div>
+				)
+			})()}
+
 			{/* Save/Load/Reset Buttons */}
 			<div
 				style={{
@@ -961,6 +1002,7 @@ export const EntityPanel: React.FC<EntityPanelProps> = ({ className = "" }) => {
 					display: "flex",
 					gap: "6px",
 					justifyContent: "stretch",
+					flexShrink: 0,
 				}}
 			>
 				<button

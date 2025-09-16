@@ -11,14 +11,9 @@ Strategies:
 
 ---
 
-I want you to as some new constraints. Write them down as a task list in a markdown file and work through them one by one methodically and writing tests for each one along the way.
-- orthoganol-distance (line + point)
-- same-length (2+ lines)
-- same-radius (2+ circles)
-
-
 "[Warning] Failed to save geometry to URL: – SecurityError: Attempt to use history.replaceState() more than 100 times per 10 seconds (store.ts, line 88)
 SecurityError: Attempt to use history.replaceState() more than 100 times per 10 seconds"
+
 
 
 If the model is too big for a URL, then add a warning above the save/load/reset buttons.

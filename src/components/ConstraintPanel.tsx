@@ -195,6 +195,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({
 					flex: 1,
 					overflowY: "auto",
 					padding: "8px",
+					minHeight: 0,
 				}}
 			>
 				{/* Existing Constraints List */}
@@ -403,6 +404,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({
 					borderTop: "1px solid #e0e0e0",
 					padding: "12px",
 					backgroundColor: "#f8f9fa",
+					flexShrink: 0,
 				}}
 			>
 				{/* Solve Button */}

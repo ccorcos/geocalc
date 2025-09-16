@@ -179,6 +179,40 @@ export const resetGeometry = () => {
 	useStore.getState().setGeometry(emptyGeometry)
 }
 
+// URL size checking constants and utilities
+const CONSERVATIVE_URL_LIMIT = 8000 // Conservative limit allowing for base URL + other params
+const WARNING_THRESHOLD = 0.8 // Warn when we're at 80% of the limit
+
+export const checkModelSizeForUrl = (
+	geometry: Geometry
+): {
+	isTooBig: boolean
+	shouldWarn: boolean
+	estimatedSize: number
+	limit: number
+} => {
+	try {
+		const serialized = serializeGeometry(geometry)
+		const compressed = compressAndEncode(serialized)
+		const estimatedUrlSize = compressed.length + 100 // Add buffer for base URL and other params
+
+		return {
+			isTooBig: estimatedUrlSize > CONSERVATIVE_URL_LIMIT,
+			shouldWarn: estimatedUrlSize > CONSERVATIVE_URL_LIMIT * WARNING_THRESHOLD,
+			estimatedSize: estimatedUrlSize,
+			limit: CONSERVATIVE_URL_LIMIT,
+		}
+	} catch (error) {
+		// If we can't serialize/compress, assume it's too big
+		return {
+			isTooBig: true,
+			shouldWarn: true,
+			estimatedSize: -1,
+			limit: CONSERVATIVE_URL_LIMIT,
+		}
+	}
+}
+
 interface AppState {
 	geometry: Geometry
 	currentTool: ToolType
