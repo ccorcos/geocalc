@@ -89,24 +89,22 @@ export function calculateAnglePosition(
 	v2.x /= len2
 	v2.y /= len2
 
-	// Bisector direction
-	const bisectorX = (v1.x + v2.x) / 2
-	const bisectorY = (v1.y + v2.y) / 2
-	const bisectorLen = Math.sqrt(bisectorX * bisectorX + bisectorY * bisectorY)
-
-	if (bisectorLen === 0) {
-		// Vectors are opposite - place label perpendicular to one vector
-		return {
-			x: vertex.x + v1.y * scaleUnit * 1.5 + (offset.x || 0),
-			y: vertex.y - v1.x * scaleUnit * 1.5 + (offset.y || 0),
-		}
-	}
-
-	// Position along bisector, scale/20 units from vertex
+	// Calculate directed angle from p1 to p2 to position label correctly
+	const angle1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x)
+	const angle2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x)
+	
+	// Calculate directed angle difference
+	let angleDiff = angle2 - angle1
+	if (angleDiff < 0) angleDiff += 2 * Math.PI
+	
+	// Calculate the midpoint angle of the directed arc
+	let midAngle = angle1 + angleDiff / 2
+	
+	// Position along the angle bisector
 	const distance = scaleUnit * 1.5
 	return {
-		x: vertex.x + (bisectorX / bisectorLen) * distance + (offset.x || 0),
-		y: vertex.y + (bisectorY / bisectorLen) * distance + (offset.y || 0),
+		x: vertex.x + Math.cos(midAngle) * distance + (offset.x || 0),
+		y: vertex.y + Math.sin(midAngle) * distance + (offset.y || 0),
 	}
 }
 
@@ -175,19 +173,15 @@ export function calculateLabelText(label: Label, geometry: Geometry): string {
 			const p2 = geometry.points.get(point2Id)
 			if (!p1 || !vertex || !p2) return ""
 
-			// Calculate angle using vectors
-			const v1 = { x: p1.x - vertex.x, y: p1.y - vertex.y }
-			const v2 = { x: p2.x - vertex.x, y: p2.y - vertex.y }
+			// Calculate directed angle from p1 to p2 around vertex
+			const angle1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x)
+			const angle2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x)
 
-			const dot = v1.x * v2.x + v1.y * v2.y
-			const mag1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y)
-			const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y)
-
-			if (mag1 === 0 || mag2 === 0) return "0°"
-
-			const cosTheta = Math.max(-1, Math.min(1, dot / (mag1 * mag2)))
-			const angleRadians = Math.acos(cosTheta)
-			const angleDegrees = (angleRadians * 180) / Math.PI
+			// Calculate directed angle difference (can be > 180°)
+			let angleDiff = angle2 - angle1
+			if (angleDiff < 0) angleDiff += 2 * Math.PI
+			
+			const angleDegrees = (angleDiff * 180) / Math.PI
 
 			return `${angleDegrees.toFixed(1)}°`
 		}
@@ -309,7 +303,7 @@ export function calculateAngleArc(
 	const angle1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x)
 	const angle2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x)
 
-	// Ensure we draw the smaller arc (< 180 degrees)
+	// Use directed angle from p1 to p2 (respects selection order)
 	let startAngle = angle1
 	let endAngle = angle2
 
@@ -317,21 +311,19 @@ export function calculateAngleArc(
 	if (startAngle < 0) startAngle += 2 * Math.PI
 	if (endAngle < 0) endAngle += 2 * Math.PI
 
-	// Choose direction that gives smaller arc
+	// Draw arc from p1 to p2 in the shorter direction (respects selection order)
 	const diff = endAngle - startAngle
-	if (Math.abs(diff) > Math.PI) {
-		if (diff > 0) {
-			startAngle += 2 * Math.PI
-		} else {
-			endAngle += 2 * Math.PI
-		}
+	if (diff < 0) {
+		endAngle += 2 * Math.PI
+	} else if (diff > 2 * Math.PI) {
+		startAngle += 2 * Math.PI
 	}
 
 	return {
 		centerX: vertex.x,
 		centerY: vertex.y,
 		radius: arcRadius,
-		startAngle,
-		endAngle,
+		startAngle: angle1,
+		endAngle: angle2,
 	}
 }

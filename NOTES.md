@@ -11,22 +11,9 @@ Strategies:
 
 ---
 
+There's a bug with the angle label rendering. The arc renders properly, but the actual degrees label never shows an angle > 180° and points to the wrong side of the angle when the angle is > 180.
 
-
-
-When creating a new label, the label is created too far away from the entity. We should use the scale of the drawing for rendering where they go. For coordinates, it should be scale / 20 units away. Same with distance. And for angle rendering, the arc it shows should be scale/20 units from the origin of the angle.
-
-
-There's a bug with the angle label rendering. The
-
-
-bug: angle label problems.
-bug: Tooltip hover takes to long to appear.
-
-
-bug: the page shouldn't error if its too narrow. it doesnt have to work well on mobile but it shouldnt crash either. a nice warning would be nice along with attempting to show things however possible.
-
-
+I found a bug. The page shouldn't error if its too narrow. it doesnt have to work well on mobile but it shouldnt crash either.
 
 Give everything a little more of an Ivan Sutherland Sketchpad feel. I don't want to make my eyes bleed though so make it tasteful.
 
