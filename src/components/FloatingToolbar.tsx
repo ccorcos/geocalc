@@ -165,7 +165,7 @@ export const FloatingToolbar: React.FC = () => {
 			data-testid="toolbar"
 			style={{
 				position: "absolute",
-				top: "20px",
+				top: "60px",
 				left: "50%",
 				transform: "translateX(-50%)",
 				display: "flex",

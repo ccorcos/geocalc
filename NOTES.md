@@ -11,14 +11,10 @@ Strategies:
 
 ---
 
+In the center panel above the canvas, add the folllwing.
 
-Underneath the save/load/reset buttons add a section:
-GeoCalc.com
-[Source code](github.com/ccorcos/geocalc)
-[Report a bug or ask for help](https://github.com/ccorcos/geocalc/issues)
+"GeoCalc.com | [Source code](github.com/ccorcos/geocalc) | [Report a bug or ask for help](https://github.com/ccorcos/geocalc/issues)"
 
-
-Contact / Issues -> Github.
 
 Deploy to github pages npm command (don't use github actions ci.)
 

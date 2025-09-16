@@ -7,6 +7,60 @@ import { ErrorBoundary } from "./components/ErrorBoundary"
 import { FloatingToolbar } from "./components/FloatingToolbar"
 import { useStore } from "./store"
 
+const Header = () => (
+	<div
+		style={{
+			marginBottom: "10px",
+			fontSize: "14px",
+			color: "#666",
+			display: "flex",
+			width: "100%",
+		}}
+	>
+		<div>
+			<strong>GeoCalc.com</strong>
+		</div>
+		<div style={{ flex: 1 }} />
+		<div>
+			<a
+				href="https://github.com/ccorcos/geocalc"
+				target="_blank"
+				rel="noopener noreferrer"
+				style={{ color: "#4dabf7", textDecoration: "none" }}
+			>
+				About
+			</a>
+			{" • "}
+			<a
+				href="https://github.com/ccorcos/geocalc"
+				target="_blank"
+				rel="noopener noreferrer"
+				style={{ color: "#4dabf7", textDecoration: "none" }}
+			>
+				Source code
+			</a>
+			{" • "}
+			<a
+				href="https://github.com/ccorcos/geocalc/issues"
+				target="_blank"
+				rel="noopener noreferrer"
+				style={{ color: "#4dabf7", textDecoration: "none" }}
+			>
+				Report a bug
+			</a>
+			{" • "}
+			<a
+				href="https://github.com/ccorcos/geocalc/issues"
+				target="_blank"
+				rel="noopener noreferrer"
+				style={{ color: "#4dabf7", textDecoration: "none" }}
+			>
+				Ask for help
+			</a>
+		</div>
+	</div>
+)
+
 function App() {
 	const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
 	const [isNarrowScreen, setIsNarrowScreen] = useState(false)
@@ -26,6 +80,7 @@ function App() {
 			const breakpoint = 1024 // Screen width below which we switch to mobile layout
 			const panelWidth = 560 // Both panels width (280 * 2) for desktop
 			const padding = 20
+			const headerHeight = 40 // Height for the header above canvas
 			const minWidth = 100 // Minimum canvas width to prevent IndexSizeError
 			const minHeight = 100 // Minimum canvas height to prevent IndexSizeError
 
@@ -34,16 +89,22 @@ function App() {
 
 			if (narrow) {
 				// On narrow screens, use full width minus padding
-				// Account for warning banner (32px) + bottom buttons (60px) + padding
+				// Account for warning banner (32px) + bottom buttons (60px) + header (40px) + padding
 				setCanvasSize({
 					width: Math.max(minWidth, window.innerWidth - padding),
-					height: Math.max(minHeight, window.innerHeight - 92 - padding),
+					height: Math.max(
+						minHeight,
+						window.innerHeight - 92 - headerHeight - padding
+					),
 				})
 			} else {
-				// On wide screens, use existing desktop layout
+				// On wide screens, account for header height
 				setCanvasSize({
 					width: Math.max(minWidth, window.innerWidth - panelWidth - padding),
-					height: Math.max(minHeight, window.innerHeight - padding),
+					height: Math.max(
+						minHeight,
+						window.innerHeight - headerHeight - padding
+					),
 				})
 			}
 		}
@@ -159,12 +220,15 @@ function App() {
 							flex: 1,
 							padding: "10px",
 							display: "flex",
+							flexDirection: "column",
 							justifyContent: "center",
 							alignItems: "center",
 							position: "relative",
 							backgroundColor: "#f8f9fa",
 						}}
 					>
+						<Header />
+
 						<div
 							style={{
 								border: "1px solid #dee2e6",
@@ -323,12 +387,15 @@ function App() {
 						style={{
 							padding: "10px",
 							display: "flex",
+							flexDirection: "column",
 							justifyContent: "center",
 							alignItems: "center",
 							position: "relative",
 							backgroundColor: "#f8f9fa",
 						}}
 					>
+						<Header />
+
 						<div
 							style={{
 								border: "1px solid #dee2e6",
