@@ -18,7 +18,7 @@ const Header = () => (
 		}}
 	>
 		<div>
-			<strong>GeoCalc.com</strong>
+			<strong>ccorcos.github.io/geocalc</strong>
 		</div>
 		<div style={{ flex: 1 }} />
 		<div>

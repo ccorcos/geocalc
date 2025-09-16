@@ -10,6 +10,7 @@ npm run dev          # Start development server (localhost:5173)
 npm run build        # Build for production
 npm run lint         # Check code style
 npm run typecheck    # TypeScript validation
+npm run deploy       # Deploy to GitHub Pages
 ```
 
 ### Testing Commands

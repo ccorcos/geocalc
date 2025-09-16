@@ -22,7 +22,7 @@ if (typeof window !== "undefined") {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
-		<BrowserRouter>
+		<BrowserRouter basename="/geocalc">
 			<Routes>
 				<Route path="/" element={<App />} />
 				<Route path="/reset" element={<Reset />} />
