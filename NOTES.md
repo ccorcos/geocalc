@@ -11,11 +11,12 @@ Strategies:
 
 ---
 
-There's a bug with the angle label rendering. The arc renders properly, but the actual degrees label never shows an angle > 180° and points to the wrong side of the angle when the angle is > 180.
 
-I found a bug. The page shouldn't error if its too narrow. it doesnt have to work well on mobile but it shouldnt crash either.
+Underneath the save/load/reset buttons add a section:
+GeoCalc.com
+[Source code](github.com/ccorcos/geocalc)
+[Report a bug or ask for help](https://github.com/ccorcos/geocalc/issues)
 
-Give everything a little more of an Ivan Sutherland Sketchpad feel. I don't want to make my eyes bleed though so make it tasteful.
 
 Contact / Issues -> Github.
 

@@ -54,7 +54,7 @@ export const Canvas: React.FC<CanvasProps> = ({ width, height }) => {
 
 	// Update viewport dimensions when size changes
 	useEffect(() => {
-		if (!canvasRef.current) return
+		if (!canvasRef.current || width <= 0 || height <= 0) return
 
 		const canvas = canvasRef.current
 		const devicePixelRatio = window.devicePixelRatio || 1
